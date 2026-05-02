@@ -203,9 +203,7 @@ async function handlePositionById(id: number): Promise<unknown> {
 
 async function handlePositionTimeline(id: number): Promise<unknown> {
   const db = getDb();
-  const p = await db.query.positions.findFirst({
-    where: eq(positions.id, id),
-  });
+  const p = await db.query.positions.findFirst({ where: eq(positions.id, id) });
   if (!p) return { error: "not_found" };
 
   const fillRows = await db.query.fills.findMany({ where: eq(fills.positionId, id) });
@@ -215,8 +213,63 @@ async function handlePositionTimeline(id: number): Promise<unknown> {
     limit: 10,
   });
 
+  // Initiator: most recent signal for this asset BEFORE fillTs (the trigger).
+  // Fall back to most recent signal on the asset if nothing pre-fill (eg test data).
+  const sigRows = await db.query.signals.findMany({
+    where: and(eq(signals.assetId, p.assetId), eq(signals.userId, p.userId)),
+    orderBy: (cols, { desc }) => [desc(cols.id)],
+    limit: 5,
+  });
+  const fillTs = Number(p.fillTs ?? 0);
+  const initiatorSig = sigRows.find((s) => Number(s.receivedTs) <= fillTs) ?? sigRows[0];
+  const payload = (initiatorSig?.payload ?? {}) as Record<string, unknown>;
+
+  // Convergence count: signals on same asset within ±60s of fill (any user/strategy)
+  const window = 60_000;
+  const sinceMs = fillTs - window;
+  const untilMs = fillTs + window;
+  const convergent = await db.query.signals.findMany({
+    where: and(
+      eq(signals.assetId, p.assetId),
+      gte(signals.receivedTs, sinceMs),
+    ),
+    columns: { id: true, receivedTs: true },
+    limit: 200,
+  });
+  const convergenceCount = convergent.filter((s) => Number(s.receivedTs) <= untilMs).length;
+
+  // PnL verification source heuristic
+  const sells = fillRows.filter((f) => f.side === "SELL");
+  let verifSource: string;
+  if (sells.length > 0) verifSource = "chain_per_trade";
+  else if (p.closeReason === "sell_filled_chain_lag") verifSource = "trade_reconciler";
+  else if (p.status === "CLOSED") verifSource = "manual";
+  else verifSource = "unverified";
+
+  const whaleSizeShares = payload["whaleSizeShares"];
+  const whaleSizeUsd =
+    typeof whaleSizeShares === "number"
+      ? whaleSizeShares * Number(p.fillPrice ?? 0)
+      : null;
+
   return {
     position: await handlePositionById(id),
+    initiator: {
+      whaleAddress: payload["whaleAddress"] ?? null,
+      whaleSizeShares: whaleSizeShares ?? null,
+      whaleSizeUsd,
+      conviction: payload["convictionScore"] ?? null,
+      trustScore: payload["trustScore"] ?? null,
+      smScore: payload["smScore"] ?? null,
+      title: payload["title"] ?? null,
+      signalReceivedTs: initiatorSig ? Number(initiatorSig.receivedTs) : null,
+      convergenceCount,
+    },
+    verification: {
+      pnlSource: verifSource,
+      exitTxHash: p.closeTxHash,
+      anomaly: false, // populated when chain reconciler ships (Phase L)
+    },
     fills: fillRows.map((f) => ({
       side: f.side,
       shares: Number(f.shares ?? 0),
@@ -224,13 +277,20 @@ async function handlePositionTimeline(id: number): Promise<unknown> {
       txHash: f.txHash,
       ts: Number(f.ts ?? 0),
     })),
-    recentDecisions: decisionRows.map((d) => ({
-      ts: Number(d.ts),
-      action: (d.outputIntent as Record<string, unknown>)["action"],
-      reason: (d.outputIntent as Record<string, unknown>)["reason"],
-      gates: d.gates,
-      durationMs: d.durationMs,
-    })),
+    recentDecisions: decisionRows.map((d) => {
+      const snap = (d.inputSnapshot ?? {}) as Record<string, unknown>;
+      const intent = (d.outputIntent ?? {}) as Record<string, unknown>;
+      const markTs = snap["markTs"];
+      return {
+        ts: Number(d.ts),
+        action: intent["action"],
+        reason: intent["reason"],
+        gates: d.gates,
+        durationMs: d.durationMs,
+        markSource: snap["markSource"] ?? null,
+        markFreshnessMs: typeof markTs === "number" ? Number(d.ts) - markTs : null,
+      };
+    }),
   };
 }
 
