@@ -2,7 +2,7 @@ import process from "node:process";
 import { eq } from "drizzle-orm";
 import { closeDb, getDb } from "../db/client.js";
 import { whales } from "../db/schema.js";
-import { logger } from "../obs/logger.js";
+import { bindService, logger } from "../obs/logger.js";
 import { shutdownTelemetry, startTelemetry } from "../obs/tracer.js";
 import { routeWhaleBuy } from "./signal_router.js";
 import { refreshWhaleCache } from "./wallet_matcher.js";
@@ -24,7 +24,8 @@ async function loadTrackedWhaleAddresses(): Promise<string[]> {
 }
 
 async function main(): Promise<void> {
-  startTelemetry();
+  bindService("ora2-feed");
+  startTelemetry({ serviceName: "ora2-feed" });
   await refreshWhaleCache();
 
   const whaleAddresses = await loadTrackedWhaleAddresses();

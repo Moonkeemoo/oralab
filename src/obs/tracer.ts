@@ -12,7 +12,7 @@ import { logger } from "./logger.js";
 let _sdk: NodeSDK | null = null;
 let _started = false;
 
-export function startTelemetry(): void {
+export function startTelemetry(opts: { serviceName?: string } = {}): void {
   if (_started) return;
   _started = true;
 
@@ -22,7 +22,7 @@ export function startTelemetry(): void {
     return;
   }
 
-  const serviceName = process.env["OTEL_SERVICE_NAME"] ?? "ora2";
+  const serviceName = opts.serviceName ?? process.env["OTEL_SERVICE_NAME"] ?? "ora2";
   const serviceVersion = process.env["OTEL_SERVICE_VERSION"] ?? "0.0.1";
 
   _sdk = new NodeSDK({

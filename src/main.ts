@@ -3,7 +3,7 @@ import { closeDb } from "./db/client.js";
 import { DbFillHandler } from "./execute/fill_handler.js";
 import { fillReconcilerFromEnv } from "./execute/fill_reconciler.js";
 import { PositionMonitor } from "./monitor/position_monitor.js";
-import { logger } from "./obs/logger.js";
+import { bindService, logger } from "./obs/logger.js";
 import { shutdownTelemetry, startTelemetry } from "./obs/tracer.js";
 
 /**
@@ -24,7 +24,8 @@ import { shutdownTelemetry, startTelemetry } from "./obs/tracer.js";
 const SOLO_USER_ID = 1;
 
 async function main(): Promise<void> {
-  startTelemetry();
+  bindService("ora2-trader");
+  startTelemetry({ serviceName: "ora2-trader" });
 
   const monitor = new PositionMonitor({ userId: SOLO_USER_ID });
   monitor.start();

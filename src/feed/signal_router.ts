@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import type { DataActivity } from "../api/data.js";
-import { getMarketByConditionId } from "../api/gamma.js";
+import { getMarketByTokenId } from "../api/gamma.js";
 import { getDb } from "../db/client.js";
 import { positions, signals, strategies } from "../db/schema.js";
 import { canAffordEntry } from "../execute/budget.js";
@@ -116,7 +116,7 @@ export async function routeWhaleBuy(whaleAddress: string, activity: DataActivity
     let rejectReason: string | null = null;
 
     try {
-      const market = await getMarketByConditionId(signal.conditionId);
+      const market = await getMarketByTokenId(signal.assetId);
       if (!market) {
         rejectReason = "market_not_found";
         await persistSignal(signal, false, rejectReason);
@@ -138,9 +138,9 @@ export async function routeWhaleBuy(whaleAddress: string, activity: DataActivity
         negRisk: market.negRisk,
         tickSize: market.orderPriceMinTickSize,
         minOrderSize: market.orderMinSize,
-        makerFeeBps: market.maker_base_fee,
-        takerFeeBps: market.taker_base_fee,
-        tokens: market.tokens.map((t) => ({ tokenId: t.token_id, outcome: t.outcome })),
+        makerFeeBps: market.makerBaseFee,
+        takerFeeBps: market.takerBaseFee,
+        tokens: market.tokens,
         endDate: market.endDate,
       };
 

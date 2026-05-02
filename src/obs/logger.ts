@@ -30,3 +30,7 @@ export type Logger = typeof logger;
 export function child(bindings: Record<string, unknown>): Logger {
   return logger.child(bindings);
 }
+
+export function bindService(serviceName: string): void {
+  logger.setBindings({ service: serviceName });
+}
