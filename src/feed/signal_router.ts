@@ -150,10 +150,32 @@ interface RouteOutcome {
  */
 const FOK_SLIPPAGE_TICKS = Number(process.env["FOK_SLIPPAGE_TICKS"] ?? 2);
 
+interface BookCacheEntry {
+  ask: number;
+  ts: number;
+  tickSize: number;
+}
+const BOOK_CACHE = new Map<string, BookCacheEntry>();
+const BOOK_TTL_MS = Number(process.env["LIVE_ASK_CACHE_TTL_MS"] ?? 500);
+
 async function liveAskWithSlippage(market: GammaMarket, assetId: string): Promise<number | null> {
+  const cached = BOOK_CACHE.get(assetId);
+  if (cached && Date.now() - cached.ts < BOOK_TTL_MS) {
+    return cached.ask + FOK_SLIPPAGE_TICKS * cached.tickSize;
+  }
   try {
     const book = await getBookTop(assetId);
     if (book.ask <= 0 || book.ask >= 1) return null;
+    BOOK_CACHE.set(assetId, {
+      ask: book.ask,
+      ts: Date.now(),
+      tickSize: market.orderPriceMinTickSize,
+    });
+    // bound cache to last 200 assets — simple FIFO trim
+    if (BOOK_CACHE.size > 200) {
+      const firstKey = BOOK_CACHE.keys().next().value;
+      if (firstKey !== undefined) BOOK_CACHE.delete(firstKey);
+    }
     return book.ask + FOK_SLIPPAGE_TICKS * market.orderPriceMinTickSize;
   } catch (err) {
     logger.warn({ err, asset: assetId }, "getBookTop failed; will fall back to signal.priceHint");
