@@ -10,8 +10,14 @@ import { decisions, fills, positions, signals, strategies } from "../db/schema.j
 import { loadEffectiveExitConfig } from "../monitor/exit_config_loader.js";
 import { writeAudit } from "../notify/audit_log.js";
 import { isRuntimeKillSwitchActive, setRuntimeKillSwitch } from "../notify/kill_switch.js";
+import { setRuntimeConfig } from "../notify/runtime_config.js";
 import { logger } from "../obs/logger.js";
-import { type StrategyParamKey, validateStrategyParam } from "./strategy_schema.js";
+import {
+  type ExitConfigKey,
+  type StrategyParamKey,
+  validateExitConfigKey,
+  validateStrategyParam,
+} from "./strategy_schema.js";
 
 /**
  * ora2-api — minimal REST server for the Mini App (P2a deliverable).
@@ -537,6 +543,38 @@ async function handleStrategyEnabledPost(
   return { ok: true, id, enabled: body.enabled };
 }
 
+async function handleExitConfigPost(
+  req: http.IncomingMessage,
+  userId: number,
+): Promise<unknown> {
+  const raw = await readBody(req);
+  const body = JSON.parse(raw || "{}") as Record<string, unknown>;
+  const errors: Record<string, string> = {};
+  for (const [k, v] of Object.entries(body)) {
+    const r = validateExitConfigKey(k as ExitConfigKey, v);
+    if (!r.ok) errors[k] = r.reason ?? "invalid";
+  }
+  if (Object.keys(errors).length > 0) {
+    return { ok: false, errors };
+  }
+  for (const [k, v] of Object.entries(body)) {
+    await setRuntimeConfig({
+      scope: "global",
+      key: `exit.${k}`,
+      value: v,
+      setByUserId: userId || null,
+    });
+  }
+  await writeAudit({
+    actor: "mini_app",
+    userId,
+    action: "exit_config_update",
+    target: "global",
+    payload: { changed: body },
+  });
+  return { ok: true, applied: body };
+}
+
 async function handleKillSwitchPost(req: http.IncomingMessage): Promise<unknown> {
   const raw = await readBody(req);
   const body = JSON.parse(raw || "{}") as { active?: boolean; reason?: string };
@@ -599,6 +637,9 @@ export function createRestServer(): http.Server {
       }
       if (req.method === "POST") {
         if (req.url === "/api/kill_switch") return send(res, 200, await handleKillSwitchPost(req));
+        if (req.url === "/api/exit_config") {
+          return send(res, 200, await handleExitConfigPost(req, auth.userId ?? 0));
+        }
         const sParamsMatch = req.url?.match(/^\/api\/strategies\/(\d+)\/params$/);
         if (sParamsMatch && sParamsMatch[1]) {
           return send(res, 200, await handleStrategyParamsPost(Number(sParamsMatch[1]), req, auth.userId ?? 0));
