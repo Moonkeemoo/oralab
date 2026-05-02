@@ -5,6 +5,7 @@ import { openPositionSheet } from "../sheets/position.js";
 
 export async function renderLive(root) {
   root.innerHTML = `
+    <section class="card" id="kpi-card"><div class="card-title">KPIs · 24h</div><div class="card-body" id="kpi-body">…</div></section>
     <section class="card" id="now-card"><div class="card-title">Now happening</div><div class="card-body" id="now-body">…</div></section>
     <section class="card" id="positions-card"><div class="card-title">Active positions</div><div class="card-body" id="positions-body">…</div></section>
     <section class="card" id="rejects-card"><div class="card-title">Recent rejects</div><div class="card-body" id="rejects-body">…</div></section>
@@ -34,7 +35,19 @@ export async function renderLive(root) {
 }
 
 async function loadAll() {
-  await Promise.all([loadNow(), loadPositions(), loadRejects()]);
+  await Promise.all([loadKpis(), loadNow(), loadPositions(), loadRejects()]);
+}
+
+async function loadKpis() {
+  const k = await fetchJson("/api/kpi?windowHours=24");
+  document.getElementById("kpi-body").innerHTML = `
+    <div class="kv"><span class="k">win rate</span><span class="v">${k.winRatePct.toFixed(1)}%</span></div>
+    <div class="kv"><span class="k">profit factor</span><span class="v">${isFinite(k.profitFactor) && k.profitFactor !== null ? k.profitFactor.toFixed(2) : "—"}</span></div>
+    <div class="kv"><span class="k">drawdown</span><span class="v bad">-$${k.drawdownUsd.toFixed(2)}</span></div>
+    <div class="kv"><span class="k">avg hold</span><span class="v">${(k.avgHoldSec / 60).toFixed(1)} min</span></div>
+    <div class="kv"><span class="k">pass rate</span><span class="v">${k.passRatePct.toFixed(1)}%</span></div>
+    <div class="kv"><span class="k">signals/h</span><span class="v">${k.signalsPerHour.toFixed(0)}</span></div>
+  `;
 }
 
 async function loadNow() {

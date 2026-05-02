@@ -6,12 +6,14 @@ export async function refreshCockpit() {
   const root = document.getElementById("cockpit");
   if (!root) return;
   try {
-    const [status, pnl, conns] = await Promise.all([
+    const [status, pnl, conns, kpi] = await Promise.all([
       fetchJson("/api/status"),
       fetchJson("/api/pnl?windowHours=24"),
       fetchJson("/api/connections"),
+      fetchJson("/api/kpi?windowHours=24"),
     ]);
     const health = computeHealth(conns);
+    const pf = isFinite(kpi.profitFactor) && kpi.profitFactor !== null ? kpi.profitFactor.toFixed(1) : "—";
     root.innerHTML = `
       <span class="pill ${status.mode === "LIVE" ? "live" : "dry"}">${status.mode}</span>
       <span class="pill ${status.killSwitch ? "ks-on" : "ks-off"}">
@@ -20,6 +22,7 @@ export async function refreshCockpit() {
       <span class="pill">${fmt$(pnl.netPnlUsd)} 24h</span>
       <span class="pill">${status.activePositions} active</span>
       <span class="health-dot ${health}" title="connections: ${health}"></span>
+      <div class="cockpit-line2">WR ${kpi.winRatePct.toFixed(0)}% · PF ${pf} · DD -$${kpi.drawdownUsd.toFixed(2)}</div>
     `;
   } catch (err) {
     root.innerHTML = `<span class="pill" style="color:var(--bad)">cockpit error: ${err.message}</span>`;

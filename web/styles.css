@@ -295,3 +295,6 @@ table.filters tr { border-bottom: 1px solid rgba(255,255,255,0.04); }
 
 .audit { font-size: 12px; }
 .audit-row { padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.04); display: flex; gap: 8px; flex-wrap: wrap; }
+
+.cockpit-line2 { font-size: 11px; color: var(--text-muted); margin-top: 2px; width: 100%; }
+.cockpit { flex-wrap: wrap; }
