@@ -49,7 +49,7 @@ services:
     command: -config.file=/etc/loki/loki.yaml
     volumes:
       - ./infra/loki.yaml:/etc/loki/loki.yaml:ro
-      - ora2-loki-data:/tmp/loki
+      - ora2-loki-data:/loki
     ports:
       - "3100:3100"
 

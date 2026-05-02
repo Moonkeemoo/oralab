@@ -8,7 +8,7 @@ common:
     kvstore:
       store: inmemory
   replication_factor: 1
-  path_prefix: /tmp/loki
+  path_prefix: /loki
 
 schema_config:
   configs:
@@ -22,11 +22,10 @@ schema_config:
 
 storage_config:
   filesystem:
-    chunks_directory: /tmp/loki/chunks
-    rules_directory: /tmp/loki/rules
+    directory: /loki/chunks
   tsdb_shipper:
-    active_index_directory: /tmp/loki/tsdb-active
-    cache_location: /tmp/loki/tsdb-cache
+    active_index_directory: /loki/tsdb-active
+    cache_location: /loki/tsdb-cache
 
 limits_config:
   allow_structured_metadata: true
@@ -37,4 +36,4 @@ ruler:
   storage:
     type: local
     local:
-      directory: /tmp/loki/rules
+      directory: /loki/rules

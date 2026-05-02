@@ -16,19 +16,16 @@ const ms_buckets_long = [50, 100, 200, 500, 1000, 2000, 3000, 5000, 10000];
 
 export const whaleToBuyLatencyMs: Histogram = meter.createHistogram("whale_to_buy_latency_ms", {
   description: "End-to-end: whale fill detected → our BUY accepted by CLOB",
-  unit: "ms",
   advice: { explicitBucketBoundaries: ms_buckets_long },
 });
 
 export const decideExitDurationMs: Histogram = meter.createHistogram("decide_exit_duration_ms", {
   description: "decide_exit pure function execution time — should always be tiny",
-  unit: "ms",
   advice: { explicitBucketBoundaries: ms_buckets_short },
 });
 
 export const positionMonitorTickMs: Histogram = meter.createHistogram("position_monitor_tick_ms", {
   description: "Full position monitor tick: snap fetch + decide_exit + (if exit) place order",
-  unit: "ms",
   advice: { explicitBucketBoundaries: ms_buckets_short },
 });
 
@@ -46,8 +43,7 @@ export const orderPlacementOutcome = meter.createCounter("order_placement_outcom
 });
 
 export const reconciliationDriftPct = meter.createHistogram("reconciliation_drift_pct", {
-  description: "DB ↔ chain drift percent at reconciliation tick",
-  unit: "%",
+  description: "DB ↔ chain drift fraction at reconciliation tick (0.05 = 5%)",
   advice: { explicitBucketBoundaries: [0.001, 0.005, 0.01, 0.05, 0.1, 0.2, 0.5] },
 });
 

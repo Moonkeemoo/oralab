@@ -24,7 +24,11 @@
     "db:push": "drizzle-kit push",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
-    "db:seed": "tsx --env-file=.env scripts/seed-strategies.ts"
+    "db:seed": "tsx --env-file=.env scripts/seed-strategies.ts",
+    "smoke:otel": "tsx --env-file=.env scripts/smoke-otel.ts",
+    "stack:up": "docker compose up -d",
+    "stack:down": "docker compose down",
+    "stack:logs": "docker compose logs -f --tail=50"
   },
   "dependencies": {
     "@hono/node-server": "^2.0.0",
