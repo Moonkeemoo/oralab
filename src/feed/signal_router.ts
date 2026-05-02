@@ -31,6 +31,9 @@ interface BuildSignalArgs {
 }
 
 function buildSignal(args: BuildSignalArgs, userId: number): Signal {
+  // Signal age = seconds since the whale's on-chain BUY happened, NOT since
+  // we built the signal locally. activity.timestamp is unix-seconds.
+  const whaleTradeTsMs = args.activity.timestamp * 1000;
   return {
     id: `sig-${randomUUID()}`,
     userId,
@@ -46,8 +49,9 @@ function buildSignal(args: BuildSignalArgs, userId: number): Signal {
       txHash: args.activity.transactionHash,
       whaleSizeShares: args.activity.size,
       title: args.activity.title,
+      whaleTradeTsMs,
     },
-    receivedTs: Date.now(),
+    receivedTs: whaleTradeTsMs,
   };
 }
 
@@ -116,6 +120,18 @@ export async function routeWhaleBuy(whaleAddress: string, activity: DataActivity
     let rejectReason: string | null = null;
 
     try {
+      // Stale guard BEFORE gamma round-trip — if the whale BUY happened
+      // longer ago than our edge window, no point looking up the market.
+      // (60s default mirrors the stale_trade filter; pipeline still re-checks
+      // post-evaluate, but the cheap pre-check saves an HTTP hop.)
+      const ageSec = (Date.now() - signal.receivedTs) / 1000;
+      const STALE_AGE_SEC = 90;
+      if (ageSec > STALE_AGE_SEC) {
+        rejectReason = "signal_stale";
+        await persistSignal(signal, false, rejectReason);
+        return;
+      }
+
       const market = await getMarketByTokenId(signal.assetId);
       if (!market) {
         rejectReason = "market_not_found";
