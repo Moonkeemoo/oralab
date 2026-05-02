@@ -37,6 +37,8 @@ const baseCtx: FilterContext = {
     tickSize: 0.01,
     negRisk: false,
     minOrderSize: 5,
+    isSportsMarket: false,
+    gameId: null,
   },
   whale: {
     address: "0xwhale",

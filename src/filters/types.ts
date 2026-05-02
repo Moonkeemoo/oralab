@@ -41,6 +41,8 @@ export interface MarketState {
   readonly tickSize: number;
   readonly negRisk: boolean;
   readonly minOrderSize: number;
+  readonly isSportsMarket: boolean;
+  readonly gameId: string | null;
 }
 
 export interface WhaleState {

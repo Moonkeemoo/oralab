@@ -211,6 +211,8 @@ export class WhaleFollowStrategy implements Strategy {
       tickSize: market.tickSize,
       negRisk: market.negRisk,
       minOrderSize: market.minOrderSize,
+      isSportsMarket: market.isSportsMarket,
+      gameId: market.gameId,
     };
   }
 

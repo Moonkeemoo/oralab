@@ -195,6 +195,9 @@ async function routeInner(
     takerFeeBps: market.takerBaseFee,
     tokens: market.tokens,
     endDate: market.endDate,
+    isSportsMarket: market.isSportsMarket,
+    gameId: market.gameId,
+    sportsMarketType: market.sportsMarketType,
   };
 
   const decision = await strategy.evaluate(signal, marketMeta);

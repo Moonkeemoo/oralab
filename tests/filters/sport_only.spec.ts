@@ -37,6 +37,8 @@ const baseCtx: FilterContext = {
     tickSize: 0.01,
     negRisk: false,
     minOrderSize: 5,
+    isSportsMarket: false,
+    gameId: null,
   },
   whale: {
     address: "0xwhale",
@@ -83,5 +85,25 @@ describe("sport_only filter", () => {
   it("missing title is rejected (cannot classify)", () => {
     const r = sportOnly.evaluate(baseCtx, {});
     expect(r.passed).toBe(false);
+  });
+
+  it("PASS when gamma flag isSportsMarket=true even if title is non-sport-keyword", () => {
+    const ctx = {
+      ...baseCtx,
+      market: { ...baseCtx.market, isSportsMarket: true, gameId: "game-123" },
+      signal: { ...baseCtx.signal, payload: { title: "obscure proper noun match" } },
+    };
+    const r = sportOnly.evaluate(ctx, {});
+    expect(r.passed).toBe(true);
+  });
+
+  it("falls back to title regex when gamma flag is false", () => {
+    const ctx = {
+      ...baseCtx,
+      market: { ...baseCtx.market, isSportsMarket: false, gameId: null },
+      signal: { ...baseCtx.signal, payload: { title: "NBA Lakers vs Warriors" } },
+    };
+    const r = sportOnly.evaluate(ctx, {});
+    expect(r.passed).toBe(true);
   });
 });

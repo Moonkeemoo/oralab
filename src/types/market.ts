@@ -35,4 +35,7 @@ export interface MarketMetadata {
   readonly takerFeeBps: number;
   readonly tokens: readonly { readonly tokenId: string; readonly outcome: string }[];
   readonly endDate: string;
+  readonly isSportsMarket: boolean;
+  readonly gameId: string | null;
+  readonly sportsMarketType: string | null;
 }
