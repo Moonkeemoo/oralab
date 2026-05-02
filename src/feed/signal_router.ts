@@ -387,6 +387,7 @@ async function routeInner(
           assetId: signal.assetId,
           side: signal.side,
           status,
+          mode: (process.env["DRY_RUN"] ?? "true").toLowerCase() === "true" ? "DRY" : "LIVE",
           shares: filledShares,
           fillPrice: priceCeiling,
           peakPrice: priceCeiling,
