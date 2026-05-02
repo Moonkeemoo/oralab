@@ -115,7 +115,8 @@ function parseGammaMarket(m: GammaMarketRaw): GammaMarket {
 }
 
 export async function getMarketByTokenId(tokenId: string): Promise<GammaMarket | null> {
-  const url = `${GAMMA_API_URL}/markets?clob_token_ids=${tokenId}`;
+  // closed=true is INCLUSIVE — gamma silently drops resolved markets without it
+  const url = `${GAMMA_API_URL}/markets?clob_token_ids=${tokenId}&closed=true`;
   const arr = await fetchJson<GammaMarketRaw[]>(url);
   const first = arr[0];
   if (!first) return null;
@@ -123,7 +124,7 @@ export async function getMarketByTokenId(tokenId: string): Promise<GammaMarket |
 }
 
 export async function getMarketByConditionId(conditionId: string): Promise<GammaMarket | null> {
-  const url = `${GAMMA_API_URL}/markets?condition_ids=${conditionId}`;
+  const url = `${GAMMA_API_URL}/markets?condition_ids=${conditionId}&closed=true`;
   const arr = await fetchJson<GammaMarketRaw[]>(url);
   const first = arr[0];
   if (!first) return null;

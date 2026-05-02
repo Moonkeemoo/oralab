@@ -37,8 +37,19 @@ export class WhaleActivityPoller {
 
   start(): void {
     if (this.timer) return;
+    // Seed lastSeenTs to NOW so we ignore historic activity. Without this,
+    // first poll dumps every recent whale BUY (50 by default) — most are old
+    // and against already-resolved markets, drowning the pipeline in noise.
+    const nowSec = Math.floor(Date.now() / 1000);
+    for (const addr of this.options.whaleAddresses) {
+      this.lastSeenTs.set(addr, nowSec);
+    }
     logger.info(
-      { count: this.options.whaleAddresses.length, intervalMs: this.intervalMs },
+      {
+        count: this.options.whaleAddresses.length,
+        intervalMs: this.intervalMs,
+        seedFromTs: nowSec,
+      },
       "WhaleActivityPoller started",
     );
     this.timer = setInterval(() => {

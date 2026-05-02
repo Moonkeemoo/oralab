@@ -122,6 +122,16 @@ export async function routeWhaleBuy(whaleAddress: string, activity: DataActivity
         await persistSignal(signal, false, rejectReason);
         return;
       }
+      if (market.closed || market.archived || market.umaResolutionStatus === "resolved") {
+        rejectReason = "market_already_resolved";
+        await persistSignal(signal, false, rejectReason);
+        return;
+      }
+      if (!market.acceptingOrders) {
+        rejectReason = "market_not_accepting_orders";
+        await persistSignal(signal, false, rejectReason);
+        return;
+      }
 
       const strategy = new WhaleFollowStrategy({
         id: cfg.id,
