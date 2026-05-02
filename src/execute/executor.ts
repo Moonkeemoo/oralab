@@ -6,6 +6,7 @@ import type { ExitIntent } from "../types/decide.js";
 import type { MarketSnapshot } from "../types/market.js";
 import type { PositionView } from "../types/position.js";
 import { cancelByOrderId, type OrderResult, placeSell } from "./order_manager.js";
+import { recordOrder } from "./order_recorder.js";
 
 /**
  * ExitExecutor — the ONLY thing that mutates state on the exit path.
@@ -93,6 +94,21 @@ export async function executeExitIntent(
       updatedAt: new Date(),
     })
     .where(eq(positions.id, numericId));
+
+  await recordOrder({
+    userId: pos.userId,
+    positionId: numericId,
+    mode: sellParams.orderType,
+    side: "SELL",
+    price: sellParams.price,
+    size: sellParams.sizeShares,
+    expirationTs: sellParams.expirationTs,
+    clientOrderId: result.clientOrderId,
+    clobOrderId: result.clobOrderId,
+    status: result.status ?? (result.dry ? "DRY_RUN" : "LIVE"),
+    rawRequest: { ...sellParams, action: intent.action, reason: intent.reason },
+    rawResponse: (result.raw as Record<string, unknown>) ?? {},
+  });
 
   log.info({ orderId: result.clobOrderId, sweepCount: pos.sweepCount + 1 }, "position → EXITING");
   return { applied: true, orderResult: result };

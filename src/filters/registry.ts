@@ -7,6 +7,7 @@ import { maxOpenPositions } from "./impl/max_open_positions.js";
 import { priceTooHigh } from "./impl/price_too_high.js";
 import { priceTooLow } from "./impl/price_too_low.js";
 import { smScore } from "./impl/sm_score.js";
+import { sportOnly } from "./impl/sport_only.js";
 import { staleTrade } from "./impl/stale_trade.js";
 import { timeHorizonTooClose } from "./impl/time_horizon_too_close.js";
 import { totalExposureCap } from "./impl/total_exposure_cap.js";
@@ -22,6 +23,7 @@ import type { Filter } from "./types.js";
  */
 const FILTERS: Filter[] = [
   hardSafety,
+  sportOnly,
   whaleSizeFloor,
   priceTooHigh,
   priceTooLow,

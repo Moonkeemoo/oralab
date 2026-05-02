@@ -6,6 +6,7 @@ import { getDb } from "../db/client.js";
 import { positions, signals, strategies } from "../db/schema.js";
 import { canAffordEntry } from "../execute/budget.js";
 import { placeBuy } from "../execute/order_manager.js";
+import { recordOrder } from "../execute/order_recorder.js";
 import { logger } from "../obs/logger.js";
 import { whaleToBuyLatencyMs } from "../obs/metrics.js";
 import { withSpan } from "../obs/tracer.js";
@@ -177,24 +178,43 @@ export async function routeWhaleBuy(whaleAddress: string, activity: DataActivity
       }
 
       const db = getDb();
-      await db.insert(positions).values({
+      const [posRow] = await db
+        .insert(positions)
+        .values({
+          userId: cfg.userId,
+          walletId: 1,
+          strategyId: match.strategyId,
+          signalId,
+          conditionId: signal.conditionId,
+          assetId: signal.assetId,
+          side: signal.side,
+          status: "PENDING",
+          shares: sizeShares,
+          fillPrice: decision.priceCap,
+          peakPrice: decision.priceCap,
+          fillTs: Date.now(),
+          lastStateChangeTs: Date.now(),
+          entryCostUsd: sizeShares * decision.priceCap,
+          trailArmed: false,
+          sweepCount: 0,
+        })
+        .returning({ id: positions.id });
+
+      const positionId = Number(posRow?.id ?? 0);
+      await recordOrder({
         userId: cfg.userId,
-        walletId: 1,
-        strategyId: match.strategyId,
-        signalId,
-        conditionId: signal.conditionId,
-        assetId: signal.assetId,
-        side: signal.side,
-        status: "PENDING",
-        shares: sizeShares,
-        fillPrice: decision.priceCap,
-        peakPrice: decision.priceCap,
-        fillTs: Date.now(),
-        lastStateChangeTs: Date.now(),
-        entryCostUsd: sizeShares * decision.priceCap,
-        trailArmed: false,
-        sweepCount: 0,
+        positionId,
+        mode: "FOK",
+        side: "BUY",
+        price: decision.priceCap,
+        size: sizeShares,
+        clientOrderId: buy.clientOrderId,
+        clobOrderId: buy.clobOrderId,
+        status: buy.status ?? (buy.dry ? "DRY_RUN" : "LIVE"),
+        rawRequest: { tokenId: signal.assetId, price: decision.priceCap, sizeShares },
+        rawResponse: (buy.raw as Record<string, unknown>) ?? {},
       });
+
       whaleToBuyLatencyMs.record(Date.now() - whaleStart, { source: "rest_poll" });
       logger.info(
         { sigId: signalId, sizeShares, priceCap: decision.priceCap, dry: buy.dry },

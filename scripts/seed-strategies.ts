@@ -127,6 +127,7 @@ async function seed() {
     .insert(strategyFilters)
     .values([
       { strategyId: 1, filterName: "hard_safety", enabled: true, params: {} },
+      { strategyId: 1, filterName: "sport_only", enabled: true, params: {} },
       {
         strategyId: 1,
         filterName: "stale_trade",

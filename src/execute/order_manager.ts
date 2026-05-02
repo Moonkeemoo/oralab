@@ -189,13 +189,44 @@ export async function placeSell(params: SellParams): Promise<OrderResult> {
     span.setAttribute("size", params.sizeShares);
     span.setAttribute("order_type", params.orderType);
 
+    // INV-M1 pre-flight: cap intent size to chain-balance.
+    let effectiveSize = params.sizeShares;
+    try {
+      const ba = (await client.getBalanceAllowance({
+        asset_type: "CONDITIONAL",
+        token_id: params.tokenId,
+      } as Parameters<typeof client.getBalanceAllowance>[0])) as {
+        balance?: string | number;
+      };
+      const onChain = Number(ba.balance ?? 0);
+      if (onChain < params.sizeShares) {
+        log.warn(
+          { onChain, intended: params.sizeShares },
+          "INV-M1 cap: intent.size > on_chain; reducing to chain balance",
+        );
+        effectiveSize = onChain;
+      }
+      if (effectiveSize <= 0) {
+        recordOutcome("placeSell", "no_chain_balance", false);
+        return {
+          success: false,
+          clientOrderId,
+          errorCode: "no_chain_balance",
+          status: "PREFLIGHT_REJECTED",
+          dry: false,
+        };
+      }
+    } catch (err) {
+      log.warn({ err }, "getBalanceAllowance failed; proceeding with intent size");
+    }
+
     try {
       const resp: unknown = await client.createAndPostOrder(
         {
           tokenID: params.tokenId,
           price: params.price,
           side: Side.SELL,
-          size: params.sizeShares,
+          size: effectiveSize,
           expiration: params.expirationTs,
         } as Parameters<typeof client.createAndPostOrder>[0],
         { tickSize: tickAsTickSize(params.tickSize), negRisk: params.negRisk },
