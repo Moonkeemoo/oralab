@@ -9,6 +9,7 @@ import { withSpan } from "../obs/tracer.js";
 import { DEFAULT_EXIT_CONFIG, type ExitConfig } from "../types/decide.js";
 import type { PositionView } from "../types/position.js";
 import { recordDecision } from "./decision_logger.js";
+import { loadEffectiveExitConfig } from "./exit_config_loader.js";
 import { applyReconResult, type PositionForRecon, reconcileWalletPositions } from "./reconciler.js";
 import { buildSnapshot } from "./snapshot.js";
 
@@ -39,10 +40,11 @@ interface MonitorOptions {
 export class PositionMonitor {
   private timer: NodeJS.Timeout | null = null;
   private inFlight = false;
-  private readonly cfg: ExitConfig;
+  private readonly cfgOverride: ExitConfig | undefined;
+  private cfg: ExitConfig = DEFAULT_EXIT_CONFIG;
 
   constructor(private readonly options: MonitorOptions) {
-    this.cfg = options.exitConfig ?? DEFAULT_EXIT_CONFIG;
+    this.cfgOverride = options.exitConfig;
   }
 
   start(): void {
@@ -81,6 +83,7 @@ export class PositionMonitor {
   }
 
   private async processOnce(): Promise<void> {
+    this.cfg = this.cfgOverride ?? (await loadEffectiveExitConfig());
     const db = getDb();
     const userId = this.options.userId;
 
