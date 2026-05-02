@@ -116,6 +116,40 @@ export async function placeBuy(params: BuyParams): Promise<OrderResult> {
     span.setAttribute("price", params.price);
     span.setAttribute("usd_amount", params.usdAmount);
 
+    // Pre-flight pUSD: refuse to attempt if we don't have at least usdAmount
+    // of collateral available. Saves a CLOB roundtrip on a doomed order and
+    // avoids any chance of partial-overshoot.
+    let effectiveUsd = params.usdAmount;
+    try {
+      const ba = (await client.getBalanceAllowance({
+        asset_type: "COLLATERAL",
+      } as Parameters<typeof client.getBalanceAllowance>[0])) as {
+        balance?: string | number;
+      };
+      // pUSD is 6-decimal ERC20; SDK returns raw integer string of microunits
+      const microUnits = Number(ba.balance ?? 0);
+      const pUsdAvailable = microUnits / 1e6;
+      if (pUsdAvailable < params.usdAmount) {
+        log.warn(
+          { pUsdAvailable, requested: params.usdAmount },
+          "INV-M1 pre-flight: pUSD < requested usdAmount; capping or rejecting",
+        );
+        if (pUsdAvailable <= 0) {
+          recordOutcome("placeBuy", "no_pusd", false);
+          return {
+            success: false,
+            clientOrderId,
+            errorCode: "no_pusd",
+            status: "PREFLIGHT_REJECTED",
+            dry: false,
+          };
+        }
+        effectiveUsd = pUsdAvailable;
+      }
+    } catch (err) {
+      log.warn({ err }, "getBalanceAllowance(COLLATERAL) failed; proceeding with intent amount");
+    }
+
     try {
       const resp: unknown = await client.createAndPostMarketOrder(
         {
@@ -123,7 +157,7 @@ export async function placeBuy(params: BuyParams): Promise<OrderResult> {
           price: params.price,
           side: Side.BUY,
           // UserMarketOrderV2.amount for BUY is USD to spend (clob-client-v2 docs).
-          amount: params.usdAmount,
+          amount: effectiveUsd,
         } as Parameters<typeof client.createAndPostMarketOrder>[0],
         { tickSize: tickAsTickSize(params.tickSize), negRisk: params.negRisk },
         OrderType.FOK,
