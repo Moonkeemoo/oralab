@@ -6,7 +6,8 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { and, desc, eq, gte, inArray } from "drizzle-orm";
 import { getDb } from "../db/client.js";
-import { decisions, fills, positions, signals, strategies } from "../db/schema.js";
+import { decisions, fills, positions, signals, strategies, whales } from "../db/schema.js";
+import { placeSell } from "../execute/order_manager.js";
 import { loadEffectiveExitConfig } from "../monitor/exit_config_loader.js";
 import { writeAudit } from "../notify/audit_log.js";
 import { isRuntimeKillSwitchActive, setRuntimeKillSwitch } from "../notify/kill_switch.js";
@@ -575,6 +576,92 @@ async function handleExitConfigPost(
   return { ok: true, applied: body };
 }
 
+async function handlePositionExitPost(
+  id: number,
+  req: http.IncomingMessage,
+  userId: number,
+): Promise<unknown> {
+  const raw = await readBody(req);
+  const body = JSON.parse(raw || "{}") as { mode?: string; slippagePct?: number };
+  const mode = (body.mode ?? "FAK") as "GTD" | "FOK" | "FAK";
+  const slippagePct = Math.max(0, Math.min(0.5, Number(body.slippagePct ?? 0.2)));
+
+  const db = getDb();
+  const pos = await db.query.positions.findFirst({ where: eq(positions.id, id) });
+  if (!pos) return { ok: false, error: "not_found" };
+
+  const { getBookTop } = await import("../api/book.js");
+  const top = await getBookTop(pos.assetId);
+  const minPrice = Math.max(0.01, top.bid * (1 - slippagePct));
+  const tickSize = 0.01;
+  const aligned = Math.floor(minPrice / tickSize) * tickSize;
+
+  await writeAudit({
+    actor: "mini_app",
+    userId,
+    action: "position_manual_exit",
+    target: String(id),
+    payload: { mode, slippagePct, sentMinPrice: aligned },
+  });
+
+  const r = await placeSell({
+    userId: pos.userId,
+    tokenId: pos.assetId,
+    price: aligned,
+    sizeShares: Number(pos.shares ?? 0),
+    tickSize,
+    negRisk: false,
+    expirationTs: Math.floor(Date.now() / 1000) + 120,
+    orderType: mode,
+    correlationId: `manual-${id}-${Date.now()}`,
+  });
+  return { ok: r.success, errorCode: r.errorCode, status: r.status };
+}
+
+async function handlePositionFreezePost(
+  id: number,
+  userId: number,
+): Promise<unknown> {
+  const db = getDb();
+  await db
+    .update(positions)
+    .set({ status: "FROZEN", closeReason: "manual_freeze", lastStateChangeTs: Date.now(), updatedAt: new Date() })
+    .where(eq(positions.id, id));
+  await writeAudit({
+    actor: "mini_app",
+    userId,
+    action: "position_manual_freeze",
+    target: String(id),
+    payload: {},
+  });
+  return { ok: true, id };
+}
+
+async function handleWhaleTrackPost(
+  address: string,
+  req: http.IncomingMessage,
+  userId: number,
+): Promise<unknown> {
+  const raw = await readBody(req);
+  const body = JSON.parse(raw || "{}") as { tracked?: boolean };
+  if (typeof body.tracked !== "boolean") {
+    return { ok: false, error: "tracked must be boolean" };
+  }
+  const db = getDb();
+  await db
+    .update(whales)
+    .set({ tracked: body.tracked })
+    .where(eq(whales.address, address.toLowerCase()));
+  await writeAudit({
+    actor: "mini_app",
+    userId,
+    action: body.tracked ? "whale_track" : "whale_untrack",
+    target: address,
+    payload: {},
+  });
+  return { ok: true, address, tracked: body.tracked };
+}
+
 async function handleKillSwitchPost(req: http.IncomingMessage): Promise<unknown> {
   const raw = await readBody(req);
   const body = JSON.parse(raw || "{}") as { active?: boolean; reason?: string };
@@ -647,6 +734,18 @@ export function createRestServer(): http.Server {
         const sEnabledMatch = req.url?.match(/^\/api\/strategies\/(\d+)\/enabled$/);
         if (sEnabledMatch && sEnabledMatch[1]) {
           return send(res, 200, await handleStrategyEnabledPost(Number(sEnabledMatch[1]), req, auth.userId ?? 0));
+        }
+        const exitMatch = req.url?.match(/^\/api\/positions\/(\d+)\/exit$/);
+        if (exitMatch && exitMatch[1]) {
+          return send(res, 200, await handlePositionExitPost(Number(exitMatch[1]), req, auth.userId ?? 0));
+        }
+        const freezeMatch = req.url?.match(/^\/api\/positions\/(\d+)\/freeze$/);
+        if (freezeMatch && freezeMatch[1]) {
+          return send(res, 200, await handlePositionFreezePost(Number(freezeMatch[1]), auth.userId ?? 0));
+        }
+        const whaleMatch = req.url?.match(/^\/api\/whales\/(0x[0-9a-fA-F]{40})\/track$/);
+        if (whaleMatch && whaleMatch[1]) {
+          return send(res, 200, await handleWhaleTrackPost(whaleMatch[1], req, auth.userId ?? 0));
         }
       }
       return send(res, 404, { error: "not_found" });
