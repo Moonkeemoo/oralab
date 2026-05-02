@@ -1,6 +1,7 @@
 import { bidAskSpreadWide } from "./impl/bid_ask_spread_wide.js";
 import { convictionGate } from "./impl/conviction_gate.js";
 import { drawdownFullStop } from "./impl/drawdown_full_stop.js";
+import { drawdownMinimal } from "./impl/drawdown_minimal.js";
 import { entryCooldown } from "./impl/entry_cooldown.js";
 import { exitReentryCooldown } from "./impl/exit_reentry_cooldown.js";
 import { hardSafety } from "./impl/hard_safety.js";
@@ -9,8 +10,12 @@ import { marketVolume } from "./impl/market_volume.js";
 import { maxOpenPositions } from "./impl/max_open_positions.js";
 import { maxPositionsPerEvent } from "./impl/max_positions_per_event.js";
 import { postResolution } from "./impl/post_resolution.js";
+import { priceCollapsed } from "./impl/price_collapsed.js";
 import { priceTooHigh } from "./impl/price_too_high.js";
 import { priceTooLow } from "./impl/price_too_low.js";
+import { recentRejectCache } from "./impl/recent_reject_cache.js";
+import { remainingEdge } from "./impl/remaining_edge.js";
+import { slippageCap } from "./impl/slippage_cap.js";
 import { smScore } from "./impl/sm_score.js";
 import { sportOnly } from "./impl/sport_only.js";
 import { staleTrade } from "./impl/stale_trade.js";
@@ -47,6 +52,11 @@ const FILTERS: Filter[] = [
   intradayBinary,
   postResolution,
   maxPositionsPerEvent,
+  recentRejectCache,
+  priceCollapsed,
+  slippageCap,
+  remainingEdge,
+  drawdownMinimal,
 ];
 
 const BY_NAME = new Map(FILTERS.map((f) => [f.name, f] as const));
@@ -104,7 +114,7 @@ export const FILTER_REGISTRY: readonly FilterDescriptor[] = [
   { name: "dedup", group: "hard_safety", ported: true, pipelineActive: false, description: "Reject duplicate entry on same market in window", note: "checked by signal_router pre-INSERT (uq_positions_open_per_asset)" },
   { name: "drawdown_full_stop", group: "hard_safety", ported: true, pipelineActive: true, description: "Hard stop if drawdown > DRAWDOWN_STOP_PCT" },
   { name: "total_exposure_cap", group: "hard_safety", ported: true, pipelineActive: true, description: "Reject if open_cost sum > MAX_TOTAL_EXPOSURE_USD" },
-  { name: "recent_reject_cache", group: "hard_safety", ported: false, pipelineActive: false, description: "Skip recently rejected tokens for cooldown", defaultThreshold: 60 },
+  { name: "recent_reject_cache", group: "hard_safety", ported: true, pipelineActive: true, description: "Skip recently rejected tokens for cooldown", defaultThreshold: 60 },
   { name: "min_whale_size", group: "hard_safety", ported: true, pipelineActive: true, aliasOf: "whale_size_floor", description: "Reject whale size < MIN_WHALE_SIZE_USD" },
   { name: "post_resolution", group: "hard_safety", ported: true, pipelineActive: true, description: "Block entry after market resolution" },
   { name: "bid_ask_spread", group: "hard_safety", ported: true, pipelineActive: true, aliasOf: "bid_ask_spread_wide", description: "Reject if spread > MAX_BID_ASK_SPREAD_BPS" },
@@ -117,13 +127,13 @@ export const FILTER_REGISTRY: readonly FilterDescriptor[] = [
   { name: "market_volume", group: "market_quality", ported: true, pipelineActive: true, description: "Reject low-volume markets" },
   // Price Quality
   { name: "price_impact", group: "price_quality", ported: false, pipelineActive: false, description: "Reject orders with high price impact" },
-  { name: "slippage", group: "price_quality", ported: false, pipelineActive: false, description: "Reject if slippage > threshold", defaultThreshold: 0.10 },
-  { name: "price_collapsed", group: "price_quality", ported: false, pipelineActive: false, description: "Reject if price collapsed to 0 or 1" },
-  { name: "remaining_edge", group: "price_quality", ported: false, pipelineActive: false, description: "Reject if remaining edge < threshold", defaultThreshold: 0.20 },
+  { name: "slippage", group: "price_quality", ported: true, pipelineActive: true, aliasOf: "slippage_cap", description: "Reject if slippage > threshold", defaultThreshold: 0.10 },
+  { name: "price_collapsed", group: "price_quality", ported: true, pipelineActive: true, description: "Reject if price collapsed to 0 or 1" },
+  { name: "remaining_edge", group: "price_quality", ported: true, pipelineActive: true, description: "Reject if remaining edge < threshold", defaultThreshold: 0.20 },
   { name: "tp_reachability", group: "price_quality", ported: false, pipelineActive: false, description: "Reject if TP unreachable" },
   // Risk Exposure
   { name: "correlation_cap", group: "risk_exposure", ported: false, pipelineActive: false, description: "Cap exposure for correlated positions" },
-  { name: "drawdown_minimal", group: "risk_exposure", ported: false, pipelineActive: false, description: "Minimal drawdown sanity check", defaultThreshold: -0.05 },
+  { name: "drawdown_minimal", group: "risk_exposure", ported: true, pipelineActive: true, description: "Minimal drawdown sanity check", defaultThreshold: -0.05 },
   { name: "max_positions_per_event", group: "risk_exposure", ported: true, pipelineActive: true, description: "Cap positions per event/domain" },
   // v2-only additions
   { name: "sport_only", group: "hard_safety", ported: true, pipelineActive: true, description: "Sports-only domain restriction (v2 P1 default)" },
