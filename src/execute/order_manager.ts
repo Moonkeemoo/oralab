@@ -86,20 +86,21 @@ function recordOutcome(operation: string, outcome: string, dry: boolean): void {
  * Treating that as immediate kill produced orphaned chain positions invisible
  * to the bot (incident 2026-05-02 MLB Orioles 5.17 shares @ 0.60).
  *
- * pollOrderForFill polls `getOrder(orderID)` for up to `timeoutMs` and resolves
- * when `size_matched > 0` (real fill) or returns null on timeout (true kill).
+ * pollOrderForFill polls `getOrder(orderID)` for up to `ORDER_DELAYED_POLL_MS`
+ * and resolves when `size_matched > 0` (real fill) or returns null on timeout
+ * (true kill).
  *
  * Env: ORDER_DELAYED_POLL_MS (default 5000), ORDER_DELAYED_POLL_INTERVAL_MS (default 500).
+ * Read per-call so tests can stubEnv after module load.
  */
-const DELAYED_POLL_MS = Number(process.env["ORDER_DELAYED_POLL_MS"] ?? 5000);
-const DELAYED_POLL_INTERVAL_MS = Number(process.env["ORDER_DELAYED_POLL_INTERVAL_MS"] ?? 500);
-
 async function pollOrderForFill(
   client: ReturnType<typeof getClobClient>["client"],
   orderId: string,
 ): Promise<{ matched: number; status: string } | null> {
+  const timeoutMs = Number(process.env["ORDER_DELAYED_POLL_MS"] ?? 5000);
+  const intervalMs = Number(process.env["ORDER_DELAYED_POLL_INTERVAL_MS"] ?? 500);
   const start = Date.now();
-  while (Date.now() - start < DELAYED_POLL_MS) {
+  while (Date.now() - start < timeoutMs) {
     try {
       const o = (await client.getOrder(orderId)) as
         | { size_matched?: string | number; status?: string }
@@ -112,7 +113,7 @@ async function pollOrderForFill(
     } catch {
       // transient — keep polling
     }
-    await new Promise((res) => setTimeout(res, DELAYED_POLL_INTERVAL_MS));
+    await new Promise((res) => setTimeout(res, intervalMs));
   }
   return null;
 }
