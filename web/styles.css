@@ -278,3 +278,11 @@ main#view {
   border-radius: 4px;
   background: var(--bg);
 }
+
+.chip-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.chip {
+  background: var(--bg-2); border: 1px solid var(--border);
+  color: var(--text-muted); padding: 4px 10px; border-radius: 14px;
+  font-size: 12px; cursor: pointer;
+}
+.chip.active { background: rgba(47,129,247,0.15); color: var(--accent); border-color: var(--accent); }
