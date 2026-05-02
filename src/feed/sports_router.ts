@@ -79,19 +79,33 @@ export class SportsRouter {
       return;
     }
 
+    const hintPayload = {
+      type: "game_ended" as const,
+      gameId: String(event.gameId),
+      score: event.currentScore ?? "",
+      league: event.league ?? "",
+      at: Date.now(),
+    };
+
+    await db
+      .update(positions)
+      .set({ sportsHint: hintPayload, updatedAt: new Date() })
+      .where(
+        inArray(
+          positions.id,
+          matched.map((p) => p.id),
+        ),
+      );
+
     logger.info(
       {
         gameId: event.gameId,
         finalScore: event.currentScore,
         markets: markets.length,
         affectedPositions: matched.map((p) => p.id),
+        hint: hintPayload,
       },
-      "sports: game ended — position resolution upcoming",
+      "sports: game ended — sports_hint persisted, decide_exit Gate 8.5 will fire next tick",
     );
-    // No DB mutation in P1.5 MVP. PositionMonitor's per-tick reconciler
-    // already detects market.resolved → REDEEM via decide_exit Gate 2.
-    // We surface the event for observability; future SportsWsReactorStrategy
-    // will use this hook to choose between immediate sell_bid_aggr exit
-    // vs waiting for resolution payout based on game outcome.
   }
 }
