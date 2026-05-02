@@ -58,31 +58,68 @@ function buildSignal(args: BuildSignalArgs, userId: number): Signal {
   };
 }
 
+/**
+ * Check whether `err` is a unique-constraint violation, optionally on a
+ * specific constraint name. Drizzle wraps the underlying PostgresError
+ * inside `cause`, so we have to peek both layers.
+ */
+function isUniqueConstraintError(err: unknown, constraintName?: string): boolean {
+  const visit = (e: unknown): boolean => {
+    if (!e || typeof e !== "object") return false;
+    const o = e as { message?: string; code?: string; constraint_name?: string; cause?: unknown };
+    const msg = o.message ?? "";
+    const code = o.code ?? "";
+    const matchUnique =
+      code === "23505" || /duplicate key|unique constraint/i.test(msg);
+    if (matchUnique) {
+      if (!constraintName) return true;
+      if (msg.includes(constraintName)) return true;
+      if (o.constraint_name === constraintName) return true;
+    }
+    return o.cause ? visit(o.cause) : false;
+  };
+  return visit(err);
+}
+
 async function persistSignal(
   signal: Signal,
   accepted: boolean,
   rejectReason: string | null,
 ): Promise<number> {
   const db = getDb();
-  const [row] = await db
-    .insert(signals)
-    .values({
-      userId: signal.userId,
-      strategyId: Number(signal.strategyId),
-      source: signal.source,
-      conditionId: signal.conditionId,
-      assetId: signal.assetId,
-      side: signal.side,
-      priceHint: signal.priceHint,
-      volumeUsdHint: signal.volumeUsdHint,
-      payload: signal.payload,
-      accepted,
-      rejectReason,
-      receivedTs: signal.receivedTs,
-      processedAt: new Date(),
-    })
-    .returning({ id: signals.id });
-  return Number(row?.id ?? 0);
+  try {
+    const [row] = await db
+      .insert(signals)
+      .values({
+        userId: signal.userId,
+        strategyId: Number(signal.strategyId),
+        source: signal.source,
+        conditionId: signal.conditionId,
+        assetId: signal.assetId,
+        side: signal.side,
+        priceHint: signal.priceHint,
+        volumeUsdHint: signal.volumeUsdHint,
+        payload: signal.payload,
+        accepted,
+        rejectReason,
+        receivedTs: signal.receivedTs,
+        processedAt: new Date(),
+      })
+      .returning({ id: signals.id });
+    return Number(row?.id ?? 0);
+  } catch (err) {
+    // Likely uq_signals_dedup or similar — same whale txHash arriving twice
+    // through RTDS. Don't crash the routing promise; signal already audited
+    // by whichever path inserted it first.
+    if (isUniqueConstraintError(err)) {
+      logger.debug(
+        { asset: signal.assetId, accepted, rejectReason },
+        "persistSignal: duplicate signal — soft skip",
+      );
+      return 0;
+    }
+    throw err;
+  }
 }
 
 async function strategyConfigById(strategyId: number) {
@@ -302,27 +339,44 @@ async function routeInner(
   const status: "OPEN" | "PENDING" = buy.dry ? "PENDING" : "OPEN";
 
   const db = getDb();
-  const [posRow] = await db
-    .insert(positions)
-    .values({
-      userId: cfg.userId,
-      walletId: 1,
-      strategyId,
-      signalId: null,
-      conditionId: signal.conditionId,
-      assetId: signal.assetId,
-      side: signal.side,
-      status,
-      shares: filledShares,
-      fillPrice: priceCeiling,
-      peakPrice: priceCeiling,
-      fillTs: Date.now(),
-      lastStateChangeTs: Date.now(),
-      entryCostUsd: filledShares * priceCeiling,
-      trailArmed: false,
-      sweepCount: 0,
-    })
-    .returning({ id: positions.id });
+  let posRow: { id: number } | undefined;
+  try {
+    const inserted = await db
+      .insert(positions)
+      .values({
+        userId: cfg.userId,
+        walletId: 1,
+        strategyId,
+        signalId: null,
+        conditionId: signal.conditionId,
+        assetId: signal.assetId,
+        side: signal.side,
+        status,
+        shares: filledShares,
+        fillPrice: priceCeiling,
+        peakPrice: priceCeiling,
+        fillTs: Date.now(),
+        lastStateChangeTs: Date.now(),
+        entryCostUsd: filledShares * priceCeiling,
+        trailArmed: false,
+        sweepCount: 0,
+      })
+      .returning({ id: positions.id });
+    posRow = inserted[0];
+  } catch (err) {
+    // Race: another routeInner inserted a position for the same asset between
+    // our pre-check and this INSERT. The DB unique constraint
+    // uq_positions_open_per_asset is the canonical guarantee — accept the
+    // rejection cleanly instead of crashing the promise.
+    if (isUniqueConstraintError(err, "uq_positions_open_per_asset")) {
+      logger.info(
+        { asset: signal.assetId },
+        "INSERT lost race against another active position for this asset — soft reject",
+      );
+      return { accepted: false, rejectReason: "already_open_for_asset" };
+    }
+    throw err;
+  }
 
   const positionId = Number(posRow?.id ?? 0);
   logger.info(
