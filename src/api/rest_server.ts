@@ -8,8 +8,10 @@ import { and, desc, eq, gte, inArray } from "drizzle-orm";
 import { getDb } from "../db/client.js";
 import { decisions, fills, positions, signals, strategies } from "../db/schema.js";
 import { loadEffectiveExitConfig } from "../monitor/exit_config_loader.js";
+import { writeAudit } from "../notify/audit_log.js";
 import { isRuntimeKillSwitchActive, setRuntimeKillSwitch } from "../notify/kill_switch.js";
 import { logger } from "../obs/logger.js";
+import { type StrategyParamKey, validateStrategyParam } from "./strategy_schema.js";
 
 /**
  * ora2-api — minimal REST server for the Mini App (P2a deliverable).
@@ -483,6 +485,58 @@ async function readBody(req: http.IncomingMessage): Promise<string> {
   });
 }
 
+async function handleStrategyParamsPost(
+  id: number,
+  req: http.IncomingMessage,
+  userId: number,
+): Promise<unknown> {
+  const raw = await readBody(req);
+  const body = JSON.parse(raw || "{}") as Record<string, unknown>;
+  const errors: Record<string, string> = {};
+  for (const [k, v] of Object.entries(body)) {
+    const r = validateStrategyParam(k as StrategyParamKey, v);
+    if (!r.ok) errors[k] = r.reason ?? "invalid";
+  }
+  if (Object.keys(errors).length > 0) {
+    return { ok: false, errors };
+  }
+  const db = getDb();
+  const existing = await db.query.strategies.findFirst({ where: eq(strategies.id, id) });
+  if (!existing) return { ok: false, error: "not_found" };
+  const merged = { ...((existing.params as Record<string, unknown>) ?? {}), ...body };
+  await db.update(strategies).set({ params: merged }).where(eq(strategies.id, id));
+  await writeAudit({
+    actor: "mini_app",
+    userId,
+    action: "strategy_params_update",
+    target: String(id),
+    payload: { changed: body },
+  });
+  return { ok: true, id, params: merged };
+}
+
+async function handleStrategyEnabledPost(
+  id: number,
+  req: http.IncomingMessage,
+  userId: number,
+): Promise<unknown> {
+  const raw = await readBody(req);
+  const body = JSON.parse(raw || "{}") as { enabled?: boolean };
+  if (typeof body.enabled !== "boolean") {
+    return { ok: false, error: "enabled must be boolean" };
+  }
+  const db = getDb();
+  await db.update(strategies).set({ enabled: body.enabled }).where(eq(strategies.id, id));
+  await writeAudit({
+    actor: "mini_app",
+    userId,
+    action: body.enabled ? "strategy_enable" : "strategy_disable",
+    target: String(id),
+    payload: {},
+  });
+  return { ok: true, id, enabled: body.enabled };
+}
+
 async function handleKillSwitchPost(req: http.IncomingMessage): Promise<unknown> {
   const raw = await readBody(req);
   const body = JSON.parse(raw || "{}") as { active?: boolean; reason?: string };
@@ -545,6 +599,14 @@ export function createRestServer(): http.Server {
       }
       if (req.method === "POST") {
         if (req.url === "/api/kill_switch") return send(res, 200, await handleKillSwitchPost(req));
+        const sParamsMatch = req.url?.match(/^\/api\/strategies\/(\d+)\/params$/);
+        if (sParamsMatch && sParamsMatch[1]) {
+          return send(res, 200, await handleStrategyParamsPost(Number(sParamsMatch[1]), req, auth.userId ?? 0));
+        }
+        const sEnabledMatch = req.url?.match(/^\/api\/strategies\/(\d+)\/enabled$/);
+        if (sEnabledMatch && sEnabledMatch[1]) {
+          return send(res, 200, await handleStrategyEnabledPost(Number(sEnabledMatch[1]), req, auth.userId ?? 0));
+        }
       }
       return send(res, 404, { error: "not_found" });
     } catch (err) {
