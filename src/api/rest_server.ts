@@ -687,7 +687,7 @@ export function createRestServer(): http.Server {
     const log = logger.child({ component: "rest_server", url: req.url, method: req.method });
 
     // Static /app/* (Mini App) — no auth gate; the auth is on the API layer.
-    if (req.method === "GET" && serveStatic(req, res)) return;
+    if ((req.method === "GET" || req.method === "HEAD") && serveStatic(req, res)) return;
 
     // Public health check
     if (req.method === "GET" && req.url === "/api/health") return send(res, 200, { ok: true });
