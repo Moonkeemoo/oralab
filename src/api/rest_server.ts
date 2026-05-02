@@ -586,6 +586,64 @@ async function handleKpi(req: http.IncomingMessage): Promise<unknown> {
   };
 }
 
+async function handleBalance(): Promise<unknown> {
+  const mode = currentMode();
+  const db = getDb();
+  // Sum active position entry costs
+  const active = await db.query.positions.findMany({
+    where: and(
+      eq(positions.mode, mode),
+      inArray(positions.status, [...ACTIVE_STATUSES]),
+    ),
+    columns: { entryCostUsd: true },
+  });
+  const allocatedUsd = active.reduce((s, p) => s + Number(p.entryCostUsd ?? 0), 0);
+
+  if (mode === "DRY") {
+    // Simulated balance: per-strategy budget sum
+    const strats = await db.query.strategies.findMany({ columns: { params: true, enabled: true } });
+    const totalBudget = strats
+      .filter((s) => s.enabled)
+      .reduce(
+        (s, st) =>
+          s + Number(((st.params as Record<string, unknown>) ?? {})["budgetUsd"] ?? 0),
+        0,
+      );
+    return {
+      mode: "DRY",
+      pUsdAvailable: Math.max(0, totalBudget - allocatedUsd),
+      allocatedUsd,
+      freeUsd: Math.max(0, totalBudget - allocatedUsd),
+      totalBudgetUsd: totalBudget,
+      source: "strategy_budget_simulated",
+    };
+  }
+  // LIVE: pull pUSD from CLOB
+  try {
+    const { getClobClient } = await import("../api/clob.js");
+    const { client } = getClobClient();
+    const ba = (await client.getBalanceAllowance({
+      asset_type: "COLLATERAL",
+    } as Parameters<typeof client.getBalanceAllowance>[0])) as { balance?: string | number };
+    const microUnits = Number(ba.balance ?? 0);
+    const pUsdAvailable = microUnits / 1e6;
+    return {
+      mode: "LIVE",
+      pUsdAvailable,
+      allocatedUsd,
+      freeUsd: pUsdAvailable - allocatedUsd,
+      totalBudgetUsd: pUsdAvailable + allocatedUsd,
+      source: "clob_balance_allowance",
+    };
+  } catch (err) {
+    return {
+      mode: "LIVE",
+      error: `clob balance fetch failed: ${(err as Error).message}`,
+      allocatedUsd,
+    };
+  }
+}
+
 async function handleBuild(): Promise<unknown> {
   return {
     service: "ora2-api",
@@ -952,6 +1010,7 @@ export function createRestServer(): http.Server {
     try {
       if (req.method === "GET") {
         if (req.url === "/api/status") return send(res, 200, await handleStatus());
+        if (req.url === "/api/balance") return send(res, 200, await handleBalance());
         if (req.url === "/api/positions") return send(res, 200, await handlePositions());
         if (req.url?.startsWith("/api/pnl")) return send(res, 200, await handlePnl(req));
         const posIdMatch = req.url?.match(/^\/api\/positions\/(\d+)(?:\/(timeline))?$/);
