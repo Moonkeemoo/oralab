@@ -662,12 +662,22 @@ async function handleWhaleTrackPost(
   return { ok: true, address, tracked: body.tracked };
 }
 
-async function handleKillSwitchPost(req: http.IncomingMessage): Promise<unknown> {
+async function handleKillSwitchPost(
+  req: http.IncomingMessage,
+  userId: number,
+): Promise<unknown> {
   const raw = await readBody(req);
   const body = JSON.parse(raw || "{}") as { active?: boolean; reason?: string };
   await setRuntimeKillSwitch({
     active: Boolean(body.active),
     reason: body.reason ?? "mini_app",
+  });
+  await writeAudit({
+    actor: "mini_app",
+    userId,
+    action: body.active ? "kill_switch_on" : "kill_switch_off",
+    target: "global",
+    payload: { reason: body.reason ?? null },
   });
   return { ok: true, active: Boolean(body.active) };
 }
@@ -723,7 +733,7 @@ export function createRestServer(): http.Server {
         if (req.url === "/api/build") return send(res, 200, await handleBuild());
       }
       if (req.method === "POST") {
-        if (req.url === "/api/kill_switch") return send(res, 200, await handleKillSwitchPost(req));
+        if (req.url === "/api/kill_switch") return send(res, 200, await handleKillSwitchPost(req, auth.userId ?? 0));
         if (req.url === "/api/exit_config") {
           return send(res, 200, await handleExitConfigPost(req, auth.userId ?? 0));
         }
