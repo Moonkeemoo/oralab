@@ -1,7 +1,7 @@
 import process from "node:process";
 import { and, desc, eq, gte, inArray } from "drizzle-orm";
 import { getDb } from "../db/client.js";
-import { positions } from "../db/schema.js";
+import { fills, positions } from "../db/schema.js";
 import { logger } from "../obs/logger.js";
 import { isRuntimeKillSwitchActive, setRuntimeKillSwitch } from "./kill_switch.js";
 import { TelegramAlerter } from "./telegram.js";
@@ -107,6 +107,7 @@ export class TelegramBot {
     }
     const cmd = msg.text.trim().split(/\s+/)[0]?.toLowerCase();
     if (!cmd) return;
+    logger.info({ chatId, cmd }, "TelegramBot command received");
     try {
       const reply = await this.dispatch(cmd);
       if (reply) await this.cfg.alerter.send(reply);
@@ -171,25 +172,49 @@ export class TelegramBot {
   private async cmdPnl(): Promise<string> {
     const db = getDb();
     const dayMs = 24 * 60 * 60 * 1000;
-    const now = Date.now();
-    const since24h = now - dayMs;
-    const rows = await db.query.positions.findMany({
+    const since24h = Date.now() - dayMs;
+    const closed = await db.query.positions.findMany({
       where: and(
         eq(positions.status, "CLOSED"),
         gte(positions.lastStateChangeTs, since24h),
       ),
-      columns: { id: true, entryCostUsd: true, lastStateChangeTs: true, conditionId: true },
     });
-    // For simplicity sum (sell - entry) approximated via fills table per position would be
-    // accurate; here we surface count + entry exposure as a proxy until ora2-api adds a
-    // dedicated /pnl endpoint with full fill aggregation (P2a-3).
-    const totalEntryUsd = rows.reduce((s, r) => s + Number(r.entryCostUsd ?? 0), 0);
-    return [
+    let totalEntry = 0;
+    let totalExit = 0;
+    let withFillsCount = 0;
+    let withoutFillsCount = 0;
+    for (const p of closed) {
+      const sellFills = await db.query.fills.findMany({
+        where: and(eq(fills.positionId, Number(p.id)), eq(fills.side, "SELL")),
+      });
+      const entry = Number(p.entryCostUsd ?? 0);
+      totalEntry += entry;
+      if (sellFills.length === 0) {
+        withoutFillsCount += 1;
+        continue;
+      }
+      withFillsCount += 1;
+      totalExit += sellFills.reduce(
+        (s, f) => s + Number(f.shares ?? 0) * Number(f.price ?? 0),
+        0,
+      );
+    }
+    const netPnl = totalExit - totalEntry;
+    const sign = netPnl >= 0 ? "+" : "";
+    const pnlPct = totalEntry > 0 ? (netPnl / totalEntry) * 100 : 0;
+    const lines = [
       "<b>P&L (last 24h, closed positions)</b>",
-      `closed count: ${rows.length}`,
-      `total entry exposure: $${totalEntryUsd.toFixed(2)}`,
-      "(detailed sell-side aggregation in /api/pnl REST endpoint)",
-    ].join("\n");
+      `closed: ${closed.length}  (with WS fills: ${withFillsCount}, missing fills: ${withoutFillsCount})`,
+      `entry total:  $${totalEntry.toFixed(2)}`,
+      `exit total:   $${totalExit.toFixed(2)}`,
+      `<b>net P&amp;L:    ${sign}$${netPnl.toFixed(2)} (${sign}${pnlPct.toFixed(1)}%)</b>`,
+    ];
+    if (withoutFillsCount > 0) {
+      lines.push(
+        `<i>note: ${withoutFillsCount} position(s) closed via reconciler chain-lag — actual SELL price not in fills table; net is conservative</i>`,
+      );
+    }
+    return lines.join("\n");
   }
 
   private async cmdPause(): Promise<string> {

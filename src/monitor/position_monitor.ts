@@ -8,6 +8,7 @@ import { decideExitDurationMs, positionMonitorTickMs } from "../obs/metrics.js";
 import { withSpan } from "../obs/tracer.js";
 import { DEFAULT_EXIT_CONFIG, type ExitConfig } from "../types/decide.js";
 import type { PositionView } from "../types/position.js";
+import { recordDecision } from "./decision_logger.js";
 import { applyReconResult, type PositionForRecon, reconcileWalletPositions } from "./reconciler.js";
 import { buildSnapshot } from "./snapshot.js";
 
@@ -162,7 +163,12 @@ export class PositionMonitor {
 
       const decideStart = performance.now();
       const intent = decideExit(view, snap, this.cfg);
-      decideExitDurationMs.record(performance.now() - decideStart);
+      const durationMs = performance.now() - decideStart;
+      decideExitDurationMs.record(durationMs);
+
+      // P2b: capture (snapshot, intent) for shadow-replay. Fire-and-forget;
+      // never blocks the trading decision.
+      void recordDecision({ pos: view, snap, intent, durationMs });
 
       if (intent.action === "hold") continue;
 
