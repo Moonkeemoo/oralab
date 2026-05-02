@@ -137,7 +137,7 @@ export class PositionMonitor {
         reconciliationDriftPct: rec?.result.drift ?? 0,
       };
 
-      let snap;
+      let snap: Awaited<ReturnType<typeof buildSnapshot>>;
       try {
         snap = await buildSnapshot(view.conditionId, view.assetId, view.side);
       } catch (err) {

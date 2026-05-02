@@ -81,7 +81,7 @@ export class WhaleFollowStrategy implements Strategy {
       strategyId,
       signal.payload["whaleAddress"] as string | undefined,
     );
-    if (!whale || !whale.tracked) {
+    if (!whale?.tracked) {
       return { kind: "skip", reason: "untracked_whale" };
     }
 
