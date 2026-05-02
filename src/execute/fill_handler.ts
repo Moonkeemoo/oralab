@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "../db/client.js";
 import { fills, positions } from "../db/schema.js";
 import { logger } from "../obs/logger.js";
-import type { FillHandler, OrderCanceledEvent, OwnFillEvent } from "./fill_reconciler.js";
+import type { FillHandler, UserOrderEvent, UserTradeEvent } from "./fill_reconciler.js";
 import { findPositionIdByOrderId } from "./order_recorder.js";
 
 /**
@@ -20,51 +20,76 @@ import { findPositionIdByOrderId } from "./order_recorder.js";
  */
 
 export class DbFillHandler implements FillHandler {
-  async onFill(event: OwnFillEvent): Promise<void> {
+  async onFill(event: UserTradeEvent): Promise<void> {
+    // V2 user channel emits one TRADE event per match (status: MATCHED → MINED →
+    // CONFIRMED). Our taker order_id is on `taker_order_id`; for our maker fills
+    // the maker_orders[] entry carries our order_id. Reconcile both.
+    const ourOrderIds: string[] = [];
+    if (event.taker_order_id) ourOrderIds.push(event.taker_order_id);
+    for (const m of event.maker_orders ?? []) {
+      if (m.order_id) ourOrderIds.push(m.order_id);
+    }
+
     const log = logger.child({
-      orderID: event.orderID,
+      tradeId: event.id,
       side: event.side,
-      tx: event.transactionHash,
+      tx: event.transaction_hash,
+      status: event.status,
     });
-    const positionId = await findPositionIdByOrderId(event.orderID);
+
+    let positionId: number | undefined;
+    for (const oid of ourOrderIds) {
+      const pid = await findPositionIdByOrderId(oid);
+      if (pid) {
+        positionId = pid;
+        break;
+      }
+    }
     if (!positionId) {
-      log.warn("fill received but no matching order in DB — dropping (likely manual or stale)");
+      log.debug({ ourOrderIds }, "trade event for unrelated order — dropping");
       return;
     }
 
     const db = getDb();
     const sharesNum = Number(event.size);
     const priceNum = Number(event.price);
-    const feeNum = Number(event.fee);
-    const tsNum = Number(event.timestamp);
+    const tsSec = Number(event.matchtime ?? event.timestamp ?? Math.floor(Date.now() / 1000));
+    const txHash = event.transaction_hash ?? `pending-${event.id}`;
 
-    // 1. INSERT fill row (idempotent via unique tx_hash+position_id)
+    // INV-M3: only persist closure when chain CONFIRMED. MATCHED is in-flight;
+    // CONFIRMED means on-chain settlement is final.
+    const confirmed = (event.status ?? "").toUpperCase() === "CONFIRMED";
+
     try {
       await db.insert(fills).values({
         positionId,
-        txHash: event.transactionHash,
+        txHash,
         side: event.side,
         shares: sharesNum,
         price: priceNum,
-        feeUsd: feeNum,
-        ts: tsNum,
+        feeUsd: 0,
+        ts: tsSec,
         raw: event as unknown as Record<string, unknown>,
       });
     } catch (err) {
       log.debug({ err }, "fill insert conflict (idempotent retry)");
     }
 
-    // 2. Transition position status
+    if (!confirmed) {
+      log.debug({ status: event.status }, "trade not yet CONFIRMED — skipping status transition");
+      return;
+    }
+
     if (event.side === "BUY") {
-      await this.onBuyFill(positionId, sharesNum, priceNum, tsNum);
+      await this.onBuyFill(positionId, sharesNum, priceNum, tsSec);
     } else {
-      await this.onSellFill(positionId, event.transactionHash, tsNum);
+      await this.onSellFill(positionId, txHash, tsSec);
     }
   }
 
-  onCancel(event: OrderCanceledEvent): void {
+  onCancel(event: UserOrderEvent): void {
     logger.info(
-      { orderID: event.orderID, reason: event.reason },
+      { orderID: event.id },
       "order canceled — next monitor tick will re-evaluate exit",
     );
   }

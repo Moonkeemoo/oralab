@@ -1,5 +1,8 @@
 import process from "node:process";
+import { and, eq, inArray } from "drizzle-orm";
+import { getDb } from "./db/client.js";
 import { closeDb } from "./db/client.js";
+import { positions } from "./db/schema.js";
 import { DryFillSimulator } from "./execute/dry_filler.js";
 import { backfillFillsFromActivity } from "./execute/fill_backfill.js";
 import { DbFillHandler } from "./execute/fill_handler.js";
@@ -39,7 +42,22 @@ async function main(): Promise<void> {
   if ((process.env["DRY_RUN"] ?? "true").toLowerCase() !== "true") {
     try {
       const handler = new DbFillHandler();
-      reconciler = fillReconcilerFromEnv(handler, async ({ walletAddress }) => {
+      const marketsProvider = async (): Promise<readonly string[]> => {
+        // Subscribe to every market we currently have skin in. Polymarket V2
+        // user channel is silent for markets you don't list, so we re-derive
+        // this list on every reconnect.
+        const db = getDb();
+        const rows = await db.query.positions.findMany({
+          where: and(
+            eq(positions.userId, SOLO_USER_ID),
+            inArray(positions.status, ["PENDING", "FILLED", "OPEN", "EXITING"] as const),
+          ),
+          columns: { conditionId: true },
+        });
+        const set = new Set(rows.map((r) => r.conditionId));
+        return Array.from(set);
+      };
+      reconciler = fillReconcilerFromEnv(handler, marketsProvider, async ({ walletAddress }) => {
         // On every WS open (initial + reconnect), backfill any missed fills
         // from /activity within last 24h.
         await backfillFillsFromActivity({ walletAddress, lookbackHours: 24 }, (event) =>

@@ -3,7 +3,7 @@ import { type DataActivity, getActivity } from "../api/data.js";
 import { getDb } from "../db/client.js";
 import { fills, orders } from "../db/schema.js";
 import { logger } from "../obs/logger.js";
-import type { OwnFillEvent } from "./fill_reconciler.js";
+import type { UserTradeEvent } from "./fill_reconciler.js";
 
 /**
  * Missed-fill backfill: on WS connect (initial + reconnect), scan
@@ -27,7 +27,7 @@ interface BackfillCfg {
 
 export async function backfillFillsFromActivity(
   cfg: BackfillCfg,
-  onFill: (event: OwnFillEvent) => Promise<void> | void,
+  onFill: (event: UserTradeEvent) => Promise<void> | void,
 ): Promise<{ scanned: number; matched: number; emitted: number }> {
   const log = logger.child({ component: "fill_backfill" });
   const db = getDb();
@@ -69,16 +69,19 @@ export async function backfillFillsFromActivity(
     if (!candidate?.positionId) continue;
     matched += 1;
 
-    const synthetic: OwnFillEvent = {
-      type: "OrderFilled",
-      orderID: candidate.clobOrderId ?? candidate.clientOrderId,
-      market: a.conditionId,
+    const synthetic: UserTradeEvent = {
+      event_type: "trade",
+      type: "TRADE",
+      id: tx,
       asset_id: a.asset,
+      market: a.conditionId,
       side: a.side,
       size: String(a.size),
       price: String(a.price),
-      fee: String(a.fee),
-      transactionHash: tx,
+      status: "CONFIRMED",
+      taker_order_id: candidate.clobOrderId ?? candidate.clientOrderId,
+      transaction_hash: tx,
+      matchtime: String(a.timestamp),
       timestamp: a.timestamp,
     };
 

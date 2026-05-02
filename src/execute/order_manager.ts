@@ -410,6 +410,27 @@ export async function placeSell(params: SellParams): Promise<OrderResult> {
           dry: false,
         };
       }
+      // Dust floor: SDK rounds size to tickSize before computing
+      // makerAmount/takerAmount in micro-units; very small fractions round
+      // to 0 → CLOB rejects with "invalid amounts, maker and taker amount
+      // must be higher than 0". Anything below SELL_DUST_FLOOR_SHARES is
+      // also below typical market minOrderSize (5 for sports), so reject
+      // pre-flight rather than waste a signed order. Env-overridable.
+      const dustFloor = Number(process.env["SELL_DUST_FLOOR_SHARES"] ?? 0.1);
+      if (effectiveSize < dustFloor) {
+        log.info(
+          { effectiveSize, dustFloor },
+          "INV-M1 dust: chain shares below floor; treating as no_chain_balance",
+        );
+        recordOutcome("placeSell", "dust_below_floor", false);
+        return {
+          success: false,
+          clientOrderId,
+          errorCode: "no_chain_balance",
+          status: "PREFLIGHT_REJECTED",
+          dry: false,
+        };
+      }
     } catch (err) {
       log.warn({ err }, "getBalanceAllowance failed; proceeding with intent size");
     }
