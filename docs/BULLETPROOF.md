@@ -63,7 +63,7 @@
 
 - [ ] Tests for FOK kill detection in `placeBuy` / `placeSell` (need ClobClient mock)
 - [ ] Tests for `cancelOpenOrdersForAsset` (need ClobClient mock)
-- [ ] Reconciler chain-vs-orders cross-check on startup (catch ghost open orders we forgot)
+- [x] Reconciler chain-vs-orders cross-check on startup (commit `<latest>` — `runStartupCrosscheck` cancels ghost orders + warns on orphan chain shares / stale DB positions)
 - [x] WS feed reconnect storm protection (commit `<63424be+>` — min backoff 5s, max 60s, stable-reset 60s, /activity backfill cooldown 5min)
 - [x] FillReconciler missed-fill recovery via /activity scan on reconnect (commit cf62fee + `<63424be+>` for actual onConnect wiring)
 - [ ] `ExitExecutor` redeem path for resolved markets (P3+)
