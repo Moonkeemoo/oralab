@@ -6,7 +6,7 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { and, desc, eq, gte, inArray } from "drizzle-orm";
 import { getDb } from "../db/client.js";
-import { fills, positions } from "../db/schema.js";
+import { decisions, fills, positions } from "../db/schema.js";
 import { isRuntimeKillSwitchActive, setRuntimeKillSwitch } from "../notify/kill_switch.js";
 import { logger } from "../obs/logger.js";
 
@@ -167,6 +167,63 @@ async function handlePnl(req: http.IncomingMessage): Promise<unknown> {
   };
 }
 
+async function handlePositionById(id: number): Promise<unknown> {
+  const db = getDb();
+  const p = await db.query.positions.findFirst({
+    where: eq(positions.id, id),
+  });
+  if (!p) return null;
+  return {
+    id: p.id,
+    status: p.status,
+    conditionId: p.conditionId,
+    assetId: p.assetId,
+    side: p.side,
+    shares: Number(p.shares ?? 0),
+    fillPrice: Number(p.fillPrice ?? 0),
+    peakPrice: Number(p.peakPrice ?? 0),
+    sweepCount: p.sweepCount,
+    fillTs: Number(p.fillTs ?? 0),
+    lastStateChangeTs: Number(p.lastStateChangeTs ?? 0),
+    entryCostUsd: Number(p.entryCostUsd ?? 0),
+    closeReason: p.closeReason,
+    closeTxHash: p.closeTxHash,
+  };
+}
+
+async function handlePositionTimeline(id: number): Promise<unknown> {
+  const db = getDb();
+  const p = await db.query.positions.findFirst({
+    where: eq(positions.id, id),
+  });
+  if (!p) return { error: "not_found" };
+
+  const fillRows = await db.query.fills.findMany({ where: eq(fills.positionId, id) });
+  const decisionRows = await db.query.decisions.findMany({
+    where: eq(decisions.positionId, id),
+    orderBy: (cols, { desc }) => [desc(cols.ts)],
+    limit: 10,
+  });
+
+  return {
+    position: await handlePositionById(id),
+    fills: fillRows.map((f) => ({
+      side: f.side,
+      shares: Number(f.shares ?? 0),
+      price: Number(f.price ?? 0),
+      txHash: f.txHash,
+      ts: Number(f.ts ?? 0),
+    })),
+    recentDecisions: decisionRows.map((d) => ({
+      ts: Number(d.ts),
+      action: (d.outputIntent as Record<string, unknown>)["action"],
+      reason: (d.outputIntent as Record<string, unknown>)["reason"],
+      gates: d.gates,
+      durationMs: d.durationMs,
+    })),
+  };
+}
+
 function send(res: http.ServerResponse, status: number, body: unknown): void {
   res.statusCode = status;
   res.setHeader("Content-Type", "application/json");
@@ -261,6 +318,15 @@ export function createRestServer(): http.Server {
         if (req.url === "/api/status") return send(res, 200, await handleStatus());
         if (req.url === "/api/positions") return send(res, 200, await handlePositions());
         if (req.url?.startsWith("/api/pnl")) return send(res, 200, await handlePnl(req));
+        const posIdMatch = req.url?.match(/^\/api\/positions\/(\d+)(?:\/(timeline))?$/);
+        if (posIdMatch && posIdMatch[1]) {
+          const id = Number(posIdMatch[1]);
+          if (posIdMatch[2] === "timeline") {
+            return send(res, 200, await handlePositionTimeline(id));
+          }
+          const result = await handlePositionById(id);
+          return send(res, result === null ? 404 : 200, result ?? { error: "not_found" });
+        }
       }
       if (req.method === "POST") {
         if (req.url === "/api/kill_switch") return send(res, 200, await handleKillSwitchPost(req));
