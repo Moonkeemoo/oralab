@@ -5,6 +5,7 @@ import { openPositionSheet } from "../sheets/position.js";
 
 export async function renderLive(root) {
   root.innerHTML = `
+    <section class="card" id="balance-card"><div class="card-title">Balance</div><div class="card-body" id="balance-body">…</div></section>
     <section class="card" id="kpi-card"><div class="card-title">KPIs · 24h</div><div class="card-body" id="kpi-body">…</div></section>
     <section class="card" id="now-card"><div class="card-title">Now happening</div><div class="card-body" id="now-body">…</div></section>
     <section class="card" id="positions-card"><div class="card-title">Active positions</div><div class="card-body" id="positions-body">…</div></section>
@@ -35,7 +36,24 @@ export async function renderLive(root) {
 }
 
 async function loadAll() {
-  await Promise.all([loadKpis(), loadNow(), loadPositions(), loadRejects()]);
+  await Promise.all([loadBalance(), loadKpis(), loadNow(), loadPositions(), loadRejects()]);
+}
+
+async function loadBalance() {
+  const b = await fetchJson("/api/balance");
+  const body = document.getElementById("balance-body");
+  if (!body) return;
+  if (b.error) {
+    body.innerHTML = `<div class="bad">${b.error}</div>`;
+    return;
+  }
+  body.innerHTML = `
+    <div class="kv"><span class="k">mode</span><span class="v">${b.mode}</span></div>
+    <div class="kv"><span class="k">free</span><span class="v"><b>$${(b.freeUsd ?? 0).toFixed(2)}</b></span></div>
+    <div class="kv"><span class="k">allocated</span><span class="v">$${(b.allocatedUsd ?? 0).toFixed(2)}</span></div>
+    <div class="kv"><span class="k">total budget</span><span class="v">$${(b.totalBudgetUsd ?? 0).toFixed(2)}</span></div>
+    <div class="muted">${b.source}</div>
+  `;
 }
 
 async function loadKpis() {
