@@ -292,3 +292,6 @@ table.filters th { text-align: left; color: var(--text-muted); font-weight: 500;
 table.filters td { padding: 4px 0; font-size: 13px; font-variant-numeric: tabular-nums; }
 table.filters tr { border-bottom: 1px solid rgba(255,255,255,0.04); }
 .switch { display: inline-block; }
+
+.audit { font-size: 12px; }
+.audit-row { padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.04); display: flex; gap: 8px; flex-wrap: wrap; }
