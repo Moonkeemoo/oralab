@@ -73,6 +73,11 @@ export function reconcileAgainstChain(
     if (pos.status === "FILLED" && ageMs < GRACE_PENDING_FILLED_MS) {
       return { action: "continue", chainSize: 0, drift: 0, note: "FILLED grace" };
     }
+    if (pos.status === "OPEN" && ageMs < GRACE_PENDING_FILLED_MS) {
+      // Brand-new OPEN inserted from a successful CLOB fill: data-api may
+      // not show it for 5–30s. Same grace as PENDING/FILLED.
+      return { action: "continue", chainSize: 0, drift: 0, note: "OPEN grace" };
+    }
     if (pos.status === "EXITING" && ageMs < GRACE_EXITING_MS) {
       return { action: "continue", chainSize: 0, drift: 0, note: "EXITING grace" };
     }
