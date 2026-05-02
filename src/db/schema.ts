@@ -424,3 +424,33 @@ export const sportsEvents = pgTable(
     index("idx_sports_events_status").on(t.status),
   ],
 );
+
+export const runtimeConfig = pgTable(
+  "runtime_config",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    scope: varchar("scope", { length: 16 }).notNull().default("global"),
+    key: varchar("key", { length: 64 }).notNull(),
+    value: jsonb("value").notNull(),
+    setByUserId: bigint("set_by_user_id", { mode: "number" }).references(() => users.id),
+    setAt: timestamp("set_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("idx_runtime_config_scope_key").on(t.scope, t.key),
+    uniqueIndex("uq_runtime_config_scope_key").on(t.scope, t.key),
+  ],
+);
+
+export const auditLog = pgTable(
+  "audit_log",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    ts: bigint("ts", { mode: "number" }).notNull(),
+    actor: varchar("actor", { length: 32 }).notNull(),
+    userId: bigint("user_id", { mode: "number" }).references(() => users.id),
+    action: varchar("action", { length: 64 }).notNull(),
+    target: varchar("target", { length: 128 }),
+    payload: jsonb("payload").notNull().default({}),
+  },
+  (t) => [index("idx_audit_log_ts").on(t.ts)],
+);
