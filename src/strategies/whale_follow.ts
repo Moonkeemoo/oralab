@@ -37,6 +37,7 @@ interface WhaleFollowParams {
   baseSizeUsd: number;
   maxEntryShares: number;
   budgetUsd: number;
+  defaultConviction: number;
 }
 
 function readParams(strategyParams: Record<string, unknown>): WhaleFollowParams {
@@ -44,6 +45,7 @@ function readParams(strategyParams: Record<string, unknown>): WhaleFollowParams 
     baseSizeUsd: Number(strategyParams["baseSizeUsd"] ?? 75),
     maxEntryShares: Number(strategyParams["maxEntryShares"] ?? 10),
     budgetUsd: Number(strategyParams["budgetUsd"] ?? 100),
+    defaultConviction: Number(strategyParams["defaultConviction"] ?? 0.6),
   };
 }
 
@@ -66,10 +68,24 @@ export class WhaleFollowStrategy implements Strategy {
 
   sizing(decision: Extract<Decision, { kind: "enter" }>, balance: number): number {
     const params = readParams(this.config.params);
-    const conviction = decision.conviction;
+    const conviction = decision.conviction > 0 ? decision.conviction : params.defaultConviction;
     const sizeUsd = Math.min(params.baseSizeUsd * conviction, balance);
     const sharesByUsd = sizeUsd / Math.max(decision.priceCap, 0.01);
-    return Math.min(sharesByUsd, params.maxEntryShares);
+    const result = Math.min(sharesByUsd, params.maxEntryShares);
+    logger.debug(
+      {
+        decisionConv: decision.conviction,
+        used: conviction,
+        base: params.baseSizeUsd,
+        balance,
+        sizeUsd,
+        priceCap: decision.priceCap,
+        sharesByUsd,
+        result,
+      },
+      "sizing trace",
+    );
+    return result;
   }
 
   async evaluate(signal: Signal, market: MarketMetadata): Promise<Decision> {
@@ -115,7 +131,8 @@ export class WhaleFollowStrategy implements Strategy {
     }
 
     const params = readParams(this.config.params);
-    const conviction = ctx.whale.convictionScore;
+    const conviction =
+      ctx.whale.convictionScore > 0 ? ctx.whale.convictionScore : params.defaultConviction;
     const proposedUsd = Math.min(params.baseSizeUsd * conviction, account.availableUsd);
     const afford = await canAffordEntry(userId, strategyId, proposedUsd);
     if (!afford.ok) {

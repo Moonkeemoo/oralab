@@ -19,7 +19,25 @@ import { withSpan } from "../obs/tracer.js";
  * checked before submission and `size` is capped to chain availability.
  */
 
+/**
+ * UserMarketOrderV2.amount semantics (clob-client-v2 v1.0.2):
+ *   BUY  → USD ($) to spend
+ *   SELL → shares to sell
+ *
+ * BuyParams therefore carries `usdAmount` (USD to spend) NOT shares.
+ * Actual filled shares come from the fill events.
+ */
 export interface BuyParams {
+  readonly userId: number;
+  readonly tokenId: string;
+  readonly price: number;
+  readonly usdAmount: number;
+  readonly tickSize: number;
+  readonly negRisk: boolean;
+  readonly correlationId?: string;
+}
+
+export interface SellParams {
   readonly userId: number;
   readonly tokenId: string;
   readonly price: number;
@@ -27,9 +45,6 @@ export interface BuyParams {
   readonly tickSize: number;
   readonly negRisk: boolean;
   readonly correlationId?: string;
-}
-
-export interface SellParams extends BuyParams {
   readonly expirationTs: number;
   readonly orderType: "GTD" | "GTC";
   readonly postOnly?: boolean;
@@ -68,7 +83,7 @@ export async function placeBuy(params: BuyParams): Promise<OrderResult> {
     clientOrderId,
     tokenId: params.tokenId,
     price: params.price,
-    size: params.sizeShares,
+    usdAmount: params.usdAmount,
     correlationId: params.correlationId ?? null,
   });
 
@@ -85,7 +100,7 @@ export async function placeBuy(params: BuyParams): Promise<OrderResult> {
       success: true,
       clientOrderId,
       status: "DRY_RUN",
-      takingAmount: String(params.sizeShares),
+      takingAmount: String(params.usdAmount),
       dry: true,
     };
   }
@@ -95,7 +110,7 @@ export async function placeBuy(params: BuyParams): Promise<OrderResult> {
     const { client } = getClobClient();
     span.setAttribute("token_id", params.tokenId);
     span.setAttribute("price", params.price);
-    span.setAttribute("size", params.sizeShares);
+    span.setAttribute("usd_amount", params.usdAmount);
 
     try {
       const resp: unknown = await client.createAndPostMarketOrder(
@@ -103,7 +118,8 @@ export async function placeBuy(params: BuyParams): Promise<OrderResult> {
           tokenID: params.tokenId,
           price: params.price,
           side: Side.BUY,
-          amount: params.sizeShares,
+          // UserMarketOrderV2.amount for BUY is USD to spend (clob-client-v2 docs).
+          amount: params.usdAmount,
         } as Parameters<typeof client.createAndPostMarketOrder>[0],
         { tickSize: tickAsTickSize(params.tickSize), negRisk: params.negRisk },
         OrderType.FOK,
@@ -116,6 +132,8 @@ export async function placeBuy(params: BuyParams): Promise<OrderResult> {
         errorMsg?: string;
         status?: string;
         takingAmount?: string;
+        makingAmount?: string;
+        transactionsHashes?: string[];
       };
       if (!r.success) {
         recordOutcome("placeBuy", r.errorMsg ?? "rejected", false);
@@ -125,6 +143,27 @@ export async function placeBuy(params: BuyParams): Promise<OrderResult> {
           errorCode: r.errorMsg ?? "rejected",
           errorMsg: r.errorMsg,
           status: r.status,
+          raw: resp,
+          dry: false,
+        };
+      }
+      // FOK semantics: must fill immediately or be killed. Polymarket V2 returns
+      // success=true with status="delayed" + empty making/taking when the FOK
+      // couldn't match (book moved, partial-only, etc). Treat that as failure.
+      const filledShares = Number(r.takingAmount ?? 0);
+      const txCount = r.transactionsHashes?.length ?? 0;
+      if (filledShares <= 0 && txCount === 0) {
+        log.warn(
+          { status: r.status, making: r.makingAmount, taking: r.takingAmount, txs: txCount },
+          "placeBuy success=true but FOK didn't fill — treating as kill",
+        );
+        recordOutcome("placeBuy", "fok_unfilled", false);
+        return {
+          success: false,
+          clientOrderId,
+          clobOrderId: r.orderID,
+          errorCode: "fok_unfilled",
+          status: r.status ?? "FOK_KILLED",
           raw: resp,
           dry: false,
         };
@@ -163,11 +202,9 @@ export async function placeSell(params: SellParams): Promise<OrderResult> {
     correlationId: params.correlationId ?? null,
   });
 
-  if (isKillSwitchActive()) {
-    log.warn("KILL_SWITCH active — placeSell rejected");
-    recordOutcome("placeSell", "kill_switch", isDryRun());
-    return { success: false, clientOrderId, errorCode: "kill_switch", dry: isDryRun() };
-  }
+  // KILL_SWITCH must NEVER block SELL: if there's a problem we always need to
+  // be able to exit existing positions. KILL only halts NEW BUYs.
+  // Per `feedback_bulletproof_live.md`.
 
   if (isDryRun()) {
     log.info("DRY_RUN — placeSell not posted to CLOB");

@@ -115,8 +115,10 @@ function parseGammaMarket(m: GammaMarketRaw): GammaMarket {
 }
 
 export async function getMarketByTokenId(tokenId: string): Promise<GammaMarket | null> {
-  // closed=true is INCLUSIVE — gamma silently drops resolved markets without it
-  const url = `${GAMMA_API_URL}/markets?clob_token_ids=${tokenId}&closed=true`;
+  // Default gamma behavior is closed=false filter — exactly what we want for
+  // entry: an "open and tradeable" market. Markets returning null here are
+  // either non-existent OR closed/resolved (both fine to skip).
+  const url = `${GAMMA_API_URL}/markets?clob_token_ids=${tokenId}`;
   const arr = await fetchJson<GammaMarketRaw[]>(url);
   const first = arr[0];
   if (!first) return null;
@@ -124,7 +126,7 @@ export async function getMarketByTokenId(tokenId: string): Promise<GammaMarket |
 }
 
 export async function getMarketByConditionId(conditionId: string): Promise<GammaMarket | null> {
-  const url = `${GAMMA_API_URL}/markets?condition_ids=${conditionId}&closed=true`;
+  const url = `${GAMMA_API_URL}/markets?condition_ids=${conditionId}`;
   const arr = await fetchJson<GammaMarketRaw[]>(url);
   const first = arr[0];
   if (!first) return null;

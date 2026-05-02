@@ -22,17 +22,20 @@ interface PollerHandler {
 interface PollerOptions {
   readonly whaleAddresses: readonly string[];
   readonly intervalMs?: number;
+  readonly concurrency?: number;
   readonly handler: PollerHandler;
 }
 
 export class WhaleActivityPoller {
   private timer: NodeJS.Timeout | null = null;
   private readonly intervalMs: number;
+  private readonly concurrency: number;
   private readonly lastSeenTs = new Map<string, number>();
   private inFlight = new Set<string>();
 
   constructor(private readonly options: PollerOptions) {
     this.intervalMs = options.intervalMs ?? Number(process.env["WHALE_POLL_INTERVAL_MS"] ?? 5_000);
+    this.concurrency = options.concurrency ?? Number(process.env["WHALE_POLL_CONCURRENCY"] ?? 8);
   }
 
   start(): void {
@@ -66,7 +69,18 @@ export class WhaleActivityPoller {
 
   /** Public for testing — runs one round across all whales. */
   async tickAll(): Promise<void> {
-    await Promise.all(this.options.whaleAddresses.map((w) => this.tickOne(w)));
+    // Bounded concurrency: at most `this.concurrency` /activity requests in
+    // flight at once. With 1500 whales and concurrency=8 that's ≤ 8 req/s
+    // peak instead of 1500 simultaneous — keeps us under data-api rate limits.
+    const queue = [...this.options.whaleAddresses];
+    const workers = Array.from({ length: Math.min(this.concurrency, queue.length) }, async () => {
+      while (queue.length > 0) {
+        const w = queue.shift();
+        if (!w) return;
+        await this.tickOne(w);
+      }
+    });
+    await Promise.all(workers);
   }
 
   private async tickOne(whaleAddr: string): Promise<void> {

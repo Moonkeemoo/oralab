@@ -15,7 +15,7 @@ describe("OrderManager — DRY mode (default in P1)", () => {
       userId: 1,
       tokenId: "tok-1",
       price: 0.5,
-      sizeShares: 10,
+      usdAmount: 5,
       tickSize: 0.01,
       negRisk: false,
     });
@@ -50,7 +50,7 @@ describe("OrderManager — DRY mode (default in P1)", () => {
       userId: 1,
       tokenId: "tok-1",
       price: 0.5,
-      sizeShares: 10,
+      usdAmount: 5,
       tickSize: 0.01,
       negRisk: false,
     });
@@ -58,7 +58,7 @@ describe("OrderManager — DRY mode (default in P1)", () => {
       userId: 1,
       tokenId: "tok-1",
       price: 0.5,
-      sizeShares: 10,
+      usdAmount: 5,
       tickSize: 0.01,
       negRisk: false,
     });
@@ -71,7 +71,7 @@ describe("OrderManager — DRY mode (default in P1)", () => {
       userId: 1,
       tokenId: "tok-1",
       price: 0.5,
-      sizeShares: 10,
+      usdAmount: 5,
       tickSize: 0.01,
       negRisk: false,
     });
@@ -79,7 +79,7 @@ describe("OrderManager — DRY mode (default in P1)", () => {
     expect(r.errorCode).toBe("kill_switch");
   });
 
-  it("KILL_SWITCH=true rejects placeSell with kill_switch error code", async () => {
+  it("KILL_SWITCH=true does NOT block placeSell — exit must always work", async () => {
     vi.stubEnv("KILL_SWITCH", "true");
     const r = await placeSell({
       userId: 1,
@@ -91,7 +91,8 @@ describe("OrderManager — DRY mode (default in P1)", () => {
       expirationTs: Math.floor(Date.now() / 1000) + 60,
       orderType: "GTD",
     });
-    expect(r.success).toBe(false);
-    expect(r.errorCode).toBe("kill_switch");
+    // Bulletproof property: KILL halts new BUYs, never blocks emergency exit.
+    expect(r.success).toBe(true);
+    expect(r.dry).toBe(true);
   });
 });

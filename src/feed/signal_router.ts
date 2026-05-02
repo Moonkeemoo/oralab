@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto";
+import process from "node:process";
 import { eq } from "drizzle-orm";
+import { getBookTop } from "../api/book.js";
 import type { DataActivity } from "../api/data.js";
-import { getMarketByTokenId } from "../api/gamma.js";
+import { type GammaMarket, getMarketByTokenId } from "../api/gamma.js";
 import { getDb } from "../db/client.js";
 import { positions, signals, strategies } from "../db/schema.js";
 import { canAffordEntry } from "../execute/budget.js";
@@ -12,16 +14,16 @@ import { whaleToBuyLatencyMs } from "../obs/metrics.js";
 import { withSpan } from "../obs/tracer.js";
 import { WhaleFollowStrategy } from "../strategies/whale_follow.js";
 import type { Signal } from "../types/signal.js";
-import type { Decision } from "../types/strategy.js";
+import { serializedEntry } from "./entry_mutex.js";
 import { matchWhale } from "./wallet_matcher.js";
 
 /**
  * SignalRouter — converts an external whale BUY event into a Signal, runs it
- * through the matched Strategy, and on `enter` Decision posts a FOK BUY +
- * INSERTs a PENDING position row.
+ * through the matched Strategy, and on `enter` Decision posts a FOK BUY.
  *
- * Persists Signal regardless of outcome (audit trail). Records
- * whale_to_buy_latency_ms for end-to-end observability.
+ * Persists Signal once at the END with the final outcome (audit trail accurate).
+ * Position INSERT happens only after CLOB success + non-zero fill (LIVE) or
+ * on every successful DRY_RUN response (DRY).
  */
 
 interface BuildSignalArgs {
@@ -31,8 +33,6 @@ interface BuildSignalArgs {
 }
 
 function buildSignal(args: BuildSignalArgs, userId: number): Signal {
-  // Signal age = seconds since the whale's on-chain BUY happened, NOT since
-  // we built the signal locally. activity.timestamp is unix-seconds.
   const whaleTradeTsMs = args.activity.timestamp * 1000;
   return {
     id: `sig-${randomUUID()}`,
@@ -95,6 +95,31 @@ async function strategyConfigById(strategyId: number) {
   };
 }
 
+interface RouteOutcome {
+  accepted: boolean;
+  rejectReason: string | null;
+  positionId?: number | undefined;
+  clobOrderId?: string | undefined;
+}
+
+/**
+ * Slippage policy for FOK BUY: read /book just before posting and use
+ * `ask + N ticks` as the price ceiling. Without slippage tolerance, FOK
+ * matched at exact ask is fragile to sub-second book moves.
+ */
+const FOK_SLIPPAGE_TICKS = Number(process.env["FOK_SLIPPAGE_TICKS"] ?? 2);
+
+async function liveAskWithSlippage(market: GammaMarket, assetId: string): Promise<number | null> {
+  try {
+    const book = await getBookTop(assetId);
+    if (book.ask <= 0 || book.ask >= 1) return null;
+    return book.ask + FOK_SLIPPAGE_TICKS * market.orderPriceMinTickSize;
+  } catch (err) {
+    logger.warn({ err, asset: assetId }, "getBookTop failed; will fall back to signal.priceHint");
+    return null;
+  }
+}
+
 export async function routeWhaleBuy(whaleAddress: string, activity: DataActivity): Promise<void> {
   const whaleStart = activity.timestamp * 1000;
   const match = await matchWhale(whaleAddress);
@@ -115,140 +140,171 @@ export async function routeWhaleBuy(whaleAddress: string, activity: DataActivity
     span.setAttribute("whale", whaleAddress);
     span.setAttribute("asset", signal.assetId);
 
-    let decision: Decision = { kind: "skip", reason: "not_evaluated" };
-    let accepted = false;
-    let rejectReason: string | null = null;
+    const outcome = await serializedEntry(cfg.userId, match.strategyId, () =>
+      routeInner(signal, cfg, match.strategyId),
+    );
+    await persistSignal(signal, outcome.accepted, outcome.rejectReason);
 
-    try {
-      // Stale guard BEFORE gamma round-trip — if the whale BUY happened
-      // longer ago than our edge window, no point looking up the market.
-      // (60s default mirrors the stale_trade filter; pipeline still re-checks
-      // post-evaluate, but the cheap pre-check saves an HTTP hop.)
-      const ageSec = (Date.now() - signal.receivedTs) / 1000;
-      const STALE_AGE_SEC = 90;
-      if (ageSec > STALE_AGE_SEC) {
-        rejectReason = "signal_stale";
-        await persistSignal(signal, false, rejectReason);
-        return;
-      }
-
-      const market = await getMarketByTokenId(signal.assetId);
-      if (!market) {
-        rejectReason = "market_not_found";
-        await persistSignal(signal, false, rejectReason);
-        return;
-      }
-      if (market.closed || market.archived || market.umaResolutionStatus === "resolved") {
-        rejectReason = "market_already_resolved";
-        await persistSignal(signal, false, rejectReason);
-        return;
-      }
-      if (!market.acceptingOrders) {
-        rejectReason = "market_not_accepting_orders";
-        await persistSignal(signal, false, rejectReason);
-        return;
-      }
-
-      const strategy = new WhaleFollowStrategy({
-        id: cfg.id,
-        userId: cfg.userId,
-        kind: cfg.kind,
-        enabled: cfg.enabled,
-        params: cfg.params,
-      });
-
-      const marketMeta = {
-        conditionId: market.conditionId,
-        slug: market.slug,
-        question: market.question,
-        negRisk: market.negRisk,
-        tickSize: market.orderPriceMinTickSize,
-        minOrderSize: market.orderMinSize,
-        makerFeeBps: market.makerBaseFee,
-        takerFeeBps: market.takerBaseFee,
-        tokens: market.tokens,
-        endDate: market.endDate,
-      };
-
-      decision = await strategy.evaluate(signal, marketMeta);
-      accepted = decision.kind === "enter";
-      rejectReason = decision.kind === "skip" ? decision.reason : null;
-      const signalId = await persistSignal(signal, accepted, rejectReason);
-
-      if (decision.kind !== "enter") return;
-
-      const balance = (await canAffordEntry(cfg.userId, match.strategyId, decision.sizeUsdHint))
-        .budget.availableUsd;
-      const sizeShares = strategy.sizing(decision, balance);
-      if (sizeShares <= 0 || sizeShares < market.orderMinSize) {
-        logger.warn(
-          { sizeShares, minOrderSize: market.orderMinSize },
-          "computed size below market minimum",
-        );
-        return;
-      }
-
-      const buy = await placeBuy({
-        userId: cfg.userId,
-        tokenId: signal.assetId,
-        price: decision.priceCap,
-        sizeShares,
-        tickSize: marketMeta.tickSize,
-        negRisk: marketMeta.negRisk,
-        correlationId: `sig-${signalId}`,
-      });
-
-      if (!buy.success) {
-        logger.warn({ errorCode: buy.errorCode, sigId: signalId }, "placeBuy rejected");
-        return;
-      }
-
-      const db = getDb();
-      const [posRow] = await db
-        .insert(positions)
-        .values({
-          userId: cfg.userId,
-          walletId: 1,
-          strategyId: match.strategyId,
-          signalId,
-          conditionId: signal.conditionId,
-          assetId: signal.assetId,
-          side: signal.side,
-          status: "PENDING",
-          shares: sizeShares,
-          fillPrice: decision.priceCap,
-          peakPrice: decision.priceCap,
-          fillTs: Date.now(),
-          lastStateChangeTs: Date.now(),
-          entryCostUsd: sizeShares * decision.priceCap,
-          trailArmed: false,
-          sweepCount: 0,
-        })
-        .returning({ id: positions.id });
-
-      const positionId = Number(posRow?.id ?? 0);
-      await recordOrder({
-        userId: cfg.userId,
-        positionId,
-        mode: "FOK",
-        side: "BUY",
-        price: decision.priceCap,
-        size: sizeShares,
-        clientOrderId: buy.clientOrderId,
-        clobOrderId: buy.clobOrderId,
-        status: buy.status ?? (buy.dry ? "DRY_RUN" : "LIVE"),
-        rawRequest: { tokenId: signal.assetId, price: decision.priceCap, sizeShares },
-        rawResponse: (buy.raw as Record<string, unknown>) ?? {},
-      });
-
-      whaleToBuyLatencyMs.record(Date.now() - whaleStart, { source: "rest_poll" });
-      logger.info(
-        { sigId: signalId, sizeShares, priceCap: decision.priceCap, dry: buy.dry },
-        "BUY queued — position PENDING",
-      );
-    } catch (err) {
-      logger.error({ err, whale: whaleAddress }, "signal_router.route threw");
-      await persistSignal(signal, false, "exception").catch(() => undefined);
+    if (outcome.accepted) {
+      whaleToBuyLatencyMs.record(Date.now() - whaleStart, { source: "rtds" });
     }
   });
+}
+
+async function routeInner(
+  signal: Signal,
+  cfg: Awaited<ReturnType<typeof strategyConfigById>>,
+  strategyId: number,
+): Promise<RouteOutcome> {
+  const ageSec = (Date.now() - signal.receivedTs) / 1000;
+  const STALE_AGE_SEC = Number(process.env["SIGNAL_STALE_AGE_SEC"] ?? 300);
+  if (ageSec > STALE_AGE_SEC) {
+    return { accepted: false, rejectReason: "signal_stale" };
+  }
+
+  const market = await getMarketByTokenId(signal.assetId);
+  if (!market) return { accepted: false, rejectReason: "market_not_found" };
+  if (market.closed || market.archived || market.umaResolutionStatus === "resolved") {
+    return { accepted: false, rejectReason: "market_already_resolved" };
+  }
+  if (!market.acceptingOrders) {
+    return { accepted: false, rejectReason: "market_not_accepting_orders" };
+  }
+
+  const strategy = new WhaleFollowStrategy({
+    id: cfg.id,
+    userId: cfg.userId,
+    kind: cfg.kind,
+    enabled: cfg.enabled,
+    params: cfg.params,
+  });
+
+  const marketMeta = {
+    conditionId: market.conditionId,
+    slug: market.slug,
+    question: market.question,
+    negRisk: market.negRisk,
+    tickSize: market.orderPriceMinTickSize,
+    minOrderSize: market.orderMinSize,
+    makerFeeBps: market.makerBaseFee,
+    takerFeeBps: market.takerBaseFee,
+    tokens: market.tokens,
+    endDate: market.endDate,
+  };
+
+  const decision = await strategy.evaluate(signal, marketMeta);
+  if (decision.kind !== "enter") {
+    return { accepted: false, rejectReason: decision.reason };
+  }
+
+  const balance = (await canAffordEntry(cfg.userId, strategyId, decision.sizeUsdHint)).budget
+    .availableUsd;
+  const sizeShares = strategy.sizing(decision, balance);
+  if (sizeShares <= 0 || sizeShares < market.orderMinSize) {
+    logger.warn(
+      { sizeShares, minOrderSize: market.orderMinSize },
+      "computed size below market minimum",
+    );
+    return { accepted: false, rejectReason: "below_min_size" };
+  }
+
+  // Use real /book ask + slippage. INV-D1: never trust whale's stale price for
+  // the actual order. Falls back to whale price only if /book unavailable.
+  const liveAsk = await liveAskWithSlippage(market, signal.assetId);
+  const priceCeiling = liveAsk ?? decision.priceCap;
+  if (priceCeiling > 0.99) {
+    return { accepted: false, rejectReason: "ask_at_ceiling" };
+  }
+  const usdAmount = sizeShares * priceCeiling;
+
+  const buy = await placeBuy({
+    userId: cfg.userId,
+    tokenId: signal.assetId,
+    price: priceCeiling,
+    usdAmount,
+    tickSize: marketMeta.tickSize,
+    negRisk: marketMeta.negRisk,
+    correlationId: `sig-${signal.id}`,
+  });
+
+  // Always record the order attempt — audit trail of every CLOB call.
+  await recordOrder({
+    userId: cfg.userId,
+    positionId: null,
+    mode: "FOK",
+    side: "BUY",
+    price: priceCeiling,
+    size: sizeShares,
+    clientOrderId: buy.clientOrderId,
+    clobOrderId: buy.clobOrderId,
+    status: buy.status ?? (buy.dry ? "DRY_RUN" : "LIVE"),
+    errorCode: buy.errorCode,
+    rawRequest: {
+      tokenId: signal.assetId,
+      price: priceCeiling,
+      usdAmount,
+      sizeSharesIntended: sizeShares,
+    },
+    rawResponse: (buy.raw as Record<string, unknown>) ?? {},
+  });
+
+  if (!buy.success) {
+    logger.warn(
+      { errorCode: buy.errorCode, status: buy.status },
+      "placeBuy rejected — no position created",
+    );
+    return { accepted: false, rejectReason: buy.errorCode ?? "placebuy_failed" };
+  }
+
+  // SUCCESS path. In DRY: position PENDING, DryFillSimulator promotes to OPEN.
+  // In LIVE: position OPEN immediately if takingAmount > 0; else PENDING and
+  // FillReconciler picks it up via user WS.
+  const filledShares = Number(buy.takingAmount ?? 0) || sizeShares;
+  const status: "OPEN" | "PENDING" = buy.dry
+    ? "PENDING"
+    : Number(buy.takingAmount ?? 0) > 0
+      ? "OPEN"
+      : "PENDING";
+
+  const db = getDb();
+  const [posRow] = await db
+    .insert(positions)
+    .values({
+      userId: cfg.userId,
+      walletId: 1,
+      strategyId,
+      signalId: null,
+      conditionId: signal.conditionId,
+      assetId: signal.assetId,
+      side: signal.side,
+      status,
+      shares: filledShares,
+      fillPrice: priceCeiling,
+      peakPrice: priceCeiling,
+      fillTs: Date.now(),
+      lastStateChangeTs: Date.now(),
+      entryCostUsd: filledShares * priceCeiling,
+      trailArmed: false,
+      sweepCount: 0,
+    })
+    .returning({ id: positions.id });
+
+  const positionId = Number(posRow?.id ?? 0);
+  logger.info(
+    {
+      positionId,
+      sizeShares: filledShares,
+      priceCeiling,
+      status,
+      dry: buy.dry,
+      clobOrderId: buy.clobOrderId,
+    },
+    "BUY placed — position recorded",
+  );
+  return {
+    accepted: true,
+    rejectReason: null,
+    positionId,
+    clobOrderId: buy.clobOrderId,
+  };
 }
