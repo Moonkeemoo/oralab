@@ -1,3 +1,4 @@
+import process from "node:process";
 import { eq } from "drizzle-orm";
 import { getDb } from "../db/client.js";
 import { positions } from "../db/schema.js";
@@ -31,7 +32,22 @@ export interface ExecuteOutcome {
   readonly orderResult?: OrderResult;
 }
 
-const SELL_GTD_DEFAULT_SEC = 60;
+/**
+ * Polymarket V2 requires GTD expiration ≥ now + 60s + 30s buffer (security
+ * threshold: "If the order needs to expire in 30 seconds the correct
+ * expiration value is: now + 1 minute + 30 seconds"). Default 120s gives a
+ * generous buffer past validation while still recycling inside a couple
+ * sweep cycles.
+ */
+const SELL_GTD_DEFAULT_SEC = Number(process.env["SELL_GTD_DEFAULT_SEC"] ?? 120);
+
+/**
+ * Minimum interval between sweep retries on the same position. Without this,
+ * the 2 Hz PositionMonitor fires a fresh SELL every tick, hammering CLOB and
+ * never giving any single GTD time to match. Default 5s lets the prior sweep
+ * sit for 10 ticks before being cancel-and-replaced.
+ */
+const SWEEP_COOLDOWN_MS = Number(process.env["SWEEP_COOLDOWN_MS"] ?? 5000);
 
 export async function executeExitIntent(
   pos: PositionView,
@@ -61,6 +77,18 @@ export async function executeExitIntent(
   if (pos.status === "EXITING" && pos.sweepCount === 0) {
     log.warn("INV-M5: position already EXITING with sweepCount=0; refusing duplicate");
     return { applied: false, skipReason: "double_act_blocked" };
+  }
+
+  // Sweep cooldown: don't bombard CLOB with cancel/replace every PositionMonitor
+  // tick. Give the in-flight GTD a chance to match before swapping it out.
+  if (pos.status === "EXITING" && pos.sweepCount > 0) {
+    const sinceLastSweepMs = Date.now() - pos.lastStateChangeTs;
+    if (sinceLastSweepMs < SWEEP_COOLDOWN_MS) {
+      return {
+        applied: false,
+        skipReason: `sweep_cooldown ${Math.round(sinceLastSweepMs)}ms<${SWEEP_COOLDOWN_MS}ms`,
+      };
+    }
   }
 
   // QA-174 cancel-before-place: if this is a sweep retry, kill any prior open
