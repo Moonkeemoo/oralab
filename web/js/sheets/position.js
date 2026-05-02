@@ -1,6 +1,70 @@
 "use strict";
+import { fetchJson, postJson } from "../api.js";
+import { escapeHtml, fmtAge } from "../format.js";
 import { openSheet } from "../sheets.js";
 
-export function openPositionSheet(id) {
-  openSheet(`<div class="muted">Position #${id} drilldown — coming next</div>`);
+export async function openPositionSheet(id) {
+  const sheet = openSheet(`<div class="muted">loading…</div>`);
+  try {
+    const data = await fetchJson(`/api/positions/${id}/timeline`);
+    if (data.error) {
+      sheet.root.innerHTML = `<div class="error-banner">${escapeHtml(data.error)}</div>`;
+      return;
+    }
+    const p = data.position;
+    const fills = (data.fills || []).slice().sort((a, b) => a.ts - b.ts);
+    const decisions = data.recentDecisions || [];
+    sheet.root.innerHTML = `
+      <h3>Position #${p.id} <span class="pos-status ${p.status}">${p.status}</span></h3>
+      <div class="kv"><span class="k">side</span><span class="v">${p.side}</span></div>
+      <div class="kv"><span class="k">shares</span><span class="v">${(p.shares || 0).toFixed(4)}</span></div>
+      <div class="kv"><span class="k">fill price</span><span class="v">${(p.fillPrice || 0).toFixed(3)}</span></div>
+      <div class="kv"><span class="k">peak price</span><span class="v">${(p.peakPrice || 0).toFixed(3)}</span></div>
+      <div class="kv"><span class="k">sweep count</span><span class="v">${p.sweepCount}</span></div>
+      <div class="kv"><span class="k">entry cost</span><span class="v">$${(p.entryCostUsd || 0).toFixed(2)}</span></div>
+      <div class="kv"><span class="k">age</span><span class="v">${fmtAge(Date.now() - (p.fillTs || Date.now()))}</span></div>
+      ${p.closeReason ? `<div class="kv"><span class="k">close reason</span><span class="v">${escapeHtml(p.closeReason)}</span></div>` : ""}
+
+      <div class="card-title" style="margin-top:14px">Timeline</div>
+      <ol class="timeline">
+        ${fills.map((f) => `
+          <li>
+            <span class="t-side">${f.side}</span>
+            <b>${(f.shares || 0).toFixed(3)}</b> @ ${(f.price || 0).toFixed(3)}
+            <span class="muted">tx ${escapeHtml((f.txHash || "").slice(0, 12))}…</span>
+          </li>`).join("")}
+      </ol>
+
+      <div class="card-title" style="margin-top:14px">Recent decisions (last ${decisions.length})</div>
+      <ul class="decisions">
+        ${decisions.map((d) => `
+          <li>
+            <span class="muted">${new Date(d.ts).toLocaleTimeString()}</span>
+            <b>${escapeHtml(String(d.action))}</b>
+            <span class="muted">${escapeHtml(String(d.reason))}</span>
+            <span class="muted">[${(d.gates || []).map(escapeHtml).join(", ")}]</span>
+          </li>`).join("")}
+      </ul>
+
+      <div class="actions" style="margin-top:14px">
+        ${(p.status === "OPEN" || p.status === "EXITING") ? `
+          <button id="exit-now-btn" class="btn btn-warn">Exit Now</button>
+          <button id="freeze-btn" class="btn">Freeze</button>
+        ` : ""}
+      </div>
+    `;
+    sheet.root.querySelector("#exit-now-btn")?.addEventListener("click", async () => {
+      if (!confirm("Place FAK SELL with 20% slippage?")) return;
+      const r = await postJson(`/api/positions/${id}/exit`, { mode: "FAK", slippagePct: 0.2 });
+      alert(`exit: ok=${r.ok} status=${r.status ?? ""} err=${r.errorCode ?? ""}`);
+      sheet.close();
+    });
+    sheet.root.querySelector("#freeze-btn")?.addEventListener("click", async () => {
+      if (!confirm("Mark position as FROZEN (manual recovery later)?")) return;
+      await postJson(`/api/positions/${id}/freeze`, {});
+      sheet.close();
+    });
+  } catch (err) {
+    sheet.root.innerHTML = `<div class="error-banner">${escapeHtml(err.message)}</div>`;
+  }
 }
