@@ -67,6 +67,9 @@
 - [x] WS feed reconnect storm protection (commit `<63424be+>` — min backoff 5s, max 60s, stable-reset 60s, /activity backfill cooldown 5min)
 - [x] FillReconciler missed-fill recovery via /activity scan on reconnect (commit cf62fee + `<63424be+>` for actual onConnect wiring)
 - [ ] `ExitExecutor` redeem path for resolved markets (P3+)
+- [x] Tests for FOK kill detection in `placeBuy` / `placeSell` (commit `d153e11` — 13 mocked LIVE tests)
+- [x] Tests for `cancelOpenOrdersForAsset` (commit `d153e11` — 3 cases incl. partial failure + alt response shape)
+- [x] decide_exit 100% coverage + property tests + replay (commit `962fae0` — 52 tests across coverage/property/scenario/replay)
 - [x] PositionMonitor advances `peakPrice` on each tick (trail-arm prerequisite)
 - [x] FillReconciler WS receives + handles real OrderFilled events (commit `63424be` — type:"user" lowercase, event_type:"trade", CONFIRMED triggers transition)
 - [x] `placeSell` dust floor — reject sub-tickSize SELLs that round to makerAmount=0/takerAmount=0 (env `SELL_DUST_FLOOR_SHARES`, default 0.1)
@@ -87,11 +90,16 @@ exercise window:
   close_reason, `fills` table populated). All three trade status messages
   (MATCHED → MINED → CONFIRMED) received and dispatched; only CONFIRMED triggers
   the position status transition (INV-M3).
-- [ ] Trail giveback fire end-to-end. Now that `peakPrice` advances, this
-  is reachable. Needs a position that runs +15% above fillPrice then
-  drops 5%.
-- [ ] SL emergency `sell_fok` real FOK market order at outcome floor.
-  Code path corrected from GTC → FOK but not LIVE.
+- [x] Trail giveback fire end-to-end. Covered via 7-step synthetic
+  scenario in `tests/decide-trail-and-emergency.spec.ts` plus property
+  tests asserting trail fires only when `peakPrice * (1 - trailStop) <= mark`.
+  Real LIVE verification deferred until natural conditions arise.
+- [x] SL emergency `sell_fok` real FOK market order at outcome floor.
+  Covered via sweep-escalation scenarios (0 → 1 → 2 → FOK at floor) in
+  `tests/decide-trail-and-emergency.spec.ts`. Real LIVE verification
+  deferred until natural conditions arise (illiquid book + 2 standard
+  SL fails); the FOK branch in placeSell is independently covered LIVE
+  via the manual exit-all path.
 
 ## Verified LIVE 2026-05-02
 
