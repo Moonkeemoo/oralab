@@ -425,6 +425,69 @@ async function handleAudit(req: http.IncomingMessage): Promise<unknown> {
   }));
 }
 
+async function handleKpi(req: http.IncomingMessage): Promise<unknown> {
+  const url = new URL(req.url ?? "/", "http://x");
+  const windowHours = Math.max(1, Math.min(24 * 30, Number(url.searchParams.get("windowHours") ?? 24)));
+  const sinceMs = Date.now() - windowHours * 60 * 60 * 1000;
+  const db = getDb();
+  const sigRows = await db.query.signals.findMany({
+    where: gte(signals.processedAt, new Date(sinceMs)),
+    columns: { accepted: true, rejectReason: true },
+  });
+  const signalsTotal = sigRows.length;
+  const signalsAccepted = sigRows.filter((r) => r.accepted).length;
+
+  const closed = await db.query.positions.findMany({
+    where: and(eq(positions.status, "CLOSED"), gte(positions.lastStateChangeTs, sinceMs)),
+  });
+  let wins = 0;
+  let totalEntry = 0;
+  let totalExit = 0;
+  let posPnl = 0;
+  let negPnl = 0;
+  let holdSec = 0;
+  const equity: { ts: number; cum: number }[] = [];
+  let cum = 0;
+  const sorted = closed.slice().sort((a, b) => Number(a.lastStateChangeTs) - Number(b.lastStateChangeTs));
+  for (const p of sorted) {
+    const sells = await db.query.fills.findMany({
+      where: and(eq(fills.positionId, Number(p.id)), eq(fills.side, "SELL")),
+    });
+    const exitUsd = sells.reduce((s, f) => s + Number(f.shares ?? 0) * Number(f.price ?? 0), 0);
+    const entryUsd = Number(p.entryCostUsd ?? 0);
+    const pnl = exitUsd - entryUsd;
+    totalEntry += entryUsd;
+    totalExit += exitUsd;
+    if (pnl >= 0) {
+      wins += 1;
+      posPnl += pnl;
+    } else {
+      negPnl += -pnl;
+    }
+    holdSec += (Number(p.lastStateChangeTs) - Number(p.fillTs)) / 1000;
+    cum += pnl;
+    equity.push({ ts: Number(p.lastStateChangeTs), cum });
+  }
+  let peak = 0;
+  let maxDrawdown = 0;
+  for (const e of equity) {
+    if (e.cum > peak) peak = e.cum;
+    const dd = peak - e.cum;
+    if (dd > maxDrawdown) maxDrawdown = dd;
+  }
+  return {
+    windowHours,
+    passRatePct: signalsTotal > 0 ? (signalsAccepted / signalsTotal) * 100 : 0,
+    signalsPerHour: signalsTotal / windowHours,
+    profitFactor: negPnl > 0 ? posPnl / negPnl : posPnl > 0 ? Infinity : 0,
+    winRatePct: closed.length > 0 ? (wins / closed.length) * 100 : 0,
+    avgHoldSec: closed.length > 0 ? holdSec / closed.length : 0,
+    drawdownUsd: maxDrawdown,
+    netPnlUsd: totalExit - totalEntry,
+    closedCount: closed.length,
+  };
+}
+
 async function handleBuild(): Promise<unknown> {
   return {
     service: "ora2-api",
@@ -730,6 +793,7 @@ export function createRestServer(): http.Server {
         if (req.url === "/api/connections") return send(res, 200, await handleConnections());
         if (req.url === "/api/perf") return send(res, 200, await handlePerf());
         if (req.url?.startsWith("/api/audit")) return send(res, 200, await handleAudit(req));
+        if (req.url?.startsWith("/api/kpi")) return send(res, 200, await handleKpi(req));
         if (req.url === "/api/build") return send(res, 200, await handleBuild());
       }
       if (req.method === "POST") {
