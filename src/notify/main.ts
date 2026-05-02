@@ -11,7 +11,38 @@ import { telegramBotFromEnv } from "./telegram_bot.js";
  *
  * Outbound alerts live inline in trader/feed processes (telegramAlerter
  * is also constructed there). This service handles INBOUND commands only.
+ *
+ * On startup, registers the Mini App URL (env MINI_APP_URL) as the bot's
+ * chat menu button so user gets a one-tap "Open" launcher.
  */
+
+async function setMenuButton(token: string, miniAppUrl: string): Promise<void> {
+  if (!miniAppUrl) {
+    logger.info("MINI_APP_URL unset — skipping setChatMenuButton");
+    return;
+  }
+  try {
+    const resp = await fetch(`https://api.telegram.org/bot${token}/setChatMenuButton`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        menu_button: {
+          type: "web_app",
+          text: "Open ora2",
+          web_app: { url: miniAppUrl },
+        },
+      }),
+    });
+    const body = (await resp.json()) as { ok: boolean; description?: string };
+    if (body.ok) {
+      logger.info({ miniAppUrl }, "Telegram chat menu button set → Open ora2");
+    } else {
+      logger.warn({ body }, "setChatMenuButton failed");
+    }
+  } catch (err) {
+    logger.warn({ err }, "setChatMenuButton threw");
+  }
+}
 
 async function main(): Promise<void> {
   bindService("ora2-bot");
@@ -23,6 +54,8 @@ async function main(): Promise<void> {
     logger.error("ora2-bot: TELEGRAM_BOT_TOKEN unset OR allowed chat list empty — exiting");
     process.exit(1);
   }
+  const token = process.env["TELEGRAM_BOT_TOKEN"] ?? "";
+  await setMenuButton(token, process.env["MINI_APP_URL"] ?? "");
   await bot.start();
   await alerter.send("✅ <b>ora2-bot online</b> — /help for commands");
 

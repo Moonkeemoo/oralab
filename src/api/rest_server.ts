@@ -1,10 +1,13 @@
 import crypto from "node:crypto";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import http from "node:http";
+import path from "node:path";
 import process from "node:process";
+import { fileURLToPath } from "node:url";
 import { and, desc, eq, gte, inArray } from "drizzle-orm";
 import { getDb } from "../db/client.js";
 import { fills, positions } from "../db/schema.js";
-import { isRuntimeKillSwitchActive } from "../notify/kill_switch.js";
+import { isRuntimeKillSwitchActive, setRuntimeKillSwitch } from "../notify/kill_switch.js";
 import { logger } from "../obs/logger.js";
 
 /**
@@ -170,12 +173,82 @@ function send(res: http.ServerResponse, status: number, body: unknown): void {
   res.end(JSON.stringify(body));
 }
 
+// ── Static /app/* — Mini App served from same origin (no CORS) ──
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const WEB_ROOT = path.resolve(__dirname, "..", "..", "web");
+const MIME: Record<string, string> = {
+  ".html": "text/html; charset=utf-8",
+  ".js": "application/javascript; charset=utf-8",
+  ".css": "text/css; charset=utf-8",
+  ".png": "image/png",
+  ".svg": "image/svg+xml",
+  ".ico": "image/x-icon",
+  ".json": "application/json",
+};
+
+function serveStatic(req: http.IncomingMessage, res: http.ServerResponse): boolean {
+  if (!req.url?.startsWith("/app")) return false;
+  let rel = req.url.slice(4); // strip "/app"
+  if (rel === "" || rel === "/") rel = "/index.html";
+  // Prevent path traversal
+  const fullPath = path.normalize(path.join(WEB_ROOT, rel));
+  if (!fullPath.startsWith(WEB_ROOT)) {
+    send(res, 403, { error: "forbidden" });
+    return true;
+  }
+  if (!existsSync(fullPath) || !statSync(fullPath).isFile()) {
+    send(res, 404, { error: "not_found" });
+    return true;
+  }
+  const ext = path.extname(fullPath).toLowerCase();
+  res.statusCode = 200;
+  res.setHeader("Content-Type", MIME[ext] ?? "application/octet-stream");
+  // Mini App needs to embed via Telegram WebApp; allow framing.
+  res.setHeader("Content-Security-Policy", "frame-ancestors 'self' https://web.telegram.org https://*.telegram.org");
+  res.setHeader("Cache-Control", "no-cache");
+  res.end(readFileSync(fullPath));
+  return true;
+}
+
+async function readBody(req: http.IncomingMessage): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let data = "";
+    req.on("data", (chunk) => {
+      data += String(chunk);
+      if (data.length > 8192) {
+        reject(new Error("body too large"));
+        req.destroy();
+      }
+    });
+    req.on("end", () => resolve(data));
+    req.on("error", reject);
+  });
+}
+
+async function handleKillSwitchPost(req: http.IncomingMessage): Promise<unknown> {
+  const raw = await readBody(req);
+  const body = JSON.parse(raw || "{}") as { active?: boolean; reason?: string };
+  await setRuntimeKillSwitch({
+    active: Boolean(body.active),
+    reason: body.reason ?? "mini_app",
+  });
+  return { ok: true, active: Boolean(body.active) };
+}
+
 export function createRestServer(): http.Server {
   return http.createServer(async (req, res) => {
     const log = logger.child({ component: "rest_server", url: req.url, method: req.method });
-    if (req.method !== "GET") return send(res, 405, { error: "method_not_allowed" });
 
-    if (req.url === "/api/health") return send(res, 200, { ok: true });
+    // Static /app/* (Mini App) — no auth gate; the auth is on the API layer.
+    if (req.method === "GET" && serveStatic(req, res)) return;
+
+    // Public health check
+    if (req.method === "GET" && req.url === "/api/health") return send(res, 200, { ok: true });
+
+    // POST endpoints (state-changing) require auth too
+    if (req.method !== "GET" && req.method !== "POST") {
+      return send(res, 405, { error: "method_not_allowed" });
+    }
 
     const auth = authenticate(req);
     if (!auth.ok) {
@@ -184,9 +257,14 @@ export function createRestServer(): http.Server {
     }
 
     try {
-      if (req.url === "/api/status") return send(res, 200, await handleStatus());
-      if (req.url === "/api/positions") return send(res, 200, await handlePositions());
-      if (req.url?.startsWith("/api/pnl")) return send(res, 200, await handlePnl(req));
+      if (req.method === "GET") {
+        if (req.url === "/api/status") return send(res, 200, await handleStatus());
+        if (req.url === "/api/positions") return send(res, 200, await handlePositions());
+        if (req.url?.startsWith("/api/pnl")) return send(res, 200, await handlePnl(req));
+      }
+      if (req.method === "POST") {
+        if (req.url === "/api/kill_switch") return send(res, 200, await handleKillSwitchPost(req));
+      }
       return send(res, 404, { error: "not_found" });
     } catch (err) {
       log.error({ err }, "rest_server handler threw");

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>ora2</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>ora2</h1>
+      <div class="meta">
+        <span id="mode-pill" class="pill">…</span>
+        <span id="ks-pill" class="pill">…</span>
+        <button id="refresh-btn" class="icon-btn" title="refresh">⟳</button>
+      </div>
+    </header>
+
+    <section class="card" id="status-card">
+      <div class="card-title">Status</div>
+      <div id="status-body" class="card-body">loading…</div>
+      <div class="actions">
+        <button id="pause-btn" class="btn btn-warn">⛔ Pause</button>
+        <button id="resume-btn" class="btn btn-ok">✅ Resume</button>
+      </div>
+    </section>
+
+    <section class="card" id="pnl-card">
+      <div class="card-title">P&amp;L · last 24h</div>
+      <div id="pnl-body" class="card-body">loading…</div>
+    </section>
+
+    <section class="card" id="positions-card">
+      <div class="card-title">Active positions</div>
+      <div id="positions-body" class="card-body">loading…</div>
+    </section>
+
+    <footer>
+      <span id="last-updated" class="muted">—</span>
+      <span id="auth-mode" class="muted"></span>
+    </footer>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
