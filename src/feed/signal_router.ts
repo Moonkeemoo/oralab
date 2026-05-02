@@ -10,7 +10,7 @@ import { canAffordEntry } from "../execute/budget.js";
 import { placeBuy } from "../execute/order_manager.js";
 import { recordOrder } from "../execute/order_recorder.js";
 import { logger } from "../obs/logger.js";
-import { whaleToBuyLatencyMs } from "../obs/metrics.js";
+import { entryMutexWaitMs, entryRouteOutcome, whaleToBuyLatencyMs } from "../obs/metrics.js";
 import { withSpan } from "../obs/tracer.js";
 import { WhaleFollowStrategy } from "../strategies/whale_follow.js";
 import type { Signal } from "../types/signal.js";
@@ -140,10 +140,15 @@ export async function routeWhaleBuy(whaleAddress: string, activity: DataActivity
     span.setAttribute("whale", whaleAddress);
     span.setAttribute("asset", signal.assetId);
 
-    const outcome = await serializedEntry(cfg.userId, match.strategyId, () =>
-      routeInner(signal, cfg, match.strategyId),
-    );
+    const enqueuedAt = performance.now();
+    const outcome = await serializedEntry(cfg.userId, match.strategyId, async () => {
+      entryMutexWaitMs.record(performance.now() - enqueuedAt);
+      return routeInner(signal, cfg, match.strategyId);
+    });
     await persistSignal(signal, outcome.accepted, outcome.rejectReason);
+    entryRouteOutcome.add(1, {
+      outcome: outcome.accepted ? "accepted" : (outcome.rejectReason ?? "unknown"),
+    });
 
     if (outcome.accepted) {
       whaleToBuyLatencyMs.record(Date.now() - whaleStart, { source: "rtds" });
@@ -256,15 +261,22 @@ async function routeInner(
     return { accepted: false, rejectReason: buy.errorCode ?? "placebuy_failed" };
   }
 
-  // SUCCESS path. In DRY: position PENDING, DryFillSimulator promotes to OPEN.
-  // In LIVE: position OPEN immediately if takingAmount > 0; else PENDING and
-  // FillReconciler picks it up via user WS.
-  const filledShares = Number(buy.takingAmount ?? 0) || sizeShares;
-  const status: "OPEN" | "PENDING" = buy.dry
-    ? "PENDING"
-    : Number(buy.takingAmount ?? 0) > 0
-      ? "OPEN"
-      : "PENDING";
+  // SUCCESS path. Record ACTUAL filled shares from CLOB response (handles
+  // partial fills correctly). In DRY mode CLOB isn't called so we use the
+  // intended shares + status PENDING — DryFillSimulator promotes to OPEN.
+  // In LIVE: if takingAmount > 0 → OPEN with that exact size; else PENDING
+  // (FillReconciler will see WS event eventually).
+  const filledShares = buy.dry ? sizeShares : Number(buy.takingAmount ?? 0);
+  if (!buy.dry && filledShares <= 0) {
+    // Defensive: should be caught by fok_unfilled in placeBuy, but if a future
+    // CLOB shape slips by we still don't INSERT a phantom position.
+    logger.warn(
+      { clobOrderId: buy.clobOrderId },
+      "placeBuy success=true but takingAmount=0 in LIVE — declining to INSERT",
+    );
+    return { accepted: false, rejectReason: "live_zero_fill" };
+  }
+  const status: "OPEN" | "PENDING" = buy.dry ? "PENDING" : "OPEN";
 
   const db = getDb();
   const [posRow] = await db

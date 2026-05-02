@@ -77,6 +77,17 @@ export const reconciliationDriftPct = lazyHistogram(
   [0.001, 0.005, 0.01, 0.05, 0.1, 0.2, 0.5],
 );
 
+export const entryMutexWaitMs = lazyHistogram(
+  "entry_mutex_wait_ms",
+  "Time spent waiting on per-(user, strategy) entry mutex before routeInner",
+  [1, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000],
+);
+
+export const entryRouteOutcome = lazyCounter(
+  "entry_route_outcome_total",
+  "Counter by accepted | reject_reason for routeWhaleBuy decisions",
+);
+
 /**
  * Helper to time a synchronous fn and record into a histogram.
  */
