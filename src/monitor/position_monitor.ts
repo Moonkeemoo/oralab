@@ -107,7 +107,24 @@ export class PositionMonitor {
       lastStateChangeTs: Number(p.lastStateChangeTs ?? Date.now()),
     }));
 
-    const reconResults = await reconcileWalletPositions(wallet.address, reconInput);
+    // DRY mode: skip chain reconciliation. The chain has no record of
+    // simulated DRY fills, so /positions returns nothing → reconciler would
+    // FREEZE every active position. In DRY we trust DryFillSimulator's
+    // bookkeeping and let decide_exit run against fresh book snapshots.
+    const dryRun = (process.env["DRY_RUN"] ?? "true").toLowerCase() === "true";
+    const reconResults = dryRun
+      ? open.map((p) => ({
+          pos: {
+            id: Number(p.id),
+            walletAddress: wallet.address,
+            assetId: p.assetId,
+            status: p.status as PositionForRecon["status"],
+            shares: Number(p.shares ?? 0),
+            lastStateChangeTs: Number(p.lastStateChangeTs ?? Date.now()),
+          },
+          result: { action: "ok" as const, chainSize: Number(p.shares ?? 0), drift: 0 },
+        }))
+      : await reconcileWalletPositions(wallet.address, reconInput);
     for (const { pos, result } of reconResults) {
       if (result.action !== "ok" && result.action !== "continue") {
         await applyReconResult(pos.id, result);
