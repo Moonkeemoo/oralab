@@ -19,6 +19,7 @@
 | Stale signal also caught downstream | `stale_trade` filter in pipeline (300s default per filter) |
 | pUSD < usdAmount → reject before CLOB | `placeBuy` calls `getBalanceAllowance(COLLATERAL)` pre-flight |
 | FOK BUY didn't fill → fail fast | empty `makingAmount`/`takingAmount` + `transactionsHashes` = `fok_unfilled` reject |
+| `delayed`-with-empty FOK BUY disambiguated before kill | `placeBuy` polls `getOrder(size_matched)` + chain-balance delta vs baseline; settled trades route to success_delayed instead of orphaned chain position |
 | Position INSERT only on confirmed fill (LIVE) | `signal_router` checks `takingAmount > 0` after `placeBuy` success |
 | Partial fill records actual filled shares | `position.shares = Number(buy.takingAmount)` exactly |
 | Audit signal row matches final outcome | `persistSignal` called once at end with terminal `accepted`/`rejectReason` |
@@ -32,6 +33,7 @@
 | INV-M1 chain-balance cap on SELL | `placeSell` calls `getBalanceAllowance(CONDITIONAL)`, caps `effectiveSize` |
 | `sell_fok` is real FOK market order | `placeSell` branches `createAndPostMarketOrder` (FOK/FAK) vs `createAndPostOrder` (GTD/GTC) |
 | FOK SELL didn't fill → fail fast | same delayed-with-no-fill detection as BUY |
+| `delayed`-with-empty FOK SELL disambiguated before kill | `placeSell` polls `getOrder(size_matched)` + chain shares decrease vs pre-order baseline; settled SELLs return success_delayed |
 | QA-174 cancel-before-place on sweep | `cancelOpenOrdersForAsset(assetId, "SELL")` before placing on `sweepCount > 0` |
 | INV-M5 no double-act on EXITING | guard at top of `executeExitIntent` |
 | Exit only via chain SELL fill OR resolved | `decide_exit` never returns close action; `closure_reason` written by `DbFillHandler` on confirmed fill (INV-M3) |

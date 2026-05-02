@@ -80,6 +80,89 @@ function recordOutcome(operation: string, outcome: string, dry: boolean): void {
   orderPlacementOutcome.add(1, { operation, outcome, dry: String(dry) });
 }
 
+/**
+ * Polymarket V2 sometimes returns `success=true` with `status="delayed"` and
+ * empty making/taking amounts, even when the trade later settles on chain.
+ * Treating that as immediate kill produced orphaned chain positions invisible
+ * to the bot (incident 2026-05-02 MLB Orioles 5.17 shares @ 0.60).
+ *
+ * pollOrderForFill polls `getOrder(orderID)` for up to `timeoutMs` and resolves
+ * when `size_matched > 0` (real fill) or returns null on timeout (true kill).
+ *
+ * Env: ORDER_DELAYED_POLL_MS (default 5000), ORDER_DELAYED_POLL_INTERVAL_MS (default 500).
+ */
+const DELAYED_POLL_MS = Number(process.env["ORDER_DELAYED_POLL_MS"] ?? 5000);
+const DELAYED_POLL_INTERVAL_MS = Number(process.env["ORDER_DELAYED_POLL_INTERVAL_MS"] ?? 500);
+
+async function pollOrderForFill(
+  client: ReturnType<typeof getClobClient>["client"],
+  orderId: string,
+): Promise<{ matched: number; status: string } | null> {
+  const start = Date.now();
+  while (Date.now() - start < DELAYED_POLL_MS) {
+    try {
+      const o = (await client.getOrder(orderId)) as
+        | { size_matched?: string | number; status?: string }
+        | null
+        | undefined;
+      if (o) {
+        const m = Number(o.size_matched ?? 0);
+        if (m > 0) return { matched: m, status: o.status ?? "unknown" };
+      }
+    } catch {
+      // transient — keep polling
+    }
+    await new Promise((res) => setTimeout(res, DELAYED_POLL_INTERVAL_MS));
+  }
+  return null;
+}
+
+async function readChainShares(
+  client: ReturnType<typeof getClobClient>["client"],
+  tokenId: string,
+): Promise<number> {
+  try {
+    const ba = (await client.getBalanceAllowance({
+      asset_type: "CONDITIONAL",
+      token_id: tokenId,
+    } as Parameters<typeof client.getBalanceAllowance>[0])) as { balance?: string | number };
+    // ERC1155 conditional tokens use 6 decimals on Polymarket — same as pUSD.
+    return Number(ba.balance ?? 0) / 1e6;
+  } catch {
+    return Number.NaN;
+  }
+}
+
+/**
+ * Disambiguate `success=true + delayed + empty` for FOK orders.
+ * Combines two signals: polling getOrder(size_matched) and watching chain delta.
+ * Returns delta (shares) > 0 if trade settled, 0 if truly killed.
+ */
+async function disambiguateDelayedFill(
+  client: ReturnType<typeof getClobClient>["client"],
+  orderId: string | undefined,
+  tokenId: string,
+  baselineShares: number,
+  expectedDirection: "increase" | "decrease",
+): Promise<{ filled: number; via: "order_poll" | "chain_delta" | "none" }> {
+  if (orderId) {
+    const polled = await pollOrderForFill(client, orderId);
+    if (polled && polled.matched > 0) {
+      return { filled: polled.matched, via: "order_poll" };
+    }
+  }
+  // Fallback / belt-and-suspenders: read chain balance once at end. If it
+  // diverged from baseline in the expected direction, the trade settled.
+  if (Number.isFinite(baselineShares)) {
+    const after = await readChainShares(client, tokenId);
+    if (Number.isFinite(after)) {
+      const delta = expectedDirection === "increase" ? after - baselineShares : baselineShares - after;
+      if (delta > 0) return { filled: delta, via: "chain_delta" };
+    }
+  }
+  return { filled: 0, via: "none" };
+}
+
 export async function placeBuy(params: BuyParams): Promise<OrderResult> {
   const clientOrderId = newClientOrderId();
   const log = logger.child({
@@ -150,6 +233,10 @@ export async function placeBuy(params: BuyParams): Promise<OrderResult> {
       log.warn({ err }, "getBalanceAllowance(COLLATERAL) failed; proceeding with intent amount");
     }
 
+    // Capture baseline chain shares of this token BEFORE placing the order.
+    // Used to disambiguate `delayed + empty` responses from real kills.
+    const baselineShares = await readChainShares(client, params.tokenId);
+
     try {
       const resp: unknown = await client.createAndPostMarketOrder(
         {
@@ -185,15 +272,43 @@ export async function placeBuy(params: BuyParams): Promise<OrderResult> {
           dry: false,
         };
       }
-      // FOK semantics: must fill immediately or be killed. Polymarket V2 returns
-      // success=true with status="delayed" + empty making/taking when the FOK
-      // couldn't match (book moved, partial-only, etc). Treat that as failure.
+      // FOK semantics: must fill immediately or be killed. Polymarket V2 also
+      // returns `success=true` with `status="delayed"` and empty making/taking
+      // even when the trade later settles on chain. Disambiguate by polling
+      // getOrder(size_matched) and falling back to chain-balance delta.
       const filledShares = Number(r.takingAmount ?? 0);
       const txCount = r.transactionsHashes?.length ?? 0;
       if (filledShares <= 0 && txCount === 0) {
         log.warn(
           { status: r.status, making: r.makingAmount, taking: r.takingAmount, txs: txCount },
-          "placeBuy success=true but FOK didn't fill — treating as kill",
+          "placeBuy success=true but empty fill — disambiguating delayed vs kill",
+        );
+        const verdict = await disambiguateDelayedFill(
+          client,
+          r.orderID,
+          params.tokenId,
+          baselineShares,
+          "increase",
+        );
+        if (verdict.filled > 0) {
+          log.info(
+            { via: verdict.via, filled: verdict.filled, baselineShares },
+            "placeBuy: delayed → settled (post-poll)",
+          );
+          recordOutcome("placeBuy", "success_delayed", false);
+          return {
+            success: true,
+            clientOrderId,
+            clobOrderId: r.orderID,
+            status: r.status ?? "DELAYED_SETTLED",
+            takingAmount: String(verdict.filled),
+            raw: resp,
+            dry: false,
+          };
+        }
+        log.warn(
+          { status: r.status, baselineShares },
+          "placeBuy: delayed → confirmed kill after polling",
         );
         recordOutcome("placeBuy", "fok_unfilled", false);
         return {
@@ -265,7 +380,9 @@ export async function placeSell(params: SellParams): Promise<OrderResult> {
     span.setAttribute("order_type", params.orderType);
 
     // INV-M1 pre-flight: cap intent size to chain-balance.
+    // Also serves as `baselineShares` for delayed-fill disambiguation below.
     let effectiveSize = params.sizeShares;
+    let baselineShares = Number.NaN;
     try {
       const ba = (await client.getBalanceAllowance({
         asset_type: "CONDITIONAL",
@@ -273,7 +390,9 @@ export async function placeSell(params: SellParams): Promise<OrderResult> {
       } as Parameters<typeof client.getBalanceAllowance>[0])) as {
         balance?: string | number;
       };
-      const onChain = Number(ba.balance ?? 0);
+      // ERC1155 conditional tokens use 6 decimals on Polymarket.
+      const onChain = Number(ba.balance ?? 0) / 1e6;
+      baselineShares = onChain;
       if (onChain < params.sizeShares) {
         log.warn(
           { onChain, intended: params.sizeShares },
@@ -344,14 +463,42 @@ export async function placeSell(params: SellParams): Promise<OrderResult> {
         };
       }
       // For FOK SELL: must fill immediately or be killed. Same delayed-with-no-fill
-      // pattern as BUY — treat as failure so executor retries with widened slippage.
+      // pattern as BUY — disambiguate via getOrder polling and chain-balance delta
+      // before declaring kill. Avoids orphaned chain SELLs that settle async.
       if (params.orderType === "FOK") {
         const filled = Number(r.takingAmount ?? 0);
         const txCount = r.transactionsHashes?.length ?? 0;
         if (filled <= 0 && txCount === 0) {
           log.warn(
             { status: r.status, taking: r.takingAmount, txs: txCount },
-            "placeSell FOK didn't fill — treating as kill",
+            "placeSell FOK empty fill — disambiguating delayed vs kill",
+          );
+          const verdict = await disambiguateDelayedFill(
+            client,
+            r.orderID,
+            params.tokenId,
+            baselineShares,
+            "decrease",
+          );
+          if (verdict.filled > 0) {
+            log.info(
+              { via: verdict.via, filled: verdict.filled, baselineShares },
+              "placeSell FOK: delayed → settled (post-poll)",
+            );
+            recordOutcome("placeSell", "success_delayed", false);
+            return {
+              success: true,
+              clientOrderId,
+              clobOrderId: r.orderID,
+              status: r.status ?? "DELAYED_SETTLED",
+              takingAmount: String(verdict.filled),
+              raw: resp,
+              dry: false,
+            };
+          }
+          log.warn(
+            { status: r.status, baselineShares },
+            "placeSell FOK: delayed → confirmed kill after polling",
           );
           recordOutcome("placeSell", "fok_unfilled", false);
           return {
