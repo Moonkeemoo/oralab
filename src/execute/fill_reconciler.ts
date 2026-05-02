@@ -169,7 +169,10 @@ export class FillReconciler {
   }
 }
 
-export function fillReconcilerFromEnv(handler: FillHandler): FillReconciler {
+export function fillReconcilerFromEnv(
+  handler: FillHandler,
+  onConnect?: (cfg: { walletAddress: string }) => Promise<void> | void,
+): FillReconciler {
   const url =
     process.env["CLOB_WS_USER_URL"] ?? "wss://ws-subscriptions-clob.polymarket.com/ws/user";
   const required = (k: string): string => {
@@ -184,5 +187,6 @@ export function fillReconcilerFromEnv(handler: FillHandler): FillReconciler {
     apiPassphrase: required("POLY_API_PASSPHRASE"),
     walletAddress: required("POLY_WALLET_ADDRESS"),
     handler,
+    ...(onConnect ? { onConnect } : {}),
   });
 }

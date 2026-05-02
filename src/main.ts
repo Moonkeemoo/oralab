@@ -1,6 +1,7 @@
 import process from "node:process";
 import { closeDb } from "./db/client.js";
 import { DryFillSimulator } from "./execute/dry_filler.js";
+import { backfillFillsFromActivity } from "./execute/fill_backfill.js";
 import { DbFillHandler } from "./execute/fill_handler.js";
 import { fillReconcilerFromEnv } from "./execute/fill_reconciler.js";
 import { PositionMonitor } from "./monitor/position_monitor.js";
@@ -37,9 +38,16 @@ async function main(): Promise<void> {
   let reconciler: ReturnType<typeof fillReconcilerFromEnv> | null = null;
   if ((process.env["DRY_RUN"] ?? "true").toLowerCase() !== "true") {
     try {
-      reconciler = fillReconcilerFromEnv(new DbFillHandler());
+      const handler = new DbFillHandler();
+      reconciler = fillReconcilerFromEnv(handler, async ({ walletAddress }) => {
+        // On every WS open (initial + reconnect), backfill any missed fills
+        // from /activity within last 24h.
+        await backfillFillsFromActivity({ walletAddress, lookbackHours: 24 }, (event) =>
+          handler.onFill(event),
+        );
+      });
       reconciler.start();
-      logger.info("FillReconciler started (LIVE mode)");
+      logger.info("FillReconciler started (LIVE mode) with /activity backfill on connect");
     } catch (err) {
       logger.warn({ err }, "FillReconciler failed to init — continuing without it");
     }
