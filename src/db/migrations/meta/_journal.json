@@ -36,6 +36,13 @@
       "when": 1777759691123,
       "tag": "0004_spooky_vivisector",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1777760041546,
+      "tag": "0005_furry_mattie_franklin",
+      "breakpoints": true
     }
   ]
 }

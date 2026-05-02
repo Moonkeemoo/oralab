@@ -220,6 +220,7 @@ export const positions = pgTable(
     assetId: varchar("asset_id", { length: 96 }).notNull(),
     side: varchar("side", { length: 4 }).notNull(),
     status: varchar("status", { length: 16 }).notNull(),
+    mode: varchar("mode", { length: 8 }).notNull().default("DRY"),
     shares: doublePrecision("shares").notNull().default(0),
     fillPrice: doublePrecision("fill_price").notNull().default(0),
     peakPrice: doublePrecision("peak_price").notNull().default(0),
@@ -237,6 +238,7 @@ export const positions = pgTable(
   (t) => [
     index("idx_positions_user_status").on(t.userId, t.status),
     index("idx_positions_condition_asset").on(t.conditionId, t.assetId),
+    index("idx_positions_mode_status").on(t.mode, t.status),
     uniqueIndex("uq_positions_open_per_asset")
       .on(t.userId, t.assetId)
       .where(sql`status IN ('PENDING','FILLED','OPEN','EXITING','RESOLVED','FROZEN')`),
