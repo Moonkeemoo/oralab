@@ -57,6 +57,10 @@ import {
 const ACTIVE_STATUSES = ["PENDING", "FILLED", "OPEN", "EXITING"] as const;
 const PORT = Number(process.env["REST_PORT"] ?? 8081);
 
+function currentMode(): "DRY" | "LIVE" {
+  return (process.env["DRY_RUN"] ?? "true").toLowerCase() === "true" ? "DRY" : "LIVE";
+}
+
 interface InitDataValidation {
   ok: boolean;
   userId?: number;
@@ -112,14 +116,17 @@ function authenticate(req: http.IncomingMessage): InitDataValidation {
 
 async function handleStatus(): Promise<unknown> {
   const db = getDb();
+  const mode = currentMode();
   const active = await db.query.positions.findMany({
-    where: inArray(positions.status, [...ACTIVE_STATUSES]),
+    where: and(
+      eq(positions.mode, mode),
+      inArray(positions.status, [...ACTIVE_STATUSES]),
+    ),
     columns: { id: true, status: true },
   });
   const ks = await isRuntimeKillSwitchActive();
-  const dryRun = (process.env["DRY_RUN"] ?? "true").toLowerCase() === "true";
   return {
-    mode: dryRun ? "DRY" : "LIVE",
+    mode,
     killSwitch: ks,
     activePositions: active.length,
     byStatus: active.reduce<Record<string, number>>((acc, p) => {
@@ -132,7 +139,10 @@ async function handleStatus(): Promise<unknown> {
 async function handlePositions(): Promise<unknown> {
   const db = getDb();
   const rows = await db.query.positions.findMany({
-    where: inArray(positions.status, [...ACTIVE_STATUSES]),
+    where: and(
+      eq(positions.mode, currentMode()),
+      inArray(positions.status, [...ACTIVE_STATUSES]),
+    ),
     orderBy: desc(positions.id),
     limit: 50,
   });
@@ -158,6 +168,7 @@ async function handlePnl(req: http.IncomingMessage): Promise<unknown> {
   const db = getDb();
   const closed = await db.query.positions.findMany({
     where: and(
+      eq(positions.mode, currentMode()),
       eq(positions.status, "CLOSED"),
       gte(positions.lastStateChangeTs, sinceMs),
     ),
@@ -345,7 +356,11 @@ async function handleHistory(req: http.IncomingMessage): Promise<unknown> {
   const sinceMs = Date.now() - windowHours * 60 * 60 * 1000;
   const db = getDb();
   const rows = await db.query.positions.findMany({
-    where: and(eq(positions.status, "CLOSED"), gte(positions.lastStateChangeTs, sinceMs)),
+    where: and(
+      eq(positions.mode, currentMode()),
+      eq(positions.status, "CLOSED"),
+      gte(positions.lastStateChangeTs, sinceMs),
+    ),
     orderBy: desc(positions.id),
     limit: 200,
   });
@@ -517,7 +532,11 @@ async function handleKpi(req: http.IncomingMessage): Promise<unknown> {
   const signalsAccepted = sigRows.filter((r) => r.accepted).length;
 
   const closed = await db.query.positions.findMany({
-    where: and(eq(positions.status, "CLOSED"), gte(positions.lastStateChangeTs, sinceMs)),
+    where: and(
+      eq(positions.mode, currentMode()),
+      eq(positions.status, "CLOSED"),
+      gte(positions.lastStateChangeTs, sinceMs),
+    ),
   });
   let wins = 0;
   let totalEntry = 0;
