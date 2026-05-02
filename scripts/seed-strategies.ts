@@ -170,6 +170,70 @@ async function seed() {
         enabled: true,
         params: { minWhaleVolumeUsd: 50 },
       },
+      // ── Hard-safety bundle (ported 2026-05-02 audit) ────────────────────
+      {
+        strategyId: 1,
+        filterName: "entry_cooldown",
+        enabled: true,
+        params: { entryCooldownSec: 120 },
+      },
+      {
+        strategyId: 1,
+        filterName: "exit_reentry_cooldown",
+        enabled: true,
+        params: { exitReentryCooldownSec: 600 },
+      },
+      {
+        strategyId: 1,
+        filterName: "intraday_binary",
+        enabled: true,
+        params: { enabled: true },
+      },
+      {
+        strategyId: 1,
+        filterName: "post_resolution",
+        enabled: true,
+        params: {},
+      },
+      {
+        strategyId: 1,
+        filterName: "max_positions_per_event",
+        enabled: true,
+        params: { maxPerEvent: 3 },
+      },
+      // ── Conviction / wallet-quality / market-quality (observability) ────
+      // Thresholds at 0 = effectively-pass for soak; tune later. Critical
+      // is registering them so rejections surface in /api/filters traces.
+      {
+        strategyId: 1,
+        filterName: "conviction_gate",
+        enabled: true,
+        params: { thresholdProbe: 0.343, thresholdConfirm: 0.2063 },
+      },
+      {
+        strategyId: 1,
+        filterName: "trust_gate",
+        enabled: true,
+        params: { min: 0 },
+      },
+      {
+        strategyId: 1,
+        filterName: "sm_score",
+        enabled: true,
+        params: { min: 0 },
+      },
+      {
+        strategyId: 1,
+        filterName: "market_volume",
+        enabled: true,
+        params: { min: 0 },
+      },
+      {
+        strategyId: 1,
+        filterName: "bid_ask_spread_wide",
+        enabled: true,
+        params: { max: 0.08 },
+      },
     ])
     .onConflictDoNothing();
 
