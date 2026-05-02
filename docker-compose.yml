@@ -17,5 +17,63 @@ services:
       timeout: 5s
       retries: 5
 
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.115.1
+    container_name: ora2-otel
+    restart: unless-stopped
+    command: ["--config=/etc/otel/config.yaml"]
+    volumes:
+      - ./infra/otel-collector.yaml:/etc/otel/config.yaml:ro
+    ports:
+      - "4318:4318"  # OTLP HTTP (apps push here)
+      - "4317:4317"  # OTLP gRPC
+      - "8889:8889"  # Prometheus scrape endpoint
+    depends_on:
+      - prometheus
+      - loki
+
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    container_name: ora2-prom
+    restart: unless-stopped
+    volumes:
+      - ./infra/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ora2-prom-data:/prometheus
+    ports:
+      - "9091:9090"  # 9090 commonly taken locally; map to 9091
+
+  loki:
+    image: grafana/loki:3.3.2
+    container_name: ora2-loki
+    restart: unless-stopped
+    command: -config.file=/etc/loki/loki.yaml
+    volumes:
+      - ./infra/loki.yaml:/etc/loki/loki.yaml:ro
+      - ora2-loki-data:/tmp/loki
+    ports:
+      - "3100:3100"
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    container_name: ora2-grafana
+    restart: unless-stopped
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: "Admin"
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+    volumes:
+      - ./infra/grafana/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+      - ./infra/grafana/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml:ro
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - ora2-grafana-data:/var/lib/grafana
+    ports:
+      - "3001:3000"  # 3000 commonly taken; map to 3001
+    depends_on:
+      - prometheus
+      - loki
+
 volumes:
   ora2-pgdata:
+  ora2-prom-data:
+  ora2-loki-data:
+  ora2-grafana-data:

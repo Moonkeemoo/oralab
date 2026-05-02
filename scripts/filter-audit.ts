@@ -66,7 +66,11 @@ function readDecisions(): DecisionEntry[] {
 function readArchivedGz(stagingPath: string): string {
   const archDir = join(stagingPath, "archive");
   if (!existsSync(archDir)) return "";
-  const files = execSync(`ls ${archDir}/*.jsonl.gz 2>/dev/null || true`).toString().trim().split("\n").filter(Boolean);
+  const files = execSync(`ls ${archDir}/*.jsonl.gz 2>/dev/null || true`)
+    .toString()
+    .trim()
+    .split("\n")
+    .filter(Boolean);
   let combined = "";
   for (const f of files) {
     try {
@@ -107,7 +111,12 @@ function decide(name: string, s: FilterStat, totalDecisions: number): "port" | "
   return "review";
 }
 
-function format(stats: Map<string, FilterStat>, totalDecisions: number, oldest: number, newest: number): string {
+function format(
+  stats: Map<string, FilterStat>,
+  totalDecisions: number,
+  oldest: number,
+  newest: number,
+): string {
   const rows = Array.from(stats.entries())
     .map(([name, s]) => ({ name, ...s, decision: decide(name, s, totalDecisions) }))
     .sort((a, b) => b.skipCount - a.skipCount || b.fireCount - a.fireCount);
@@ -125,22 +134,34 @@ function format(stats: Map<string, FilterStat>, totalDecisions: number, oldest: 
   const md: string[] = [];
   md.push("# Filter Audit — week-1 spike");
   md.push("");
-  md.push(`> Source: \`oralab-v1-archive-2026-05-02.tar.gz\` → \`output/decision_log.jsonl\` (live) + \`output/archive/decision_log-*.jsonl.gz\` (archived).  `);
+  md.push(
+    `> Source: \`oralab-v1-archive-2026-05-02.tar.gz\` → \`output/decision_log.jsonl\` (live) + \`output/archive/decision_log-*.jsonl.gz\` (archived).  `,
+  );
   md.push(`> Window: ${tsFormat(oldest)} → ${tsFormat(newest)} (${windowLabel})  `);
   md.push(`> Total decisions: ${totalDecisions}  `);
   md.push(`> Generated: ${new Date().toISOString().slice(0, 19)}`);
   md.push("");
   if (tooShortWindow) {
-    md.push("> ⚠ **Caveat:** the audit window is much smaller than the planned 30 days. v1 was largely down");
-    md.push("> after CLOB V2 launched 2026-04-27 (`order_version_mismatch`), so the decision log captured only");
-    md.push("> the brief windows where the bot was up. \"cut\" decisions in this window may be premature —");
-    md.push("> a filter labeled `review` may simply not have had inputs that would trigger it. Re-run the audit");
+    md.push(
+      "> ⚠ **Caveat:** the audit window is much smaller than the planned 30 days. v1 was largely down",
+    );
+    md.push(
+      "> after CLOB V2 launched 2026-04-27 (`order_version_mismatch`), so the decision log captured only",
+    );
+    md.push(
+      '> the brief windows where the bot was up. "cut" decisions in this window may be premature —',
+    );
+    md.push(
+      "> a filter labeled `review` may simply not have had inputs that would trigger it. Re-run the audit",
+    );
     md.push("> against captured logs once v2 has 7+ days of DRY data (P3a).");
     md.push("");
   }
   md.push("## Method");
   md.push("");
-  md.push("- `fire_count` = decisions where the filter appeared in `filter_values` (it was checked)");
+  md.push(
+    "- `fire_count` = decisions where the filter appeared in `filter_values` (it was checked)",
+  );
   md.push("- `skip_count` = decisions where `skip_reason === filter_name` (it caused a skip)");
   md.push("- `port` = `hard_safety` always; OR skip_count > 0; OR fire_count ≥ 100");
   md.push("- `cut` = fire_count = 0 in window (filter never reached pipeline → dead)");
@@ -152,8 +173,11 @@ function format(stats: Map<string, FilterStat>, totalDecisions: number, oldest: 
   md.push("|---|---:|---:|---:|---|:---:|");
   for (const r of rows) {
     const pct = r.fireCount > 0 ? ((r.skipCount * 100) / r.fireCount).toFixed(1) : "0.0";
-    const badge = r.decision === "port" ? "**port**" : r.decision === "cut" ? "~~cut~~" : "_review_";
-    md.push(`| \`${r.name}\` | ${r.fireCount} | ${r.skipCount} | ${pct}% | ${tsFormat(r.lastFiredAt)} | ${badge} |`);
+    const badge =
+      r.decision === "port" ? "**port**" : r.decision === "cut" ? "~~cut~~" : "_review_";
+    md.push(
+      `| \`${r.name}\` | ${r.fireCount} | ${r.skipCount} | ${pct}% | ${tsFormat(r.lastFiredAt)} | ${badge} |`,
+    );
   }
   md.push("");
   md.push("## Summary");
@@ -167,8 +191,12 @@ function format(stats: Map<string, FilterStat>, totalDecisions: number, oldest: 
   md.push("## Notes");
   md.push("");
   md.push("- `hard_safety` is unconditional port (money-safety; see CLAUDE.md kickoff decisions).");
-  md.push("- `review` filters: fired but never caused skip in window. Likely 'always-pass with current params' — keep but consider tightening params, OR cut if confirmed dead.");
-  md.push("- v1 used Python filters in `core/filters/`; v2 ports logic to TypeScript with `Strategy.evaluate()` filter pipeline. See `docs/architecture.html` §10.");
+  md.push(
+    "- `review` filters: fired but never caused skip in window. Likely 'always-pass with current params' — keep but consider tightening params, OR cut if confirmed dead.",
+  );
+  md.push(
+    "- v1 used Python filters in `core/filters/`; v2 ports logic to TypeScript with `Strategy.evaluate()` filter pipeline. See `docs/architecture.html` §10.",
+  );
   md.push("");
   return md.join("\n");
 }
