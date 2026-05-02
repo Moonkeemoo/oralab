@@ -1,5 +1,8 @@
 import process from "node:process";
 import { logger } from "../obs/logger.js";
+import { isNotificationEnabled } from "./notification_settings.js";
+
+const SOLO_USER_ID = 1;
 
 /**
  * TelegramAlerter — outbound bot notifications via Telegram Bot API.
@@ -80,7 +83,7 @@ export class TelegramAlerter {
 
   // ── Convenience helpers (each returns boolean for test/observability) ──
 
-  buyPlaced(args: {
+  async buyPlaced(args: {
     positionId: number;
     asset: string;
     title?: string | undefined;
@@ -88,6 +91,7 @@ export class TelegramAlerter {
     price: number;
     usdSpent: number;
   }): Promise<boolean> {
+    if (!(await isNotificationEnabled(SOLO_USER_ID, "buy_placed"))) return false;
     const t = args.title ? args.title.slice(0, 80) : args.asset.slice(0, 12);
     return this.send(
       [
@@ -98,7 +102,7 @@ export class TelegramAlerter {
     );
   }
 
-  positionClosed(args: {
+  async positionClosed(args: {
     positionId: number;
     asset: string;
     title?: string | undefined;
@@ -106,6 +110,7 @@ export class TelegramAlerter {
     netPnlUsd: number;
     pnlPct: number;
   }): Promise<boolean> {
+    if (!(await isNotificationEnabled(SOLO_USER_ID, "position_closed"))) return false;
     const sign = args.netPnlUsd >= 0 ? "+" : "";
     const emoji = args.netPnlUsd >= 0 ? "🔵" : "🔴";
     const t = args.title ? args.title.slice(0, 80) : args.asset.slice(0, 12);
@@ -118,11 +123,12 @@ export class TelegramAlerter {
     );
   }
 
-  positionFrozen(args: {
+  async positionFrozen(args: {
     positionId: number;
     asset: string;
     reason: string;
   }): Promise<boolean> {
+    if (!(await isNotificationEnabled(SOLO_USER_ID, "position_frozen"))) return false;
     return this.send(
       [
         "❄️ <b>Position FROZEN — manual recovery required</b>",
@@ -132,7 +138,8 @@ export class TelegramAlerter {
     );
   }
 
-  killSwitchToggled(active: boolean, source: string): Promise<boolean> {
+  async killSwitchToggled(active: boolean, source: string): Promise<boolean> {
+    if (!(await isNotificationEnabled(SOLO_USER_ID, "kill_switch_toggled"))) return false;
     return this.send(
       active
         ? `⛔ <b>KILL_SWITCH ON</b> (source: ${escapeHtml(source)}) — new BUYs halted, SELLs continue`
@@ -140,7 +147,8 @@ export class TelegramAlerter {
     );
   }
 
-  fatalError(component: string, err: Error): Promise<boolean> {
+  async fatalError(component: string, err: Error): Promise<boolean> {
+    if (!(await isNotificationEnabled(SOLO_USER_ID, "fatal_error"))) return false;
     return this.send(
       [
         `🚨 <b>FATAL</b> in ${escapeHtml(component)}`,
