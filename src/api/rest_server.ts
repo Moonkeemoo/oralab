@@ -8,6 +8,7 @@ import { and, desc, eq, gte, inArray } from "drizzle-orm";
 import { getDb } from "../db/client.js";
 import { decisions, fills, positions, signals, strategies, whales } from "../db/schema.js";
 import { placeSell } from "../execute/order_manager.js";
+import { FILTER_REGISTRY } from "../filters/registry.js";
 import { loadEffectiveExitConfig } from "../monitor/exit_config_loader.js";
 import { writeAudit } from "../notify/audit_log.js";
 import { isRuntimeKillSwitchActive, setRuntimeKillSwitch } from "../notify/kill_switch.js";
@@ -408,6 +409,10 @@ async function handleFilterStats(req: http.IncomingMessage): Promise<unknown> {
     byReason,
     bottlenecks,
   };
+}
+
+async function handleFilterRegistry(): Promise<unknown> {
+  return { count: FILTER_REGISTRY.length, filters: FILTER_REGISTRY };
 }
 
 async function handleWhalesList(): Promise<unknown> {
@@ -848,6 +853,7 @@ export function createRestServer(): http.Server {
         }
         if (req.url === "/api/exit_config") return send(res, 200, await handleExitConfig());
         if (req.url?.startsWith("/api/history")) return send(res, 200, await handleHistory(req));
+        if (req.url === "/api/filters/registry") return send(res, 200, await handleFilterRegistry());
         if (req.url?.startsWith("/api/filters/stats")) return send(res, 200, await handleFilterStats(req));
         if (req.url === "/api/whales") return send(res, 200, await handleWhalesList());
         if (req.url === "/api/connections") return send(res, 200, await handleConnections());
