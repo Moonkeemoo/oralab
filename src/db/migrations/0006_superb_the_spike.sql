@@ -1,0 +1,1 @@
+ALTER TABLE "positions" ADD COLUMN "sports_hint" jsonb;

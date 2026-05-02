@@ -232,6 +232,13 @@ export const positions = pgTable(
     realizedPnlUsd: doublePrecision("realized_pnl_usd"),
     closeReason: varchar("close_reason", { length: 64 }),
     closeTxHash: varchar("close_tx_hash", { length: 66 }),
+    sportsHint: jsonb("sports_hint").$type<{
+      type: "game_ended";
+      gameId: string;
+      score: string;
+      league: string;
+      at: number;
+    } | null>(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
