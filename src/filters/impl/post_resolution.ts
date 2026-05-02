@@ -4,15 +4,22 @@ import { type Filter, PASS, SKIP } from "../types.js";
  * post_resolution — reject signals after market end date.
  * Ported from v1 hard_safety.PostResolutionEntryFilter.
  *
- * Reads endDate from market metadata stashed on signal.payload (set by feed
- * during market enrichment). Falls back to a no-op if no end date present.
+ * Reads endDate from `ctx.market.endDate` (canonical, populated by gamma
+ * fetch in routeInner). Also falls back to `signal.payload.endDate` /
+ * `marketEndDate` if some upstream path stashed it there. No-op if all
+ * three are absent or unparseable.
  */
 export const postResolution: Filter = {
   name: "post_resolution",
   description: "Reject entries after market endDate has passed",
   evaluate(ctx, _params) {
+    const market = ctx.market as unknown as Record<string, unknown> | null | undefined;
     const payload = ctx.signal.payload as Record<string, unknown>;
-    const endDateRaw = payload["endDate"] ?? payload["marketEndDate"] ?? null;
+    const endDateRaw =
+      (market && (market["endDate"] ?? market["endDateTs"])) ??
+      payload["endDate"] ??
+      payload["marketEndDate"] ??
+      null;
     if (!endDateRaw) return PASS({ v: 0, t: 0 });
 
     const endTs =
