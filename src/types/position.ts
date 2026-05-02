@@ -28,10 +28,12 @@ export interface PositionView {
   readonly side: "YES" | "NO";
   readonly status: PositionStatus;
   readonly shares: number;
+  readonly onChainShares: number;
   readonly fillPrice: number;
   readonly peakPrice: number;
   readonly fillTs: number;
   readonly lastStateChangeTs: number;
   readonly trailArmed: boolean;
   readonly sweepCount: number;
+  readonly reconciliationDriftPct: number;
 }
