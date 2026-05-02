@@ -3,11 +3,12 @@ import { fetchJson } from "../api.js";
 import { escapeHtml, fmtAge } from "../format.js";
 
 export async function renderMore(root) {
-  const [conns, perf, audit, build] = await Promise.all([
+  const [conns, perf, audit, build, lat] = await Promise.all([
     fetchJson("/api/connections"),
     fetchJson("/api/perf"),
     fetchJson("/api/audit?limit=30"),
     fetchJson("/api/build"),
+    fetchJson("/api/latency?windowHours=24"),
   ]);
   root.innerHTML = `
     <section class="card">
@@ -39,6 +40,25 @@ export async function renderMore(root) {
         <div class="kv"><span class="k">node</span><span class="v">${escapeHtml(perf.nodeVersion)}</span></div>
         <div class="kv"><span class="k">uptime</span><span class="v">${perf.uptimeSec}s</span></div>
         <div class="kv"><span class="k">rss memory</span><span class="v">${perf.memoryRssMb} MB</span></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-title">Latency · 24h${lat.bottleneck ? ` · bottleneck: ${escapeHtml(lat.bottleneck)}` : ""}</div>
+      <div class="card-body">
+        ${(lat.stages || []).length === 0 ? '<span class="muted">no timings yet</span>' : `
+          <table class="filters">
+            <tr><th>chain</th><th>stage</th><th>avg ms</th><th>count</th></tr>
+            ${(lat.stages || []).slice(0, 20).map((s) => `
+              <tr>
+                <td>${escapeHtml(s.chain)}</td>
+                <td>${escapeHtml(s.stage)}</td>
+                <td>${s.avgMs.toFixed(0)}</td>
+                <td>${s.count}</td>
+              </tr>
+            `).join("")}
+          </table>
+        `}
       </div>
     </section>
 
