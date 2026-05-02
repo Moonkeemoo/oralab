@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import process from "node:process";
-import { eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { getBookTop } from "../api/book.js";
 import type { DataActivity } from "../api/data.js";
 import { type GammaMarket, getMarketByTokenId } from "../api/gamma.js";
@@ -177,6 +177,23 @@ async function routeInner(
   }
   if (!market.acceptingOrders) {
     return { accepted: false, rejectReason: "market_not_accepting_orders" };
+  }
+
+  // Pre-check unique constraint uq_positions_open_per_asset — if we already
+  // have an active position on this asset (from another whale signal that
+  // raced ahead), bail cheaply instead of catching the duplicate-key DB
+  // error mid-INSERT (which currently crashes the routeInner promise).
+  const dbPre = getDb();
+  const existingActive = await dbPre.query.positions.findFirst({
+    where: and(
+      eq(positions.userId, cfg.userId),
+      eq(positions.assetId, signal.assetId),
+      inArray(positions.status, ["PENDING", "FILLED", "OPEN", "EXITING"] as const),
+    ),
+    columns: { id: true },
+  });
+  if (existingActive) {
+    return { accepted: false, rejectReason: "already_open_for_asset" };
   }
 
   const strategy = new WhaleFollowStrategy({
