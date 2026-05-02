@@ -9,9 +9,12 @@ import { positions, signals, strategies } from "../db/schema.js";
 import { canAffordEntry } from "../execute/budget.js";
 import { placeBuy } from "../execute/order_manager.js";
 import { recordOrder } from "../execute/order_recorder.js";
+import { telegramAlerterFromEnv } from "../notify/telegram.js";
 import { logger } from "../obs/logger.js";
 import { entryMutexWaitMs, entryRouteOutcome, whaleToBuyLatencyMs } from "../obs/metrics.js";
 import { withSpan } from "../obs/tracer.js";
+
+const alerter = telegramAlerterFromEnv();
 import { WhaleFollowStrategy } from "../strategies/whale_follow.js";
 import type { Signal } from "../types/signal.js";
 import { serializedEntry } from "./entry_mutex.js";
@@ -316,6 +319,19 @@ async function routeInner(
     },
     "BUY placed — position recorded",
   );
+
+  // Telegram alert (only LIVE — DRY runs would spam test channels)
+  if (!buy.dry && positionId > 0) {
+    void alerter.buyPlaced({
+      positionId,
+      asset: signal.assetId,
+      title: signal.payload["title"] as string | undefined,
+      shares: filledShares,
+      price: priceCeiling,
+      usdSpent: filledShares * priceCeiling,
+    });
+  }
+
   return {
     accepted: true,
     rejectReason: null,

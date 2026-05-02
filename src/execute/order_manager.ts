@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { OrderType, Side, type TickSize } from "@polymarket/clob-client-v2";
 import { getClobClient, isDryRun, isKillSwitchActive } from "../api/clob.js";
+import { isRuntimeKillSwitchActive } from "../notify/kill_switch.js";
 import { logger } from "../obs/logger.js";
 import { orderPlacementDurationMs, orderPlacementOutcome } from "../obs/metrics.js";
 import { withSpan } from "../obs/tracer.js";
@@ -175,7 +176,7 @@ export async function placeBuy(params: BuyParams): Promise<OrderResult> {
     correlationId: params.correlationId ?? null,
   });
 
-  if (isKillSwitchActive()) {
+  if (isKillSwitchActive() || (await isRuntimeKillSwitchActive())) {
     log.warn("KILL_SWITCH active — placeBuy rejected");
     recordOutcome("placeBuy", "kill_switch", isDryRun());
     return { success: false, clientOrderId, errorCode: "kill_switch", dry: isDryRun() };

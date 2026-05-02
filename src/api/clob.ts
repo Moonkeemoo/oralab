@@ -96,6 +96,12 @@ export function isDryRun(): boolean {
   return (process.env["DRY_RUN"] ?? "true").toLowerCase() === "true";
 }
 
+/**
+ * Synchronous env-driven kill-switch — checked at every placeBuy. The DB
+ * runtime switch (set by bot /pause command) is checked separately via
+ * isRuntimeKillSwitchActive() in the order_manager hot path so we don't
+ * make this an async call site.
+ */
 export function isKillSwitchActive(): boolean {
   return (process.env["KILL_SWITCH"] ?? "false").toLowerCase() === "true";
 }

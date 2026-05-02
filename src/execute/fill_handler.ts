@@ -1,9 +1,12 @@
 import { eq } from "drizzle-orm";
 import { getDb } from "../db/client.js";
 import { fills, positions } from "../db/schema.js";
+import { telegramAlerterFromEnv } from "../notify/telegram.js";
 import { logger } from "../obs/logger.js";
 import type { FillHandler, UserOrderEvent, UserTradeEvent } from "./fill_reconciler.js";
 import { findPositionIdByOrderId } from "./order_recorder.js";
+
+const alerter = telegramAlerterFromEnv();
 
 /**
  * On-chain fill consumer. INV-M3 lives here: closure_reason is written
@@ -138,6 +141,30 @@ export class DbFillHandler implements FillHandler {
         })
         .where(eq(positions.id, positionId));
       logger.info({ positionId, txHash, tsSec }, "position CLOSED (SELL filled on chain)");
+
+      // Compute net P&L from entry cost vs sum of SELL fills, fire Telegram alert.
+      try {
+        const sellFills = await db.query.fills.findMany({
+          where: eq(fills.positionId, positionId),
+        });
+        const sellTotal = sellFills
+          .filter((f) => f.side === "SELL")
+          .reduce((s, f) => s + Number(f.shares ?? 0) * Number(f.price ?? 0), 0);
+        const entryUsd = Number(pos.entryCostUsd ?? 0);
+        const netPnlUsd = sellTotal - entryUsd;
+        const pnlPct = entryUsd > 0 ? netPnlUsd / entryUsd : 0;
+        void alerter.positionClosed({
+          positionId,
+          asset: pos.assetId,
+          title: undefined,
+          closeReason: "chain_sell_filled",
+          netPnlUsd,
+          pnlPct,
+        });
+      } catch (err) {
+        logger.warn({ err, positionId }, "alerter.positionClosed prep failed");
+      }
     }
   }
 }
+
