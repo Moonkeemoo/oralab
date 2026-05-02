@@ -25,6 +25,19 @@ export async function openPositionSheet(id) {
       <div class="kv"><span class="k">age</span><span class="v">${fmtAge(Date.now() - (p.fillTs || Date.now()))}</span></div>
       ${p.closeReason ? `<div class="kv"><span class="k">close reason</span><span class="v">${escapeHtml(p.closeReason)}</span></div>` : ""}
 
+      <div class="card-title" style="margin-top:14px">Initiator</div>
+      <div class="kv"><span class="k">whale</span><span class="v"><code>${escapeHtml((data.initiator?.whaleAddress ?? "—").toString().slice(0, 14))}</code></span></div>
+      <div class="kv"><span class="k">whale size USD</span><span class="v">${data.initiator?.whaleSizeUsd ? "$" + Number(data.initiator.whaleSizeUsd).toFixed(2) : "—"}</span></div>
+      <div class="kv"><span class="k">conviction</span><span class="v">${data.initiator?.conviction ?? "—"}</span></div>
+      <div class="kv"><span class="k">trust score</span><span class="v">${data.initiator?.trustScore ?? "—"}</span></div>
+      <div class="kv"><span class="k">sm score</span><span class="v">${data.initiator?.smScore ?? "—"}</span></div>
+      <div class="kv"><span class="k">convergence (±60s)</span><span class="v">${data.initiator?.convergenceCount ?? 0}</span></div>
+
+      <div class="card-title" style="margin-top:14px">Verification</div>
+      <div class="kv"><span class="k">PnL source</span><span class="v">${escapeHtml(data.verification?.pnlSource ?? "—")}</span></div>
+      <div class="kv"><span class="k">exit tx</span><span class="v">${data.verification?.exitTxHash ? `<code>${escapeHtml(String(data.verification.exitTxHash).slice(0, 14))}…</code>` : "—"}</span></div>
+      ${data.verification?.anomaly ? '<div class="kv"><span class="k">⚠ anomaly</span><span class="v bad">flagged</span></div>' : ""}
+
       <div class="card-title" style="margin-top:14px">Timeline</div>
       <ol class="timeline">
         ${fills.map((f) => `
@@ -43,6 +56,7 @@ export async function openPositionSheet(id) {
             <b>${escapeHtml(String(d.action))}</b>
             <span class="muted">${escapeHtml(String(d.reason))}</span>
             <span class="muted">[${(d.gates || []).map(escapeHtml).join(", ")}]</span>
+            <span class="muted">${d.markSource ? escapeHtml(String(d.markSource)) : ""}${d.markFreshnessMs !== null && d.markFreshnessMs !== undefined ? " " + Math.round(d.markFreshnessMs) + "ms" : ""}</span>
           </li>`).join("")}
       </ul>
 
