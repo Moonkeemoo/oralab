@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ora et Labora v2 — Architecture (post-review)</title>
+<style>
+  :root {
+    --bg: #0d1117; --surface: #161b22; --surface-elev: #1c2230;
+    --border: #30363d; --text: #e8eaed; --text-muted: #8b949e;
+    --accent: #58a6ff; --accent-soft: rgba(88, 166, 255, 0.12);
+    --success: #56d364; --warning: #d29922; --danger: #f85149;
+    --port: #a371f7;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 14px; line-height: 1.55;
+    padding: 32px 40px 80px; max-width: 1280px; margin: 0 auto;
+  }
+  code, pre { font-family: 'SF Mono', Menlo, Monaco, Consolas, monospace; font-size: 12.5px; }
+  header.doc {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 8px; padding-bottom: 16px; border-bottom: 1px solid var(--border);
+  }
+  header.doc h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.3px; }
+  header.doc .meta { color: var(--text-muted); font-size: 12px; font-family: 'SF Mono', monospace; text-align: right; }
+  .subtitle { color: var(--text-muted); margin-top: 6px; margin-bottom: 28px; font-size: 13px; }
+  section {
+    margin-top: 28px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; overflow: hidden;
+  }
+  section > h2 {
+    font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px;
+    color: var(--accent); padding: 14px 20px; border-bottom: 1px solid var(--border);
+    background: var(--surface-elev);
+  }
+  section > h2 .num { color: var(--text-muted); margin-right: 10px; font-weight: 400; }
+  section > h2 .new { color: var(--success); margin-left: 8px; font-size: 10px; padding: 2px 6px; background: rgba(86, 211, 100, 0.12); border: 1px solid rgba(86, 211, 100, 0.4); border-radius: 4px; }
+  section > .body { padding: 20px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+  .card {
+    background: var(--surface-elev); border: 1px solid var(--border);
+    border-radius: 6px; padding: 14px 16px;
+  }
+  .card h3 { font-size: 13px; font-weight: 600; margin-bottom: 8px; color: var(--text); }
+  .card p { color: var(--text-muted); font-size: 13px; }
+  ul.clean { list-style: none; padding: 0; }
+  ul.clean li { padding: 4px 0; color: var(--text-muted); font-size: 13px; position: relative; padding-left: 18px; }
+  ul.clean li::before { content: "→"; position: absolute; left: 0; color: var(--accent); }
+  ul.clean li.x::before { content: "✕"; color: var(--danger); }
+  ul.clean li.ok::before { content: "✓"; color: var(--success); }
+  ul.clean li.warn::before { content: "⚠"; color: var(--warning); }
+  pre.code {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 6px; padding: 14px 16px; overflow-x: auto; color: #c9d1d9;
+  }
+  .kw { color: #ff7b72; } .fn { color: #d2a8ff; } .str { color: #a5d6ff; }
+  .com { color: #6e7681; font-style: italic; } .lit { color: #79c0ff; }
+  table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.tbl th, table.tbl td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.tbl th { color: var(--text-muted); font-weight: 500; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
+  table.tbl tr:last-child td { border-bottom: none; }
+  table.tbl td.mono { font-family: 'SF Mono', monospace; font-size: 12.5px; color: var(--accent); }
+  table.tbl td.muted { color: var(--text-muted); }
+  table.tbl td.id { font-family: 'SF Mono', monospace; font-size: 12px; color: var(--port); white-space: nowrap; }
+  table.tbl td.ok { color: var(--success); }
+  table.tbl td.warn { color: var(--warning); }
+  table.tbl td.danger { color: var(--danger); }
+  .pill {
+    display: inline-block; padding: 2px 8px; font-size: 11px; border-radius: 999px;
+    font-weight: 500; margin-right: 4px;
+  }
+  .pill.port { background: rgba(163, 113, 247, 0.15); color: var(--port); border: 1px solid rgba(163, 113, 247, 0.4); }
+  .pill.new { background: rgba(86, 211, 100, 0.12); color: var(--success); border: 1px solid rgba(86, 211, 100, 0.4); }
+  .pill.cut { background: rgba(248, 81, 73, 0.12); color: var(--danger); border: 1px solid rgba(248, 81, 73, 0.4); }
+  .pill.p1 { background: rgba(88, 166, 255, 0.15); color: var(--accent); border: 1px solid rgba(88, 166, 255, 0.4); }
+  .pill.p15 { background: rgba(86, 211, 100, 0.12); color: var(--success); border: 1px solid rgba(86, 211, 100, 0.4); }
+  .pill.p2 { background: rgba(210, 153, 34, 0.12); color: var(--warning); border: 1px solid rgba(210, 153, 34, 0.4); }
+  .pill.p3 { background: rgba(163, 113, 247, 0.15); color: var(--port); border: 1px solid rgba(163, 113, 247, 0.4); }
+  .pill.later { background: rgba(139, 148, 158, 0.12); color: var(--text-muted); border: 1px solid var(--border); }
+  .pill.solo { background: rgba(88, 166, 255, 0.15); color: var(--accent); border: 1px solid rgba(88, 166, 255, 0.4); }
+  .pill.multi { background: rgba(163, 113, 247, 0.15); color: var(--port); border: 1px solid rgba(163, 113, 247, 0.4); }
+  .pill.po { background: rgba(86, 211, 100, 0.12); color: var(--success); border: 1px solid rgba(86, 211, 100, 0.4); }
+  .pill.arch { background: rgba(88, 166, 255, 0.15); color: var(--accent); border: 1px solid rgba(88, 166, 255, 0.4); }
+  .pill.compromise { background: rgba(210, 153, 34, 0.12); color: var(--warning); border: 1px solid rgba(210, 153, 34, 0.4); }
+  .phone {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 18px;
+    padding: 12px 10px; aspect-ratio: 9 / 16;
+    display: flex; flex-direction: column; gap: 8px; overflow: hidden;
+  }
+  .phone .title { font-size: 11px; font-weight: 600; text-align: center; padding: 4px 0; border-bottom: 1px solid var(--border); }
+  .phone .row { background: var(--surface-elev); border-radius: 4px; padding: 6px 8px; font-size: 10px; color: var(--text-muted); }
+  .phone .row.accent { color: var(--accent); border-left: 2px solid var(--accent); }
+  .phone .row.danger { color: var(--danger); border-left: 2px solid var(--danger); }
+  .phone .row.success { color: var(--success); }
+  .phone .kpi { display: flex; justify-content: space-between; font-size: 10px; }
+  .phone .big { font-size: 14px; font-weight: 600; color: var(--text); text-align: center; padding: 6px; }
+  .svg-wrap { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 16px; overflow-x: auto; }
+  .quote {
+    border-left: 3px solid var(--accent); padding: 10px 16px;
+    background: var(--accent-soft); color: var(--text);
+    border-radius: 0 6px 6px 0; font-size: 13px;
+  }
+  .quote.warn { border-left-color: var(--warning); background: rgba(210, 153, 34, 0.08); }
+  .quote.danger { border-left-color: var(--danger); background: rgba(248, 81, 73, 0.08); }
+  .quote.po { border-left-color: var(--success); background: rgba(86, 211, 100, 0.08); }
+  .phase-row {
+    display: grid; grid-template-columns: 80px 100px 1fr 130px;
+    gap: 16px; align-items: start; padding: 10px 0; border-bottom: 1px solid var(--border);
+  }
+  .phase-row:last-child { border-bottom: none; }
+  .phase-row .ph { font-weight: 600; color: var(--accent); font-family: 'SF Mono', monospace; padding-top: 2px; }
+  .phase-row .wk { color: var(--text-muted); font-size: 12px; padding-top: 2px; }
+  .phase-row .desc { color: var(--text); font-size: 13px; }
+  .phase-row .deliv { font-size: 12px; text-align: right; padding-top: 2px; }
+  .invariant {
+    background: var(--surface-elev); border: 1px solid var(--border);
+    border-left: 3px solid var(--danger); border-radius: 6px;
+    padding: 12px 14px; font-size: 12.5px;
+  }
+  .invariant .id {
+    font-family: 'SF Mono', monospace; color: var(--danger);
+    font-weight: 600; margin-right: 8px;
+  }
+  .invariant.warn { border-left-color: var(--warning); }
+  .invariant.warn .id { color: var(--warning); }
+  .invariant.ops { border-left-color: var(--accent); }
+  .invariant.ops .id { color: var(--accent); }
+  .invariant .body { color: var(--text-muted); margin-top: 4px; }
+  footer { margin-top: 40px; color: var(--text-muted); font-size: 12px; text-align: center; padding: 20px; }
+  footer a { color: var(--accent); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<header class="doc">
+  <div>
+    <h1>Ora et Labora v2 — Architecture (post-review)</h1>
+    <div class="subtitle">TypeScript-native Polymarket bot · CLOB V2 ready · sports-focused · solo P1 → multi-user platform · Telegram Mini App</div>
+  </div>
+  <div class="meta">
+    <div>Revised 2026-05-02 (post PO+Architect review)</div>
+    <div>Status: SIGNED OFF — repo prep next</div>
+    <div>Companion: <a href="clob-v2-research.html" style="color:var(--accent);">clob-v2-research.html</a></div>
+  </div>
+</header>
+
+<!-- ===================== 01. NORTH STAR ===================== -->
+<section>
+  <h2><span class="num">01</span>North star</h2>
+  <div class="body">
+    <div class="quote">
+      <strong>"Least problems in LIVE, nothing gets stuck."</strong> Every design choice passes through this filter. Enemies: orphaned positions, phantom closures, stuck orders, false SL fires, drift between local state and chain truth, untyped errors that disappear silently, any path that bypasses <code>decide_exit</code>.
+    </div>
+    <div style="margin-top: 12px;" class="quote po">
+      <strong>Product north star (added post-review):</strong> alpha capture starts week 4, not week 8. Every week of pure planning past week 1 is foregone alpha. Sports-focused, sports-first, sports-only in P1.
+    </div>
+  </div>
+</section>
+
+<!-- ===================== 02. GOALS ===================== -->
+<section>
+  <h2><span class="num">02</span>Goals & Non-goals</h2>
+  <div class="body grid-2">
+    <div class="card">
+      <h3 style="color: var(--success);">Goals</h3>
+      <ul class="clean">
+        <li class="ok">P1 (weeks 1–3): solo bot, sports-only, on CLOB V2, production-quality</li>
+        <li class="ok">P1.5 (week 4): minimal SportsScoreReactor — alpha capture starts here</li>
+        <li class="ok">DB-first state model (Postgres from Day 1) — no JSON files as truth</li>
+        <li class="ok">10 V2 invariants enforced as failing tests before code (from <code>SPEC.md</code>)</li>
+        <li class="ok"><code>decide_exit</code> as a pure function — single source of exit truth</li>
+        <li class="ok">Observability stack from Day 1 — OTEL + Prometheus + Loki + Grafana</li>
+        <li class="ok">English-only platform UI / Mini App copy</li>
+        <li class="ok">UA-first GTM messaging (community, marketing, bot copy)</li>
+        <li class="ok">Multi-user-ready schema from Day 1 (user_id default 1 in P1, real users P3c)</li>
+        <li class="ok">Telegram Mini App as primary UI (Caddy /api route, no web dashboard)</li>
+        <li class="ok">Strategy pattern — vertical isolation, validated early via SportsScoreReactor</li>
+        <li class="ok">Continuous on-chain reconciliation with explicit eventual-consistency grace periods</li>
+        <li class="ok">Non-custodial primary (BYO smart wallet via ERC-1271), custodial opt-in P3c+</li>
+        <li class="ok">Builder rewards registered + populated from Day 1 (sized in week-1 spike)</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3 style="color: var(--danger);">Non-goals</h3>
+      <ul class="clean">
+        <li class="x">Multi-user, BYO wallet, custodial in P1 (deferred to P3c after solo LIVE proven 14d)</li>
+        <li class="x">Crypto strategies in P1 (sports-focused — crypto returns in P4+)</li>
+        <li class="x">Web dashboard (Mini App only — no Caddy basic auth, no Flask)</li>
+        <li class="x">Trading platforms beyond Polymarket</li>
+        <li class="x">Custom matching engine, market making, automated arbitrage routing</li>
+        <li class="x">Blank-slate rewrite without referencing v1 wisdom</li>
+        <li class="x">Dropping v1 LIVE before v2 has parity in DRY parallel run (7-day hard gate)</li>
+        <li class="x">SQLite or any single-writer DB (Postgres from Day 1)</li>
+        <li class="x">Bun in P1 production (Node 22 LTS first; Bun as P5+ optimization)</li>
+        <li class="x">Ukrainian platform UI / i18n in code (Claude↔Taras stays Ukrainian — that's separate)</li>
+        <li class="x">Python in trading hot path (calibrator service may stay Python — out of hot path)</li>
+        <li class="x">US-region operations until lawyer review (CFTC Polymarket precedent)</li>
+        <li class="x">Multi-user push without pricing validation waitlist signal</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== 03. TECH STACK ===================== -->
+<section>
+  <h2><span class="num">03</span>Tech stack</h2>
+  <div class="body">
+    <table class="tbl">
+      <tr><th>Layer</th><th>Choice</th><th>Rationale</th></tr>
+      <tr><td>Runtime</td><td class="mono">Node 22 LTS</td><td class="muted">Stable, mature, predictable for 24/7 trading bot. Bun considered as P5+ optimization once architecture proven.</td></tr>
+      <tr><td>HTTP framework</td><td class="mono">Hono</td><td class="muted">Modern, ergonomic, type-safe; works on Node and edge runtimes</td></tr>
+      <tr><td>Database</td><td class="mono">PostgreSQL 16</td><td class="muted">Postgres from Day 1 — 5+ services writing concurrently; SQLite would deadlock under WS bursts × 2Hz monitor × Mini App queries</td></tr>
+      <tr><td>ORM / migrations</td><td class="mono">drizzle-orm + drizzle-kit</td><td class="muted">TS-first, types from schema, SQL-like; works Postgres + future SQLite for tests</td></tr>
+      <tr><td>Polymarket SDK</td><td class="mono">@polymarket/clob-client-v2 v1.0.2</td><td class="muted">Only first-party V2-ready SDK with usable surface</td></tr>
+      <tr><td>Wallet / signing</td><td class="muted"><code>viem</code> + <code>@polymarket/clob-order-utils</code></td><td class="muted">viem for wallet client; clob-order-utils for V2 order signing</td></tr>
+      <tr><td>Real-time</td><td class="mono">native ws + @polymarket/real-time-data-client</td><td class="muted">Market WS + User WS + Sports WS (P1.5+) + RTDS (P4+)</td></tr>
+      <tr><td>Telegram bot</td><td class="mono">grammY</td><td class="muted">Modern TS-first, better types than Telegraf, active development</td></tr>
+      <tr><td>Mini App frontend</td><td class="mono">SvelteKit + @twa-dev/sdk + Tailwind</td><td class="muted">Smallest bundle, simpler reactive model than React for 5 screens</td></tr>
+      <tr><td>Validation</td><td class="mono">zod</td><td class="muted">Runtime validation of API requests, env vars, external response shapes</td></tr>
+      <tr><td>Observability</td><td class="mono">OpenTelemetry + Prometheus + Loki + Grafana</td><td class="muted">Self-hosted on Hetzner; metrics + traces + logs in one stack from Day 1</td></tr>
+      <tr><td>Tests</td><td class="mono">vitest + fast-check</td><td class="muted">Unit/integration + property tests for decide_exit</td></tr>
+      <tr><td>Lint / format</td><td class="mono">biome</td><td class="muted">Single tool replaces eslint + prettier</td></tr>
+      <tr><td>Calibrator service</td><td class="mono">Python (port v1) or TS</td><td class="muted">Out of trading hot path — separate service, language flexible. P3+ port if needed; P2 only stub-collects decision logs.</td></tr>
+      <tr><td>Process supervisor</td><td class="mono">systemd</td><td class="muted">Already on Hetzner; no Docker overhead</td></tr>
+      <tr><td>Reverse proxy</td><td class="mono">Caddy (existing)</td><td class="muted">Already serves oralab.xyz; add /api route to ora2-api</td></tr>
+      <tr><td>Static frontend</td><td class="mono">Cloudflare Pages</td><td class="muted">Free, fast, edge-cached; oralab.xyz/app routes here</td></tr>
+      <tr><td>Secrets / KMS</td><td class="mono">.env in P1; Vault + cloud KMS in P3c</td><td class="muted">P1 single-user — env file. P3c multi-user custodial — Vault or AWS/GCP KMS for master key</td></tr>
+    </table>
+    <div style="margin-top: 14px;" class="quote">
+      <strong>Discipline:</strong> TypeScript strict mode (no any, no implicit any, no unchecked indexes). Discriminated unions for status — never string status. Pure functions where possible — <code>decide_exit</code> MUST be pure.
+    </div>
+  </div>
+</section>
+
+<!-- ===================== 04. CLOB V2 REALITY ===================== -->
+<section>
+  <h2><span class="num">04</span>CLOB V2 reality (compressed)</h2>
+  <div class="body">
+    <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 12px;">
+      Full research in <a href="clob-v2-research.html" style="color:var(--accent);">clob-v2-research.html</a>. Compressed for architectural decisions:
+    </p>
+    <div class="grid-3">
+      <div class="card">
+        <h3><span class="pill new">CHANGED</span> Order struct</h3>
+        <p><span style="color:var(--danger);">Removed:</span> salt, nonce, feeRateBps, taker.<br><span style="color:var(--success);">Added:</span> timestamp, metadata, builder. Fees in USDC at match-time.</p>
+      </div>
+      <div class="card">
+        <h3><span class="pill new">CHANGED</span> Collateral</h3>
+        <p>USDC → pUSD (1:1 USDC-backed ERC-20). Conversion path on deposit/withdraw. Display in pUSD internally.</p>
+      </div>
+      <div class="card">
+        <h3><span class="pill new">UNLOCKED</span> ERC-1271</h3>
+        <p>Smart contract wallets first-class. <strong>Makes BYO non-custodial flow primary in P3c</strong> — Safe / AA wallet with backend as delegated signer. Lower legal exposure.</p>
+      </div>
+      <div class="card">
+        <h3><span class="pill new">UNLOCKED</span> Builder rewards</h3>
+        <p>Order struct has <code>builder</code> field. $1M reward pool announced. <strong>Week-1 spike: size expected $/month at our planned volume.</strong></p>
+      </div>
+      <div class="card">
+        <h3><span class="pill new">UNLOCKED</span> Sports WS</h3>
+        <p><code>wss://sports-api.polymarket.com/ws</code> — no auth. <strong>Promoted to P1.5 (alpha source for sports-focused bot).</strong></p>
+      </div>
+      <div class="card">
+        <h3><span class="pill cut">DEAD</span> v1 SDKs</h3>
+        <p>py-clob-client v0.34.6 returns <code>order_version_mismatch</code> on every order since April 27. No backward compat. v1 LIVE bots bleeding right now.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== 05. COMPONENT TOPOLOGY ===================== -->
+<section>
+  <h2><span class="num">05</span>Component topology</h2>
+  <div class="body">
+    <div class="svg-wrap">
+      <svg viewBox="0 0 1280 520" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;">
+        <defs>
+          <marker id="arr" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+            <path d="M0,0 L9,5 L0,10 z" fill="#8b949e"/>
+          </marker>
+          <marker id="arrAcc" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+            <path d="M0,0 L9,5 L0,10 z" fill="#58a6ff"/>
+          </marker>
+        </defs>
+        <style>
+          .box { fill: #1c2230; stroke: #30363d; stroke-width: 1.5; rx: 6; }
+          .box-ext { fill: #161b22; stroke: #30363d; stroke-dasharray: 4 3; rx: 6; }
+          .box-db { fill: #1c2230; stroke: #58a6ff; stroke-width: 2; rx: 6; }
+          .box-future { fill: #161b22; stroke: #a371f7; stroke-width: 1.2; stroke-dasharray: 2 2; rx: 6; }
+          .box-obs { fill: #1c2230; stroke: #56d364; stroke-width: 1.5; rx: 6; }
+          .lbl { fill: #e8eaed; font: 600 13px -apple-system, sans-serif; }
+          .lbl-sm { fill: #8b949e; font: 11px 'SF Mono', monospace; }
+          .lbl-future { fill: #a371f7; font: 600 11px 'SF Mono', monospace; }
+          .lbl-obs { fill: #56d364; font: 600 11px 'SF Mono', monospace; }
+          .arr { fill: none; stroke: #8b949e; stroke-width: 1.5; }
+          .arr-acc { fill: none; stroke: #58a6ff; stroke-width: 1.8; }
+          .grp { fill: #58a6ff; font: 600 11px 'SF Mono', monospace; letter-spacing: 0.5px; }
+        </style>
+
+        <text x="20" y="30" class="grp">EXTERNAL</text>
+        <rect class="box-ext" x="20" y="40" width="160" height="50"/>
+        <text class="lbl" x="100" y="62" text-anchor="middle">Polymarket WS</text>
+        <text class="lbl-sm" x="100" y="78" text-anchor="middle">market + user</text>
+
+        <rect class="box-ext" x="200" y="40" width="160" height="50"/>
+        <text class="lbl" x="280" y="62" text-anchor="middle">Polygon RPC</text>
+        <text class="lbl-sm" x="280" y="78" text-anchor="middle">on-chain fills</text>
+
+        <rect class="box-ext" x="380" y="40" width="160" height="50"/>
+        <text class="lbl" x="460" y="62" text-anchor="middle">CLOB V2 / Gamma / Data</text>
+        <text class="lbl-sm" x="460" y="78" text-anchor="middle">REST</text>
+
+        <rect class="box-ext" x="560" y="40" width="160" height="50"/>
+        <text class="lbl" x="640" y="62" text-anchor="middle">Sports WS</text>
+        <text class="lbl-sm" x="640" y="78" text-anchor="middle">P1.5 — alpha source</text>
+
+        <rect class="box-ext" x="1080" y="40" width="160" height="50"/>
+        <text class="lbl" x="1160" y="62" text-anchor="middle">Telegram</text>
+        <text class="lbl-sm" x="1160" y="78" text-anchor="middle">bot + Mini App</text>
+
+        <text x="20" y="160" class="grp">SERVICES (Hetzner)</text>
+        <rect class="box" x="20" y="170" width="160" height="80"/>
+        <text class="lbl" x="100" y="195" text-anchor="middle">ora2-feed</text>
+        <text class="lbl-sm" x="100" y="215" text-anchor="middle">WS + chain</text>
+        <text class="lbl-sm" x="100" y="232" text-anchor="middle">+ sports WS</text>
+
+        <rect class="box" x="200" y="170" width="320" height="80"/>
+        <text class="lbl" x="360" y="195" text-anchor="middle">ora2-trader</text>
+        <text class="lbl-sm" x="360" y="215" text-anchor="middle">strategies · evaluate · order · monitor</text>
+        <text class="lbl-sm" x="360" y="232" text-anchor="middle">decide_exit (pure) + ExitExecutor</text>
+
+        <rect class="box" x="540" y="170" width="160" height="80"/>
+        <text class="lbl" x="620" y="195" text-anchor="middle">ora2-api</text>
+        <text class="lbl-sm" x="620" y="215" text-anchor="middle">Hono</text>
+        <text class="lbl-sm" x="620" y="232" text-anchor="middle">REST + WS</text>
+
+        <rect class="box" x="720" y="170" width="160" height="80"/>
+        <text class="lbl" x="800" y="195" text-anchor="middle">ora2-bot</text>
+        <text class="lbl-sm" x="800" y="215" text-anchor="middle">grammY</text>
+        <text class="lbl-sm" x="800" y="232" text-anchor="middle">notify + entry</text>
+
+        <rect class="box" x="900" y="170" width="160" height="80"/>
+        <text class="lbl" x="980" y="195" text-anchor="middle">ora2-watchdog</text>
+        <text class="lbl-sm" x="980" y="215" text-anchor="middle">rule registry</text>
+        <text class="lbl-sm" x="980" y="232" text-anchor="middle">+ KILL_SWITCH</text>
+
+        <rect class="box-future" x="1080" y="170" width="180" height="80"/>
+        <text class="lbl-future" x="1170" y="195" text-anchor="middle">ora2-calibrator</text>
+        <text class="lbl-sm" x="1170" y="215" text-anchor="middle">P3+</text>
+        <text class="lbl-sm" x="1170" y="232" text-anchor="middle">Python OR TS</text>
+
+        <text x="20" y="290" class="grp">OBSERVABILITY (Hetzner — Day 1)</text>
+        <rect class="box-obs" x="20" y="300" width="280" height="50"/>
+        <text class="lbl-obs" x="160" y="320" text-anchor="middle">OTEL Collector</text>
+        <text class="lbl-sm" x="160" y="338" text-anchor="middle">traces + metrics + logs</text>
+
+        <rect class="box-obs" x="320" y="300" width="160" height="50"/>
+        <text class="lbl-obs" x="400" y="320" text-anchor="middle">Prometheus</text>
+        <text class="lbl-sm" x="400" y="338" text-anchor="middle">metrics</text>
+
+        <rect class="box-obs" x="500" y="300" width="160" height="50"/>
+        <text class="lbl-obs" x="580" y="320" text-anchor="middle">Loki</text>
+        <text class="lbl-sm" x="580" y="338" text-anchor="middle">logs</text>
+
+        <rect class="box-obs" x="680" y="300" width="160" height="50"/>
+        <text class="lbl-obs" x="760" y="320" text-anchor="middle">Grafana</text>
+        <text class="lbl-sm" x="760" y="338" text-anchor="middle">dashboards + alerts</text>
+
+        <rect class="box-db" x="320" y="390" width="240" height="60"/>
+        <text class="lbl" x="440" y="415" text-anchor="middle">PostgreSQL 16</text>
+        <text class="lbl-sm" x="440" y="432" text-anchor="middle">single source of truth · localhost:5432</text>
+
+        <text x="900" y="380" class="grp">FRONTEND</text>
+        <rect class="box" x="900" y="390" width="360" height="60"/>
+        <text class="lbl" x="1080" y="415" text-anchor="middle">Mini App (CF Pages)</text>
+        <text class="lbl-sm" x="1080" y="432" text-anchor="middle">SvelteKit · runs in Telegram · English copy</text>
+
+        <line class="arr-acc" x1="100" y1="90" x2="100" y2="170" marker-end="url(#arrAcc)"/>
+        <line class="arr-acc" x1="280" y1="90" x2="160" y2="170" marker-end="url(#arrAcc)"/>
+        <line class="arr" x1="460" y1="90" x2="380" y2="170" marker-end="url(#arr)"/>
+        <line class="arr-acc" x1="640" y1="90" x2="160" y2="170" marker-end="url(#arrAcc)"/>
+        <line class="arr" x1="1160" y1="90" x2="800" y2="170" marker-end="url(#arr)"/>
+
+        <line class="arr" x1="180" y1="210" x2="200" y2="210" marker-end="url(#arr)"/>
+        <line class="arr" x1="520" y1="210" x2="540" y2="210" marker-end="url(#arr)"/>
+        <line class="arr" x1="700" y1="210" x2="720" y2="210" marker-end="url(#arr)"/>
+
+        <line class="arr-acc" x1="360" y1="250" x2="440" y2="390" marker-end="url(#arrAcc)"/>
+        <line class="arr-acc" x1="620" y1="250" x2="480" y2="390" marker-end="url(#arrAcc)"/>
+        <line class="arr-acc" x1="980" y1="250" x2="500" y2="390" marker-end="url(#arrAcc)"/>
+        <line class="arr-acc" x1="1170" y1="250" x2="540" y2="390" stroke-dasharray="3 3" marker-end="url(#arrAcc)"/>
+
+        <line class="arr-acc" x1="700" y1="230" x2="900" y2="420" marker-end="url(#arrAcc)"/>
+        <line class="arr" x1="1160" y1="90" x2="1080" y2="390" stroke-dasharray="3 3" marker-end="url(#arr)"/>
+      </svg>
+    </div>
+    <div style="margin-top: 14px; color: var(--text-muted); font-size: 12.5px;">
+      <strong style="color:var(--accent);">Principle:</strong> services are stateless w.r.t. each other — they communicate via Postgres and WS. Each can restart independently without cascade-fail. Watchdog is read-only (journals + KILL_SWITCH only). All services emit OTEL traces/metrics/logs from Day 1. Calibrator is dashed — separate service, P3+, Python OR TS.
+    </div>
+  </div>
+</section>
+
+<!-- ===================== 06. OPERATIONAL CONCERNS ===================== -->
+<section>
+  <h2><span class="num">06</span>Operational concerns — observability, SLO, latency, alerts <span class="new">NEW</span></h2>
+  <div class="body">
+    <h3 style="font-size: 13px; color: var(--accent); margin-bottom: 10px;">SLO targets</h3>
+    <table class="tbl">
+      <tr><th>Metric</th><th>Target p99</th><th>Why it matters</th></tr>
+      <tr><td>whale_to_buy_latency</td><td class="mono">≤ 3000ms</td><td class="muted">end-to-end: whale fill detected → our BUY accepted by CLOB. v1 was 3.9s median; v2 should hold ≤3s</td></tr>
+      <tr><td>decide_exit_duration</td><td class="mono">≤ 50ms</td><td class="muted">pure function — anything above means accidental I/O leaked in</td></tr>
+      <tr><td>position_monitor_tick</td><td class="mono">≤ 200ms</td><td class="muted">full tick: snap fetch + decide_exit + (if exit) place order</td></tr>
+      <tr><td>order_placement_success</td><td class="mono">≥ 99%</td><td class="muted">of orders that pass safety gates (sell guard, floor, balance)</td></tr>
+      <tr><td>ws_uptime_per_connection</td><td class="mono">≥ 99.5%</td><td class="muted">with auto-reconnect; market WS, user WS, sports WS each tracked</td></tr>
+      <tr><td>reconciliation_drift_p95</td><td class="mono">≤ 5%</td><td class="muted">DB vs chain divergence within reconciliation window (after grace period)</td></tr>
+      <tr><td>error_budget_monthly</td><td class="mono">0 P0, ≤ 2 P1</td><td class="muted">P0 = money loss / stuck position; P1 = degraded service requiring manual</td></tr>
+    </table>
+
+    <h3 style="font-size: 13px; color: var(--accent); margin: 18px 0 10px;">Latency budget per stage</h3>
+    <table class="tbl">
+      <tr><th>Stage</th><th>Target p99</th><th>Notes</th></tr>
+      <tr><td>WS event ingest + dedup</td><td class="mono">100ms</td><td class="muted">normalize, dedup against chain listener events</td></tr>
+      <tr><td>Wallet match + signal build</td><td class="mono">100ms</td><td class="muted">DB lookup + payload construction</td></tr>
+      <tr><td>Filter pipeline (~17 filters)</td><td class="mono">200ms</td><td class="muted">all live filters from v1 audit</td></tr>
+      <tr><td>Sizing + budget gate</td><td class="mono">100ms</td><td class="muted">balance lookup + safety check</td></tr>
+      <tr><td>Order signing (viem)</td><td class="mono">100ms</td><td class="muted">EIP-712 sign + serialize</td></tr>
+      <tr><td>Order placement (HTTP)</td><td class="mono">800ms</td><td class="muted">round trip to CLOB, includes negRisk lookup if not cached</td></tr>
+      <tr><td>Buffer / network jitter</td><td class="mono">600ms</td><td class="muted">slack for one-time spikes</td></tr>
+      <tr><td><strong>Whale → BUY total</strong></td><td class="mono">≤ 3000ms</td><td class="muted">SLO target above</td></tr>
+    </table>
+
+    <h3 style="font-size: 13px; color: var(--accent); margin: 18px 0 10px;">Alert rules (top 10)</h3>
+    <table class="tbl">
+      <tr><th>Severity</th><th>Rule</th><th>Action</th></tr>
+      <tr><td class="danger">KILL</td><td>any INV-M{1,2,3,4,5} violation detected at runtime</td><td class="muted">automatic KILL_SWITCH + page Taras</td></tr>
+      <tr><td class="danger">KILL</td><td>position stuck in EXITING > 30min</td><td class="muted">automatic KILL_SWITCH + page Taras</td></tr>
+      <tr><td class="danger">KILL</td><td>wallet balance unexpected drop &gt; 10% in &lt; 1min</td><td class="muted">automatic KILL_SWITCH + page Taras</td></tr>
+      <tr><td class="danger">P0</td><td>WS feed disconnect &gt; 2min (any of 3 feeds)</td><td class="muted">page Taras</td></tr>
+      <tr><td class="danger">P0</td><td>0 trades in 5min during expected liveness window</td><td class="muted">page Taras (degraded liveness)</td></tr>
+      <tr><td class="warn">P1</td><td>position_monitor_tick p99 &gt; 1s sustained 5min</td><td class="muted">notify (latency creep)</td></tr>
+      <tr><td class="warn">P1</td><td>reconciliation_drift &gt; 5% sustained 3 ticks</td><td class="muted">notify + freeze affected position</td></tr>
+      <tr><td class="warn">P1</td><td>order_placement_success &lt; 95% over 1h</td><td class="muted">notify (CLOB issue or our bug)</td></tr>
+      <tr><td class="muted">P2</td><td>error_rate spike on any external API &gt; 5x baseline</td><td class="muted">log only</td></tr>
+      <tr><td class="muted">P2</td><td>builder rewards not registering (revenue lost)</td><td class="muted">log only, weekly review</td></tr>
+    </table>
+
+    <div style="margin-top: 14px;" class="quote">
+      <strong>Stack:</strong> OTEL Collector receives all traces/metrics/logs; routes metrics to Prometheus, logs to Loki. Grafana for dashboards (operator + executive views). Alerts via Grafana Alerting → Telegram bot + email. All on Hetzner same box. ~5 GB/month storage growth at expected volume.
+    </div>
+  </div>
+</section>
+
+<!-- ===================== 07. 10 INVARIANTS ===================== -->
+<section>
+  <h2><span class="num">07</span>The 10 V2 invariants (constitution)</h2>
+  <div class="body">
+    <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 14px;">
+      Distilled from 31 v1 invariants + 4 months of bug-fix experience. Source: <code>docs/rewrite/SPEC.md</code>. Each is a <strong>failing test</strong> in v2 before any code is written. Watchdog rules backstop them at runtime. <strong>P3c multi-user:</strong> M1 / M4 / D3 become per-user.
+    </p>
+    <h3 style="color: var(--danger); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Money-safety (5)</h3>
+    <div class="grid-2" style="gap: 10px;">
+      <div class="invariant"><span class="id">INV-M1</span><strong>Never sell more than on-chain shares.</strong><div class="body">Pre-flight balance check via <code>/positions</code> or <code>getBalanceAllowance</code>. <code>order.size = min(intent.size, free, on_chain)</code>. R21 backstop.</div></div>
+      <div class="invariant"><span class="id">INV-M2</span><strong>Never sell below outcome floor.</strong><div class="body"><code>floor = max(min_tick, expected_outcome_value × 0.3)</code>. R22 backstop.</div></div>
+      <div class="invariant"><span class="id">INV-M3</span><strong>Closure ONLY via on-chain SELL fill OR UMA-resolved.</strong><div class="body">Two paths only: <code>/activity</code> shows our SELL with tx hash, or <code>market.umaResolutionStatus === "resolved"</code>. <code>closure_reason</code> never written before fill confirmation (QA-181).</div></div>
+      <div class="invariant"><span class="id">INV-M4</span><strong>Atomic budget transaction.</strong><div class="body">Position update + entry-cost + exited-flag → single Postgres transaction. Crash mid-update → next-startup reconciliation detects delta. R9 backstop.</div></div>
+      <div class="invariant"><span class="id">INV-M5</span><strong>Never double-act on same trade.</strong><div class="body">VALID_TRANSITIONS enforced. <code>EXITING → EXITING</code> forbidden. Every exit_executor call: <code>if state !== "exiting" return</code>.</div></div>
+    </div>
+    <h3 style="color: var(--warning); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; margin: 18px 0 8px;">Data correctness (3)</h3>
+    <div class="grid-2" style="gap: 10px;">
+      <div class="invariant warn"><span class="id">INV-D1</span><strong>Source-of-truth hierarchy, never otherwise.</strong><div class="body"><code>/positions</code> = position truth. <code>/activity</code> = realized PnL truth. <code>gamma.outcomePrices</code> = odds truth. <code>/book</code> = bid/ask truth (NEVER /midpoint, NEVER mark*0.99 synthesis). All log/Telegram messages labeled "verified" or "local-only".</div></div>
+      <div class="invariant warn"><span class="id">INV-D2</span><strong>Mark staleness gate before SL/TP fires.</strong><div class="body"><code>decide_exit</code> returns HOLD if <code>mark_age_s &gt; 60</code> OR <code>bid &lt;= 0</code> OR <code>ask &gt;= 1</code> OR <code>spread/midpoint &gt; 50%</code>. Post-fill 5s debounce (QA-165). Spread gate uses real <code>/book</code> (QA-180).</div></div>
+      <div class="invariant warn"><span class="id">INV-D3</span><strong>Continuous reconciliation with explicit grace periods.</strong><div class="body">Position monitor 2Hz tick reconciles DB vs <code>/positions</code>. Eventual consistency expected — see reconciliation algorithm in section 08.</div></div>
+    </div>
+    <h3 style="color: var(--accent); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; margin: 18px 0 8px;">Operational (2)</h3>
+    <div class="grid-2" style="gap: 10px;">
+      <div class="invariant ops"><span class="id">INV-O1</span><strong>Circuit breaker on SDK calls.</strong><div class="body">Health check every 30s. &gt;2 consecutive fails → block new entries; existing exits via emergency path with <code>accept_loss=true</code>.</div></div>
+      <div class="invariant ops"><span class="id">INV-O2</span><strong>Bounded operations: timeout + retry + idempotency.</strong><div class="body">Every HTTP/RPC: <code>timeout=5s</code>, retry 3× with exponential backoff. Order placement idempotent via <code>client_order_id</code>. Cancel idempotent (404 = OK if expired).</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== 08. TRADING CORE ===================== -->
+<section>
+  <h2><span class="num">08</span>Trading core — <code>decide_exit</code>, ExitIntent, state machine, reconciliation algorithm</h2>
+  <div class="body">
+    <h3 style="font-size: 13px; color: var(--accent); margin-bottom: 8px;">decide_exit — pure function</h3>
+    <pre class="code"><span class="kw">type</span> <span class="fn">ExitAction</span> =
+  | <span class="str">"hold"</span>           <span class="com">// do nothing this tick</span>
+  | <span class="str">"sell_bid_probe"</span> <span class="com">// GTD@bid+1tick, 60s — first attempt</span>
+  | <span class="str">"sell_bid_aggr"</span>  <span class="com">// GTD@bid-1tick, 60s — eat spread (post-sweep)</span>
+  | <span class="str">"sell_fok"</span>       <span class="com">// FOK at any price >= floor — last resort</span>
+  | <span class="str">"redeem"</span>         <span class="com">// market resolved; CTF redeemPositions</span>
+  | <span class="str">"freeze"</span>;        <span class="com">// reconciliation conflict; halt action</span>
+
+<span class="kw">interface</span> <span class="fn">ExitIntent</span> {
+  action: ExitAction;
+  price: <span class="lit">number</span>;
+  size: <span class="lit">number</span>;
+  urgency: 1 | 2 | 3 | 4 | 5;
+  reason: <span class="lit">string</span>;
+  gates: <span class="lit">string</span>[];        <span class="com">// invariant IDs that fired (audit)</span>
+  snapshotTs: <span class="lit">number</span>;
+}
+
+<span class="com">// Pure. No I/O. ExitExecutor is the ONLY thing that mutates state.</span>
+<span class="kw">function</span> <span class="fn">decide_exit</span>(
+  pos: PositionView,         <span class="com">// immutable view</span>
+  snap: MarketSnapshot,      <span class="com">// validated mark + real bid/ask from /book</span>
+  cfg: ExitConfig,           <span class="com">// TP/SL/trailing thresholds</span>
+): ExitIntent;</pre>
+
+    <h3 style="font-size: 13px; color: var(--accent); margin: 18px 0 8px;">Decision tree (priority order)</h3>
+    <table class="tbl">
+      <tr><th>#</th><th>Condition</th><th>Action</th><th>Invariant</th></tr>
+      <tr><td>1</td><td>reconciliation conflict (DB ↔ chain)</td><td class="mono">FREEZE</td><td class="id">INV-D3</td></tr>
+      <tr><td>2</td><td>market RESOLVED</td><td class="mono">REDEEM</td><td class="id">INV-M3</td></tr>
+      <tr><td>3</td><td>on-chain size = 0</td><td class="mono">HOLD</td><td class="id">INV-M1</td></tr>
+      <tr><td>4</td><td>UMA window / NOT_ACCEPTING / CLOSED</td><td class="mono">HOLD</td><td class="muted">market state gate</td></tr>
+      <tr><td>5</td><td>post-entry &lt;5s + WS_BOOK source</td><td class="mono">HOLD</td><td class="id">INV-D2 / QA-165</td></tr>
+      <tr><td>6</td><td>mark stale OR wide spread (real /book)</td><td class="mono">HOLD</td><td class="id">INV-D2 / QA-180</td></tr>
+      <tr><td>7</td><td>SL emergency (-19%)</td><td class="mono">sell_bid_probe → sell_fok</td><td class="muted">post-sweep escalation</td></tr>
+      <tr><td>8</td><td>TP (+18%)</td><td class="mono">sell_bid_probe (GTD)</td><td class="muted">first attempt</td></tr>
+      <tr><td>9</td><td>trailing armed + giveback breach</td><td class="mono">sell_bid_probe (GTD)</td><td class="muted">trail trigger</td></tr>
+      <tr><td>10</td><td>SL standard (-10%)</td><td class="mono">sell_bid_probe → sell_bid_aggr</td><td class="muted">post-sweep undercut</td></tr>
+      <tr><td>11</td><td>(default)</td><td class="mono">HOLD</td><td class="muted">no signal</td></tr>
+    </table>
+    <p style="color: var(--text-muted); font-size: 12px; margin-top: 10px;">
+      Every SELL filtered through <code>_outcome_floor</code> (INV-M2). <code>price &lt; floor</code> → HOLD.
+    </p>
+
+    <h3 style="font-size: 13px; color: var(--accent); margin: 18px 0 8px;">Reconciliation algorithm (per-tick, expanded INV-D3)</h3>
+    <pre class="code"><span class="kw">async function</span> <span class="fn">reconcile_position</span>(pos: Position, now: <span class="lit">number</span>): <span class="kw">Promise</span>&lt;ReconResult&gt; {
+  <span class="kw">const</span> chain = <span class="kw">await</span> polymarket.getPositions({user: pos.wallet});
+  <span class="kw">const</span> chain_pos = chain.find(p =&gt; p.asset === pos.asset);
+  <span class="kw">const</span> age_s = (now - pos.last_state_change_ts) / 1000;
+
+  <span class="com">// Case 1: chain has nothing for this asset</span>
+  <span class="kw">if</span> (!chain_pos) {
+    <span class="kw">if</span> (pos.status === <span class="str">"PENDING"</span> &amp;&amp; age_s &lt; 30) <span class="kw">return</span> {action: <span class="str">"continue"</span>};
+    <span class="kw">if</span> (pos.status === <span class="str">"FILLED"</span> &amp;&amp; age_s &lt; 30) <span class="kw">return</span> {action: <span class="str">"continue"</span>};
+    <span class="kw">if</span> (pos.status === <span class="str">"EXITING"</span> &amp;&amp; age_s &lt; 60) <span class="kw">return</span> {action: <span class="str">"continue"</span>};
+
+    <span class="com">// Beyond grace — chain says "no position"</span>
+    <span class="kw">if</span> (pos.status === <span class="str">"EXITING"</span> &amp;&amp; <span class="kw">await</span> activity.findOurSell(pos)) {
+      <span class="kw">return</span> {action: <span class="str">"close"</span>, reason: <span class="str">"sell_filled_chain_lag"</span>};
+    }
+    <span class="com">// OPEN with no chain backing after 30s — phantom</span>
+    log(<span class="str">"CRITICAL"</span>, <span class="str">"position vanished from chain"</span>, pos);
+    <span class="kw">return</span> {action: <span class="str">"freeze"</span>, reason: <span class="str">"chain_invisible"</span>};
+  }
+
+  <span class="com">// Case 2: chain shows position; check size convergence</span>
+  <span class="kw">const</span> drift = <span class="fn">Math.abs</span>(chain_pos.size - pos.shares) / pos.shares;
+
+  <span class="kw">if</span> (drift &lt; 0.005) {
+    <span class="kw">return</span> {action: <span class="str">"ok"</span>, chain_size: chain_pos.size};
+  }
+
+  <span class="com">// Eventual consistency window (5-30s after our state change)</span>
+  <span class="kw">if</span> (age_s &lt; 30) {
+    <span class="kw">return</span> {action: <span class="str">"continue"</span>, note: <span class="str">"grace_period"</span>};
+  }
+
+  <span class="com">// Sustained drift — three thresholds</span>
+  <span class="kw">if</span> (drift &lt; 0.05) {
+    log(<span class="str">"WARN"</span>, <span class="str">"minor drift"</span>, {drift, pos});
+    <span class="kw">return</span> {action: <span class="str">"sync_to_chain"</span>, new_size: chain_pos.size};
+  }
+  <span class="kw">if</span> (drift &lt; 0.10) {
+    log(<span class="str">"P1"</span>, <span class="str">"meaningful drift"</span>, {drift, pos});
+    <span class="kw">return</span> {action: <span class="str">"freeze"</span>, reason: <span class="str">"drift_5_to_10"</span>};
+  }
+  <span class="com">// drift &gt;= 10%</span>
+  log(<span class="str">"P0"</span>, <span class="str">"major drift"</span>, {drift, pos});
+  <span class="kw">return</span> {action: <span class="str">"freeze"</span>, reason: <span class="str">"drift_over_10"</span>};
+}</pre>
+    <p style="color: var(--text-muted); font-size: 12.5px; margin-top: 10px;">
+      <strong style="color:var(--accent);">Recovery from FROZEN:</strong> human-only via Mini App "Resume" button. Operator confirms current chain state matches expectation. System resyncs DB to chain, allows resume to OPEN. No automatic recovery — frozen-then-broken would compound the issue.
+    </p>
+
+    <h3 style="font-size: 13px; color: var(--accent); margin: 18px 0 8px;">Position state machine — 7 states</h3>
+    <pre class="code">PENDING ──→ FILLED ──→ OPEN ──→ EXITING ──→ CLOSED
+                            │
+                            ↓
+                        RESOLVED ──→ CLOSED
+                            ↑
+PENDING ──→ FAILED ──→ FILLED   (ghost recovery path)
+                  └──→ CLOSED
+EXITING ──→ OPEN                (sell retry rollback)
+OPEN/EXITING ──→ FROZEN         (reconciliation conflict; manual recovery)</pre>
+  </div>
+</section>
+
+<!-- ===================== 09. DATA MODEL ===================== -->
+<section>
+  <h2><span class="num">09</span>Data model — Postgres, multi-user-ready from Day 1</h2>
+  <div class="body">
+    <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 12px;">
+      Every state-bearing table has <code>user_id BIGINT NOT NULL DEFAULT 1</code>. P1 has only one user (Taras, id=1). P3c multi-user is just removing the default and adding <code>users</code>/<code>wallets</code>/auth-related tables; <strong>no schema migration of existing tables</strong>.
+    </p>
+    <table class="tbl">
+      <tr><th>Table</th><th>Purpose</th><th>Phase</th></tr>
+      <tr><td class="mono">users</td><td class="muted">P1 stub: row id=1 for Taras. P3c: real users from Telegram</td><td><span class="pill solo">P1 stub</span> <span class="pill p3">P3c real</span></td></tr>
+      <tr><td class="mono">wallets</td><td class="muted">P1: one row id=1, env-driven. P3c: per-user. <code>mode</code>: byo (ERC-1271 smart wallet) / custodial (encrypted PK)</td><td><span class="pill solo">P1 stub</span> <span class="pill p3">P3c real</span></td></tr>
+      <tr><td class="mono">strategies</td><td class="muted">per-user vertical config (sports-only in P1)</td><td><span class="pill p1">P1</span></td></tr>
+      <tr><td class="mono">whales</td><td class="muted">tracked sports wallets per strategy</td><td><span class="pill p1">P1</span></td></tr>
+      <tr><td class="mono">markets</td><td class="muted">Polymarket market metadata + neg_risk + tick_size + min_size</td><td><span class="pill p1">P1</span></td></tr>
+      <tr><td class="mono">signals</td><td class="muted">incoming events: source (whale/sports_ws/manual), payload(jsonb), accepted, reject_reason</td><td><span class="pill p1">P1</span></td></tr>
+      <tr><td class="mono">positions</td><td class="muted">open + closed: status (7 states), peak_price, realized_pnl, close_reason</td><td><span class="pill p1">P1</span></td></tr>
+      <tr><td class="mono">orders</td><td class="muted">CLOB orders lifecycle: type, mode (FOK/FAK/GTD), client_order_id, attempts</td><td><span class="pill p1">P1</span></td></tr>
+      <tr><td class="mono">fills</td><td class="muted">on-chain fills (tx_hash, side, shares, price, ts) — replaces ghost-verify</td><td><span class="pill p1">P1</span></td></tr>
+      <tr><td class="mono">marks</td><td class="muted">current + historical marks: src, peak, ts, indexed by market_id</td><td><span class="pill p1">P1</span></td></tr>
+      <tr><td class="mono">lifecycle_events</td><td class="muted">append-only event log (event, payload jsonb, ts)</td><td><span class="pill p1">P1</span></td></tr>
+      <tr><td class="mono">strategy_filters</td><td class="muted">per-strategy filter overrides (jsonb params)</td><td><span class="pill p1">P1</span></td></tr>
+      <tr><td class="mono">decisions</td><td class="muted">decide_exit + filter audit log (input snapshot, output intent, gates)</td><td><span class="pill p15">P1.5</span></td></tr>
+      <tr><td class="mono">sports_events</td><td class="muted">Sports WS scores cache (game_id, league, score, period, status)</td><td><span class="pill p15">P1.5</span></td></tr>
+      <tr><td class="mono">kpi_snapshots</td><td class="muted">calibrator KPI rollups (period, win_rate, avg_pnl, conviction_bucket)</td><td><span class="pill p3">P3+</span></td></tr>
+      <tr><td class="mono">external_odds</td><td class="muted">P4: Pinnacle/OddsAPI snapshots (implied_prob, raw_odds, fetched_at)</td><td><span class="pill later">P4</span></td></tr>
+      <tr><td class="mono">audit_log</td><td class="muted">P3c: every signing op + withdrawal + admin action; append-only, replicated to cold storage</td><td><span class="pill p3">P3c</span></td></tr>
+      <tr><td class="mono">kill_switches</td><td class="muted">global + per-user/strategy stops (scope, reason, set_at)</td><td><span class="pill p1">P1</span></td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ===================== 10. STRATEGIES + PIPELINES ===================== -->
+<section>
+  <h2><span class="num">10</span>Strategies + signal pipelines</h2>
+  <div class="body">
+    <pre class="code"><span class="kw">interface</span> <span class="fn">Strategy</span> {
+  id: <span class="lit">string</span>;
+  type: <span class="lit">"whale_follow"</span> | <span class="lit">"sports_ws_reactor"</span> | <span class="lit">"sports_pre_event"</span>;
+  config: StrategyConfig;
+  signalSources(): SignalSource[];
+  evaluate(signal: Signal, market: Market): <span class="kw">Promise</span>&lt;Decision&gt;;
+  exitConfig(): ExitConfig;
+  sizing(decision: Decision, balance: <span class="lit">number</span>): <span class="lit">number</span>;
+}</pre>
+    <div class="grid-3" style="margin-top: 18px;">
+      <div class="card">
+        <h3><span class="pill p1">P1</span> WhaleFollowStrategy <span class="pill port">port v1 logic</span></h3>
+        <ul class="clean">
+          <li>SignalSource: market WS + chain listener</li>
+          <li>evaluate: pipeline of living hard-filters (audit week 1)</li>
+          <li>exit: TP/SL/trailing — port thresholds, fresh contract</li>
+          <li><strong>Sports-only whale list</strong> in P1 (crypto in P4+)</li>
+          <li>builder address populated on every order</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3><span class="pill p15">P1.5</span> SportsScoreReactor <span class="pill new">alpha source</span></h3>
+        <ul class="clean">
+          <li>SignalSource: <code>wss://sports-api.polymarket.com/ws</code></li>
+          <li>evaluate: score-event-driven (e.g., team scores → market hasn't repriced)</li>
+          <li>exit: convergence-bound or game-end-bound</li>
+          <li>sizing: small bets, high frequency</li>
+          <li><strong>Validates Strategy interface — abstraction watchpoint</strong></li>
+          <li>Minimal version: no external odds yet (those come P4)</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3><span class="pill later">P4+</span> SportsPreEventStrategy <span class="pill new">design target</span></h3>
+        <ul class="clean">
+          <li>SignalSource: MarketOpenDetector + ExternalOddsFetcher (Pinnacle / OddsAPI)</li>
+          <li>evaluate: EV calc (Pinnacle implied - Polymarket mid) &gt; threshold</li>
+          <li>exit: resolution-bound or convergence-bound</li>
+          <li>sizing: Kelly-fraction by edge magnitude</li>
+          <li>requires: EventMapper for Polymarket↔Pinnacle event-ID matching</li>
+        </ul>
+      </div>
+    </div>
+    <div style="margin-top: 14px;" class="quote warn">
+      <strong>Strategy abstraction watchpoint (P2 review):</strong> if SportsScoreReactor fits <code>Strategy</code> without interface compromise, abstraction is sound. If we end up patching <code>core/</code> to add it, that's the signal to split into <code>ContinuousStrategy</code> + <code>EventDrivenStrategy</code> + <code>ScheduledStrategy</code> before P3 freeze.
+    </div>
+
+    <div class="grid-2" style="margin-top: 18px;">
+      <div class="card">
+        <h3>WhaleFollow pipeline (P1)</h3>
+        <pre class="code">[Polymarket Market WS]
+       ↓ trade event
+[<span class="fn">FeedConsumer</span>]
+       ↓ normalize, dedup
+[<span class="fn">WalletMatcher</span>]   ← whales (DB)
+       ↓ matched? → strategy_id
+[<span class="fn">SignalRouter</span>]
+       ↓ persist Signal
+[<span class="fn">Strategy.evaluate</span>] ← filters (DB)
+       ↓ Decision
+   skip → log + done
+   enter ↓
+[<span class="fn">Sizer</span>]            ← balance
+       ↓ shares
+[<span class="fn">OrderManager</span>]
+       ↓ FOK BUY (clob-client-v2)
+       ↓ builder field populated
+[<span class="fn">FillReconciler</span>]   ← User WS
+       ↓ position OPEN
+[<span class="fn">PositionMonitor</span>]  (2 Hz)
+       ↓ snap + decide_exit
+[<span class="fn">ExitExecutor</span>]
+       ↓ on SELL_*
+[GTD/FOK SELL]
+       ↓ User WS confirms
+[lifecycle: CLOSED]</pre>
+      </div>
+      <div class="card">
+        <h3>SportsScoreReactor pipeline (P1.5)</h3>
+        <pre class="code">[Sports WS] (no auth)
+       ↓ game state event
+[<span class="fn">SportsEventConsumer</span>]
+       ↓ persist sports_events row
+       ↓ map game_id → market_id
+[<span class="fn">MarketMatcher</span>]    ← markets (DB)
+       ↓ active sports market?
+[<span class="fn">SignalRouter</span>]
+       ↓ Signal {source: sports_ws}
+[<span class="fn">Strategy.evaluate</span>] ← reactor rules
+       ↓ Decision
+   skip → done
+   enter ↓
+[<span class="fn">Sizer</span>]            (shared)
+[<span class="fn">OrderManager</span>]    (shared)
+       ↓
+[position OPEN]
+[<span class="fn">PositionMonitor</span>]  (shared)
+[<span class="fn">ExitExecutor</span>]    (shared)</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== 11. WALLET MODELS ===================== -->
+<section>
+  <h2><span class="num">11</span>Wallet models — non-custodial primary</h2>
+  <div class="body">
+    <div class="grid-3">
+      <div class="card">
+        <h3><span class="pill p1">P1</span> Solo (Taras, env)</h3>
+        <p style="color: var(--text-muted); font-size: 13px;">Single env-driven private key, signature-type 1 (proxy/funder). Same as v1. <code>wallets</code> table has one row id=1; <code>users.wallet_mode = "env"</code>. No encryption, no key rotation, no per-user logic. Schema is multi-user-shaped but only one user exists.</p>
+      </div>
+      <div class="card">
+        <h3><span class="pill p3">P3c primary</span> BYO (smart wallet)</h3>
+        <p style="color: var(--text-muted); font-size: 13px;">User connects their own EOA via Telegram WebApp (or external WC). User deploys Safe / AA wallet with our backend signer key as delegated signer via ERC-1271. We sign orders on their behalf. <strong>User retains full custody — can revoke our signer at any time.</strong> Lower legal exposure, cleaner UX. <strong>Default option in P3c.</strong></p>
+      </div>
+      <div class="card">
+        <h3><span class="pill p3">P3c opt-in</span> Custodial (Polycop-style)</h3>
+        <p style="color: var(--text-muted); font-size: 13px;">User explicitly opts in. We generate EOA, store encrypted PK with KMS-style master key (Vault on Hetzner second box, or external AWS/GCP KMS). Trade on user's behalf. Audit log of every signing op (append-only, replicated to cold storage). Withdrawal 2FA via Telegram. Higher security/legal burden — see Multi-user security section.</p>
+      </div>
+    </div>
+    <div style="margin-top: 14px;" class="quote po">
+      <strong>Why non-custodial primary:</strong> custodial = MiCA/BSA territory. BYO via ERC-1271 means we're software-as-a-service on top of user's own funds, not a custodian. Legal exposure dramatically lower. Pricing later may differentiate (e.g., free for BYO, fee-share for custodial — convenience tax).
+    </div>
+  </div>
+</section>
+
+<!-- ===================== 12. MULTI-USER SECURITY ===================== -->
+<section>
+  <h2><span class="num">12</span>Multi-user security architecture <span class="new">NEW</span></h2>
+  <div class="body">
+    <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 12px;">
+      Activates in P3c. P1/P2 single-user has no security surface beyond .env hygiene. <strong>This section is a placeholder for a deeper security design doc to be written before P3c kickoff.</strong>
+    </p>
+
+    <h3 style="font-size: 13px; color: var(--accent); margin-bottom: 8px;">Master key / KMS</h3>
+    <table class="tbl">
+      <tr><th>Option</th><th>Pros</th><th>Cons</th></tr>
+      <tr><td class="mono">HashiCorp Vault</td><td class="muted">Self-host, full control, free</td><td class="muted">Operational burden; needs auto-unseal (cloud KMS or manual)</td></tr>
+      <tr><td class="mono">AWS KMS</td><td class="muted">Battle-tested, FIPS-validated, cheap</td><td class="muted">Cross-cloud dependency from Hetzner</td></tr>
+      <tr><td class="mono">GCP KMS</td><td class="muted">Same as AWS, multi-region available</td><td class="muted">Same cross-cloud</td></tr>
+      <tr><td class="mono">libsodium + offline backup (MVP)</td><td class="muted">No infra, simplest</td><td class="muted">Manual backup procedure; recovery requires offline material</td></tr>
+    </table>
+    <p style="color: var(--text-muted); font-size: 12px; margin-top: 8px;">
+      <strong>P3c MVP:</strong> libsodium with master key in env, master key backed up offline (paper + vault). Migration to Vault before public open beta if user count &gt; 20.
+    </p>
+
+    <h3 style="font-size: 13px; color: var(--accent); margin: 18px 0 8px;">Key rotation</h3>
+    <ul class="clean">
+      <li>Master key: rotate every 90 days; re-encrypt all custodial PKs under new master</li>
+      <li>Per-user wallet PK: never (stable identity = stable address)</li>
+      <li>API auth tokens (Mini App ↔ ora2-api): JWT with 24h expiry</li>
+      <li>Telegram bot token: rotate annually or on suspicion</li>
+    </ul>
+
+    <h3 style="font-size: 13px; color: var(--accent); margin: 18px 0 8px;">Audit log requirements</h3>
+    <ul class="clean">
+      <li><code>audit_log</code> table: append-only (no UPDATE/DELETE permission to app role)</li>
+      <li>Every signing op: timestamp, user_id, wallet, action, payload hash</li>
+      <li>Every withdrawal init/confirm/cancel</li>
+      <li>Every admin action (kill switch, force close, balance correction)</li>
+      <li>Replicate to cold storage (Hetzner Object Storage / Backblaze B2) hourly</li>
+      <li>Retention: minimum 7 years (regulatory anchor)</li>
+    </ul>
+
+    <h3 style="font-size: 13px; color: var(--accent); margin: 18px 0 8px;">Withdrawal 2FA flow</h3>
+    <pre class="code">1. User initiates withdrawal in Mini App
+2. ora2-api creates pending withdrawal, generates confirmation_id
+3. ora2-bot sends Telegram DM:
+   "Confirm withdrawal of $X to 0x... (60s expiry)
+    [✓ Confirm] [✗ Cancel]"
+4. User taps Confirm in Telegram (signs with their TG identity)
+5. ora2-api verifies BOTH:
+   - Mini App initiated this confirmation_id
+   - Telegram callback came from same user_id within 60s
+6. If both yes → execute on-chain withdrawal
+7. If timeout / cancel / mismatch → reject + audit_log entry</pre>
+
+    <h3 style="font-size: 13px; color: var(--accent); margin: 18px 0 8px;">Breach response plan</h3>
+    <ul class="clean">
+      <li class="warn">Immediate: KILL_SWITCH global → halt all trading + freeze all positions</li>
+      <li class="warn">&lt;1h: master key rotation → re-encrypt all custodial PKs</li>
+      <li class="warn">&lt;4h: pre-drafted incident comms via Telegram bot to all users</li>
+      <li class="warn">&lt;24h: postmortem + remediation timeline</li>
+      <li class="muted">Insurance: 0 in P3c (too small initially); reconsider at &gt;100 users / &gt;$100k AUM</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ===================== 13. BACKTEST INFRASTRUCTURE ===================== -->
+<section>
+  <h2><span class="num">13</span>Backtest infrastructure <span class="new">NEW</span></h2>
+  <div class="body">
+    <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 12px;">
+      Strategy validation is impossible without replay. Especially critical before SportsScoreReactor (P1.5) and SportsPreEventStrategy (P4) — these are new alpha sources we must validate offline before LIVE.
+    </p>
+    <h3 style="font-size: 13px; color: var(--accent); margin-bottom: 8px;">P1 — capture only</h3>
+    <ul class="clean">
+      <li>All inbound WS events appended to <code>capture_logs</code> (Postgres or local jsonl) with ts and source</li>
+      <li>All <code>/book</code> snapshots polled at decision-tick (3-5s TTL cache exposes them anyway)</li>
+      <li>All <code>/positions</code> snapshots at decision time</li>
+      <li>All Decisions made by <code>Strategy.evaluate</code> (input + output)</li>
+      <li>All ExitIntents from <code>decide_exit</code> (input + output + gates)</li>
+      <li>All order placement attempts + responses + fills</li>
+      <li>Storage: ~500MB/month at expected volume. Rotate to cold storage monthly.</li>
+    </ul>
+
+    <h3 style="font-size: 13px; color: var(--accent); margin: 18px 0 8px;">P2 — replay engine</h3>
+    <ul class="clean">
+      <li>Read capture log → simulate WS feed → run through Strategy.evaluate</li>
+      <li>Compare reproducible outputs vs production decisions (regression detection)</li>
+      <li>Useful for: tuning thresholds before LIVE, validating new strategies, post-incident replay</li>
+      <li>Built into <code>vitest</code> test suite as integration tests with fixtures</li>
+    </ul>
+
+    <h3 style="font-size: 13px; color: var(--accent); margin: 18px 0 8px;">P3+ — strategy validation harness</h3>
+    <ul class="clean">
+      <li>Fixed period replay (e.g., last 30 days)</li>
+      <li>Threshold sweep (grid search across TP / SL / trailing parameters)</li>
+      <li>Output: per-variant Sharpe ratio, max drawdown, win-rate, total $ pnl</li>
+      <li>Integrate with calibrator (P3+) — automated tuning via Bayesian optimization</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ===================== 14. DEPLOYMENT + MINI APP ===================== -->
+<section>
+  <h2><span class="num">14</span>Deployment + Mini App UI</h2>
+  <div class="body">
+    <table class="tbl" style="margin-bottom: 16px;">
+      <tr><th>Process</th><th>Purpose</th><th>Phase</th></tr>
+      <tr><td class="mono">ora2-trader</td><td>main loop · strategies · order · position monitor · exit_executor</td><td><span class="pill p1">P1</span></td></tr>
+      <tr><td class="mono">ora2-feed</td><td>market WS + user WS + chain listener (viem); sports WS added P1.5</td><td><span class="pill p1">P1</span></td></tr>
+      <tr><td class="mono">ora2-api</td><td>Hono REST + WS endpoints for Mini App</td><td><span class="pill p2">P2</span></td></tr>
+      <tr><td class="mono">ora2-bot</td><td>grammY bot · notifications + Mini App entry button + 2FA confirmations</td><td><span class="pill p2">P2</span></td></tr>
+      <tr><td class="mono">ora2-watchdog</td><td>rule registry tail · KILL_SWITCH + alerts</td><td><span class="pill p1">P1</span></td></tr>
+      <tr><td class="mono">ora2-calibrator</td><td>async insights + KPI rollups; Python OK; out of trading hot path</td><td><span class="pill p3">P3+</span></td></tr>
+      <tr><td>OTEL stack</td><td>collector + Prometheus + Loki + Grafana</td><td><span class="pill p1">P1</span></td></tr>
+      <tr><td>Postgres 16</td><td>single source of truth</td><td><span class="pill p1">P1</span></td></tr>
+    </table>
+
+    <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 12px;">
+      <strong style="color:var(--accent);">Mini App UI (5 screens, English platform copy):</strong>
+    </p>
+    <div class="grid-5">
+      <div class="phone">
+        <div class="title">Home</div>
+        <div class="row danger">⚠ KILL SWITCH · OFF</div>
+        <div class="big">+$23.40</div>
+        <div class="kpi"><span>Today</span><span style="color:var(--success);">+12%</span></div>
+        <div class="row"><strong>Open</strong> · 4 positions</div>
+        <div class="row"><strong>Strategies</strong> · 2 active</div>
+        <div class="row accent">Last signal · 12s ago</div>
+        <div class="row success">✓ All services healthy</div>
+      </div>
+      <div class="phone">
+        <div class="title">Positions</div>
+        <div class="row accent">Lakers ML · YES · 0.62 → 0.71<br><span style="color:var(--success);">+$8.40 verified</span></div>
+        <div class="row accent">Trump 2028 · NO · 0.30 → 0.27<br><span style="color:var(--success);">+$3.10 verified</span></div>
+        <div class="row accent">BTC $100k EOY · YES · 0.45 → 0.41<br><span style="color:var(--danger);">−$2.20 verified</span></div>
+        <div class="row accent">Chiefs win · YES · 0.55 → 0.58<br><span style="color:var(--success);">+$1.80 local</span></div>
+      </div>
+      <div class="phone">
+        <div class="title">Signals</div>
+        <div class="row success">✓ Lakers ML · whale 0xab12<br><span style="color:var(--text-muted);">12s ago · sports</span></div>
+        <div class="row" style="color:var(--danger);">✕ Mavs ML<br><span style="color:var(--text-muted);">filter: liquidity_drought</span></div>
+        <div class="row success">✓ Chiefs (sports WS reactor)<br><span style="color:var(--text-muted);">8 min ago · score event</span></div>
+        <div class="row" style="color:var(--danger);">✕ Election 2028<br><span style="color:var(--text-muted);">filter: midnight_window</span></div>
+      </div>
+      <div class="phone">
+        <div class="title">Insights (P3+)</div>
+        <div class="row accent">Best filter: conv ≥ 0.7<br><span style="color:var(--success);">win-rate 64%</span></div>
+        <div class="row accent">Worst hour: 02–05 UTC<br><span style="color:var(--danger);">−$11 net 7d</span></div>
+        <div class="row accent">Top whale: 0xab12<br>+$48 last 30d</div>
+        <div class="row" style="font-size:9px;color:var(--text-muted);">Calibrator surfaces 3-5 actionable insights/week</div>
+      </div>
+      <div class="phone">
+        <div class="title">Settings</div>
+        <div class="row danger">⚠ KILL SWITCH</div>
+        <div class="row danger">Force close all positions</div>
+        <div class="row">DRY mode · ON</div>
+        <div class="row">Min edge · 5%</div>
+        <div class="row">Max position · 50 sh</div>
+        <div class="row" style="font-size:9px;color:var(--text-muted);">~10 settings total. No knob without "what would I act on this for?"</div>
+      </div>
+    </div>
+    <div style="margin-top: 14px;" class="quote">
+      <strong>Caddy adds one route:</strong> <code>oralab.xyz/api/* → localhost:4313</code> (ora2-api). Mini App static is on Cloudflare Pages, hits API via CORS. Stale Flask dashboard on :4312 stays running while v1 is LIVE so Taras has fallback during P3a parallel run.
+    </div>
+    <div style="margin-top: 12px;" class="quote po">
+      <strong>Language convention:</strong> platform code/UI = English (no i18n debt). GTM messaging (Telegram bot copy in onboarding, community channel announcements, marketing) = UA-first for Slavic market acquisition; switch multi-lang only if &gt;50 users from other regions request.
+    </div>
+  </div>
+</section>
+
+<!-- ===================== 15. PHASE PLAN ===================== -->
+<section>
+  <h2><span class="num">15</span>Phase plan (post-compromise timeline)</h2>
+  <div class="body">
+    <div class="phase-row">
+      <div class="ph">Wk 1</div>
+      <div class="wk">Spike</div>
+      <div class="desc"><strong>Foundation + week-1 spikes.</strong> Project scaffold (Node 22 + Hono + drizzle + Postgres + clob-client-v2 + viem + grammY). Initial CLAUDE.md + repo structure. <strong>Builder rewards spike</strong> — calculate expected $/month at planned volume. <strong>Competitive analysis spike</strong> — Polycop + others (1 day). Observability stack stood up on Hetzner.</div>
+      <div class="deliv"><span class="pill p1">Scaffold + research</span></div>
+    </div>
+    <div class="phase-row">
+      <div class="ph">P1</div>
+      <div class="wk">Wks 2–3</div>
+      <div class="desc"><strong>Solo bot foundation (sports-only).</strong> 10 V2 invariants ported as failing tests + 30 QA patterns from <code>TESTS.md</code>. <code>decide_exit</code> pure function with full decision tree. ExitExecutor. OrderManager (FOK BUY + GTD SELL via clob-client-v2). FillReconciler via User WS. WhaleFollowStrategy with cleaned filter set (audit which v1 filters are alive). Reconciliation algorithm with grace periods. Watchdog daemon with R-rules port. Builder address registered, populated on every order. All in DRY mode.</div>
+      <div class="deliv"><span class="pill p1">Foundation</span></div>
+    </div>
+    <div class="phase-row">
+      <div class="ph">P1.5</div>
+      <div class="wk">Wk 4</div>
+      <div class="desc"><strong>SportsScoreReactor minimum (alpha capture starts).</strong> Subscribe to <code>wss://sports-api.polymarket.com/ws</code>. SportsEventConsumer + MarketMatcher. Score-reactive evaluate logic (no external odds yet). Validates Strategy abstraction in production-like setting — abstraction watchpoint. Capture log infrastructure (P1 phase of backtest infra).</div>
+      <div class="deliv"><span class="pill p15">Alpha source</span></div>
+    </div>
+    <div class="phase-row">
+      <div class="ph">P2a</div>
+      <div class="wk">Wk 5</div>
+      <div class="desc"><strong>Mini App + bot.</strong> Hono API service with REST + WS endpoints. grammY bot (notifications + /start with Mini App button). SvelteKit frontend on CF Pages (5 screens, English platform copy). Telegram <code>initData</code> auth (single Taras chat_id whitelist for now). UA-first GTM messaging in bot copy.</div>
+      <div class="deliv"><span class="pill p2">UI</span></div>
+    </div>
+    <div class="phase-row">
+      <div class="ph">P2b</div>
+      <div class="wk">Wk 6</div>
+      <div class="desc"><strong>Decision log capture (calibrator stub).</strong> Persist all Decisions + ExitIntents + market snapshots to <code>decisions</code> table. No calibrator analytics yet — just data accumulation for P3+ when full calibrator service stands up. Backtest replay engine (read captured logs, replay through Strategy).</div>
+      <div class="deliv"><span class="pill p2">Data + replay</span></div>
+    </div>
+    <div class="phase-row">
+      <div class="ph">P3a</div>
+      <div class="wk">Wk 7</div>
+      <div class="desc"><strong>DRY parallel run — 7 days hard gate.</strong> v2 DRY on Hetzner alongside v1 LIVE. Both consume same WS feed. Daily diff: signals seen, fills attempted, hypothetical PnL, filter rejects, invariant violations. <strong>Hard pass criteria:</strong> ≥95% signal match, 0 missed invariants, 0 stuck states. Failure = +1 week, not unbounded.</div>
+      <div class="deliv"><span class="pill p2">Validation</span></div>
+    </div>
+    <div class="phase-row">
+      <div class="ph">P3b</div>
+      <div class="wk">Wk 8</div>
+      <div class="desc"><strong>LIVE migration (still solo).</strong> Stop v1 LIVE. Switch v2 to LIVE with reduced budget ($50). Watch 3-5 days. Scale to full budget. v1 archived but readable for invariant lookups.</div>
+      <div class="deliv"><span class="pill p2">Cutover</span></div>
+    </div>
+    <div class="phase-row">
+      <div class="ph">—</div>
+      <div class="wk">Wks 9–10</div>
+      <div class="desc"><strong>Solo LIVE stability + pricing validation.</strong> 14-day solo LIVE stability gate. Zero P0 incidents required to unlock P3c. Parallel: <strong>pricing waitlist</strong> with $X commitment for multi-user closed beta. <strong>Competitive analysis deep dive</strong> — finalized differentiation pitch. If 0 waitlist after 2 weeks → pause P3c, focus on solo growth.</div>
+      <div class="deliv"><span class="pill p3">Validation gate</span></div>
+    </div>
+    <div class="phase-row">
+      <div class="ph">P3c</div>
+      <div class="wk">Wks 11–12</div>
+      <div class="desc"><strong>Multi-user closed beta (3-5 friends).</strong> <code>users</code> + real <code>wallets</code> tables. <strong>BYO smart-wallet flow primary</strong> (ERC-1271 via Safe / AA). Custodial opt-in with full security stack (libsodium master key, audit_log table, withdrawal 2FA via Telegram). Per-user balance/budget/positions isolation. Per-user dry/live toggle. 14-day closed beta stability before opening.</div>
+      <div class="deliv"><span class="pill p3">Multi-user</span></div>
+    </div>
+    <div class="phase-row">
+      <div class="ph">P3d</div>
+      <div class="wk">Wks 13–14</div>
+      <div class="desc"><strong>Open beta.</strong> Public via Telegram bot link. Onboarding flow: BYO default, custodial opt-in. UA-first messaging in bot copy. Geo-block US (CFTC concerns). KMS migration (Vault) if user count crosses 20.</div>
+      <div class="deliv"><span class="pill p3">Public</span></div>
+    </div>
+    <div class="phase-row">
+      <div class="ph">P4+</div>
+      <div class="wk">Mo 4+</div>
+      <div class="desc"><strong>New alpha + monetization.</strong> Full SportsScoreReactor (with sports event metadata). SportsPreEventStrategy (Pinnacle / OddsAPI integration + EventMapper + EV calc). Crypto strategies returned. Calibrator service (Python or TS port) with Mini App "Insights" screen. Subscription + fee/rev-share monetization (BYO free, custodial fee-share).</div>
+      <div class="deliv"><span class="pill later">Growth</span></div>
+    </div>
+
+    <div style="margin-top: 16px;" class="quote po">
+      <strong>Big win from compromise:</strong> alpha capture begins week 4 (SportsScoreReactor minimum) instead of week 8 (full solo LIVE). 4 weeks earlier revenue.<br>
+      <strong>Big trade-off:</strong> total timeline to multi-user did NOT compress (week 11 vs week 9 in pre-review plan). Multi-user rushing = security/legal incident territory.
+    </div>
+  </div>
+</section>
+
+<!-- ===================== 16. PRODUCT SUCCESS METRICS ===================== -->
+<section>
+  <h2><span class="num">16</span>Product success metrics <span class="new">NEW</span></h2>
+  <div class="body">
+    <table class="tbl">
+      <tr><th>Period</th><th>Metric</th><th>Target</th><th>Why</th></tr>
+      <tr><td class="muted">Week 4 (P1.5 LIVE-ready)</td><td>SportsScoreReactor signals/day</td><td class="mono">≥10/day</td><td class="muted">validates sports WS as real signal source</td></tr>
+      <tr><td class="muted">Month 3 (post-LIVE)</td><td>Solo P&amp;L vs DRY benchmark</td><td class="mono">+15% delta</td><td class="muted">proves alpha — v2 must beat v1 baseline</td></tr>
+      <tr><td class="muted">Month 3</td><td>Solo bot uptime</td><td class="mono">≥99.5%</td><td class="muted">reliability proof for multi-user pitch</td></tr>
+      <tr><td class="muted">Month 3</td><td>Builder rewards</td><td class="mono">target TBD post week-1 spike</td><td class="muted">if &gt;$500/mo: primary revenue stream; if &lt;$100: backend-only</td></tr>
+      <tr><td class="muted">Month 3</td><td>P0 incidents</td><td class="mono">0</td><td class="muted">north-star validation: nothing got stuck</td></tr>
+      <tr><td class="muted">Month 4 (multi-user open)</td><td>Pricing waitlist signups</td><td class="mono">≥20 paid waitlist</td><td class="muted">demand validation; gate for P3c launch</td></tr>
+      <tr><td class="muted">Month 6</td><td>Multi-user signups</td><td class="mono">50 users</td><td class="muted">PMF signal</td></tr>
+      <tr><td class="muted">Month 6</td><td>Multi-user trade volume</td><td class="mono">$50k cumulative</td><td class="muted">drives builder rewards + future fee revenue</td></tr>
+      <tr><td class="muted">Month 6</td><td>Builder rewards monthly</td><td class="mono">$500</td><td class="muted">side revenue scale check</td></tr>
+      <tr><td class="muted">Month 12</td><td>MRR (subs + fee share)</td><td class="mono">$5k</td><td class="muted">monetization first proof</td></tr>
+      <tr><td class="muted">Ongoing</td><td>Churn (monthly)</td><td class="mono">&lt;10%</td><td class="muted">retention = real product value</td></tr>
+      <tr><td class="muted">Ongoing</td><td>Net Promoter Score (NPS)</td><td class="mono">&gt;30</td><td class="muted">user satisfaction proxy</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ===================== 17. COMPETITIVE + PRICING + COMPLIANCE ===================== -->
+<section>
+  <h2><span class="num">17</span>Competitive analysis · Pricing · Compliance <span class="new">NEW</span></h2>
+  <div class="body">
+
+    <h3 style="font-size: 13px; color: var(--accent); margin-bottom: 8px;">Competitive analysis (deliverable: week-1 spike + week-9 deep-dive)</h3>
+    <ul class="clean">
+      <li>Primary competitor: Polycop (and similar copy-trading frontends)</li>
+      <li>Secondary: bespoke private bots run by Polymarket whales themselves</li>
+      <li>Tertiary: traditional sportsbook + manual Polymarket trader hybrid users</li>
+      <li><strong>Differentiation hypothesis:</strong> (a) sports-WS-reactor speed, (b) multi-strategy isolation, (c) BYO-non-custodial primary (legal moat for compliance-conscious users), (d) Telegram-native UX (no separate app), (e) builder-rewards-share with active users (pricing innovation)</li>
+      <li>Deliverable week 1: 1-2 page brief — what they do, what we'll do differently, why users would switch</li>
+      <li>Deliverable week 9: deep-dive with screenshots + UX flow comparison + pricing benchmark</li>
+    </ul>
+
+    <h3 style="font-size: 13px; color: var(--accent); margin: 18px 0 8px;">Pricing validation (week 9-10 gate)</h3>
+    <ul class="clean">
+      <li><strong>Waitlist with $50 commitment</strong> — 20+ paid waitlist required to greenlight P3c</li>
+      <li>Refundable if we don't ship within 4 weeks of waitlist close</li>
+      <li>Pricing tiers TBD post-waitlist data:
+        <ul class="clean" style="margin-left: 16px;">
+          <li>BYO: free with builder-share kickback (we share 20-50% of builder rewards generated by their flow)</li>
+          <li>Custodial: monthly subscription ($X) + fee-share on profits ($Y%)</li>
+        </ul>
+      </li>
+      <li>If 0 waitlist after 2 weeks → pause P3c, double down on solo bot maturation + sports WS strategy expansion</li>
+    </ul>
+
+    <h3 style="font-size: 13px; color: var(--accent); margin: 18px 0 8px;">Compliance positioning</h3>
+    <div class="quote danger">
+      <strong>This is a placeholder. Before P3c kickoff: real legal consultation required.</strong> Polymarket itself paid CFTC $1.4M and lost US users. Custodial multi-user crypto operations are MiCA territory in EU, FCA in UK, BSA/FinCEN in US.
+    </div>
+    <ul class="clean" style="margin-top: 10px;">
+      <li>Position primary product as <strong>non-custodial software-as-a-service</strong> — we provide automation, user retains custody via ERC-1271 smart wallet</li>
+      <li>Custodial is opt-in, requires explicit Terms of Service acknowledgment, may require KYC at signup once legal review concludes</li>
+      <li>Geo-block US users until lawyer review (CFTC precedent on Polymarket itself)</li>
+      <li>Disclosure on Mini App: "auto-trading software, not financial advice; users assume all trading risk"</li>
+      <li>Data retention / GDPR: privacy policy required pre-launch; EU users have right to data deletion</li>
+      <li>Terms of Service template before P3c open beta</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ===================== 18. PORT vs CUT + OPEN QUESTIONS ===================== -->
+<section>
+  <h2><span class="num">18</span>v1 inventory + open questions</h2>
+  <div class="body">
+    <div class="grid-2" style="margin-bottom: 18px;">
+      <div class="card">
+        <h3><span class="pill port">PORT</span> as reference (logic, not code)</h3>
+        <ul class="clean">
+          <li>10 V2 invariants (already distilled from 31 v1)</li>
+          <li>30 QA test patterns from <code>TESTS.md</code> as failing tests</li>
+          <li>FOK BUY + GTD SELL flow, retry sizing 99/98/95</li>
+          <li>Tick alignment with 1e-9 epsilon, 5-share min</li>
+          <li>Outcome floor formula <code>max(min_tick, expected × 0.3)</code></li>
+          <li>7-state position machine</li>
+          <li>Conviction/trust/intent scoring math</li>
+          <li>Living hard-filters (after week-1 audit)</li>
+          <li>Real /book bid/ask only, never synthesized</li>
+          <li>F17 peak price guard logic</li>
+          <li>Watchdog R-rules (port to TS rule registry)</li>
+          <li>Calibrator 5-layer system (P3+ port, can stay Python)</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3><span class="pill cut">CUT</span> from v2 entirely</h3>
+        <ul class="clean">
+          <li class="x">JSON files as state (trades.json, balance.json, marks.json, lifecycle_events.jsonl)</li>
+          <li class="x">_cfg / _deps DI pattern (constructor injection instead)</li>
+          <li class="x">Dead/legacy filters (~half of 34)</li>
+          <li class="x">4-way filter sync</li>
+          <li class="x">Web dashboard (Flask, vanilla JS, IIFE on window.App, i18n via data-attr)</li>
+          <li class="x">Caddy basic auth on /dashboard</li>
+          <li class="x">Ghost verify state machine (replaced by <code>fills</code> table)</li>
+          <li class="x">trader_lock under exit logic (decide_exit is pure)</li>
+          <li class="x">atomic-write via os.replace (Postgres transactions)</li>
+          <li class="x">Closure paths price_resolved/phantom_external/timeout (forbidden by INV-M3)</li>
+          <li class="x">Python in trading hot path</li>
+          <li class="x">SQLite, Bun in P1 (deferred / abandoned)</li>
+          <li class="x">USDC direct collateral (V2 → pUSD)</li>
+          <li class="x">Old order struct fields: salt, nonce, feeRateBps, taker</li>
+          <li class="x">Crypto strategy whales in P1 (return P4+)</li>
+          <li class="x">Ukrainian platform UI / i18n</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3 style="font-size: 13px; color: var(--accent); margin-bottom: 10px;">Open questions for repo prep / week-1 kickoff</h3>
+    <table class="tbl">
+      <tr><th>#</th><th>Question</th><th>Default proposal</th></tr>
+      <tr><td>Q1</td><td>Repo strategy</td><td class="muted">New repo <code>ora-et-labora-v2</code> on GitHub. v1 stays on <code>release</code> branch.</td></tr>
+      <tr><td>Q2</td><td>Project name</td><td class="muted">Keep "Ora et Labora v2" for continuity. Final call: yours.</td></tr>
+      <tr><td>Q3</td><td>License</td><td class="muted">Private / proprietary; commercial source available later if open-source helps growth</td></tr>
+      <tr><td>Q4</td><td>Filter audit deliverable (week 1)</td><td class="muted">2-hour spike: list of v1 filters with last_fired_at + fire_count_30d → port/cut decision Markdown table</td></tr>
+      <tr><td>Q5</td><td>Builder rewards spike (week 1)</td><td class="muted">2-hour spike: estimate $/month at planned volume; deliverable = 1-page calc with assumptions</td></tr>
+      <tr><td>Q6</td><td>Competitive analysis spike (week 1)</td><td class="muted">1 day: brief on Polycop and ≥2 others; deliverable = differentiation pitch</td></tr>
+      <tr><td>Q7</td><td>v1 stays LIVE during P1-P3a?</td><td class="muted">Yes. Switch off only at P3b cutover. v1 keeps trading sports at current allocation.</td></tr>
+      <tr><td>Q8</td><td>P3c multi-user closed beta scope</td><td class="muted">3-5 hand-picked friends, BYO smart wallet only initially; custodial after closed-beta stability</td></tr>
+      <tr><td>Q9</td><td>pUSD UX</td><td class="muted">P1: Taras handles USDC↔pUSD conversion manually outside bot. P3c: research auto-convert in onboarding.</td></tr>
+      <tr><td>Q10</td><td>Calibrator language final</td><td class="muted">P3+ decision based on data shape. Default: port v1 Python (faster), interface to TS via HTTP. TS port if security/audit demands.</td></tr>
+    </table>
+  </div>
+</section>
+
+<footer>
+  Ora et Labora v2 architecture · revised 2026-05-02 (post-review) · companion: <a href="clob-v2-research.html">clob-v2-research.html</a> · constitution: <a href="../rewrite/SPEC.md">SPEC.md</a> · ready for repo prep
+</footer>
+
+</body>
+</html>

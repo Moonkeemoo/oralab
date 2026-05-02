@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Polymarket CLOB V2 — Research Findings</title>
+<style>
+  :root {
+    --bg: #0d1117; --surface: #161b22; --surface-elev: #1c2230;
+    --border: #30363d; --text: #e8eaed; --text-muted: #8b949e;
+    --accent: #58a6ff; --success: #56d364; --warning: #d29922;
+    --danger: #f85149; --port: #a371f7;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 14px; line-height: 1.55;
+    padding: 32px 40px 80px; max-width: 1100px; margin: 0 auto;
+  }
+  code, pre { font-family: 'SF Mono', Menlo, Monaco, Consolas, monospace; font-size: 12.5px; }
+  header.doc {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 8px; padding-bottom: 16px; border-bottom: 1px solid var(--border);
+  }
+  header.doc h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.3px; }
+  header.doc .meta { color: var(--text-muted); font-size: 12px; font-family: 'SF Mono', monospace; }
+  .subtitle { color: var(--text-muted); margin-top: 6px; margin-bottom: 28px; font-size: 13px; }
+  section {
+    margin-top: 24px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; overflow: hidden;
+  }
+  section > h2 {
+    font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px;
+    color: var(--accent); padding: 14px 20px; border-bottom: 1px solid var(--border);
+    background: var(--surface-elev);
+  }
+  section > h2 .num { color: var(--text-muted); margin-right: 10px; font-weight: 400; }
+  section > .body { padding: 20px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .card {
+    background: var(--surface-elev); border: 1px solid var(--border);
+    border-radius: 6px; padding: 14px 16px;
+  }
+  .card h3 { font-size: 13px; font-weight: 600; margin-bottom: 8px; color: var(--text); }
+  .card p { color: var(--text-muted); font-size: 13px; }
+  ul.clean { list-style: none; padding: 0; }
+  ul.clean li { padding: 4px 0; color: var(--text-muted); font-size: 13px; position: relative; padding-left: 18px; }
+  ul.clean li::before { content: "→"; position: absolute; left: 0; color: var(--accent); }
+  ul.clean li.x::before { content: "✕"; color: var(--danger); }
+  ul.clean li.ok::before { content: "✓"; color: var(--success); }
+  ul.clean li.warn::before { content: "⚠"; color: var(--warning); }
+  table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.tbl th, table.tbl td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.tbl th { color: var(--text-muted); font-weight: 500; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
+  table.tbl tr:last-child td { border-bottom: none; }
+  table.tbl td.mono { font-family: 'SF Mono', monospace; font-size: 12.5px; color: var(--accent); }
+  table.tbl td.muted { color: var(--text-muted); }
+  .pill {
+    display: inline-block; padding: 2px 8px; font-size: 11px; border-radius: 999px;
+    font-weight: 500; margin-right: 4px;
+  }
+  .pill.new { background: rgba(86, 211, 100, 0.12); color: var(--success); border: 1px solid rgba(86, 211, 100, 0.4); }
+  .pill.removed { background: rgba(248, 81, 73, 0.12); color: var(--danger); border: 1px solid rgba(248, 81, 73, 0.4); }
+  .pill.changed { background: rgba(210, 153, 34, 0.12); color: var(--warning); border: 1px solid rgba(210, 153, 34, 0.4); }
+  .pill.maint { background: rgba(86, 211, 100, 0.12); color: var(--success); border: 1px solid rgba(86, 211, 100, 0.4); }
+  .pill.early { background: rgba(210, 153, 34, 0.12); color: var(--warning); border: 1px solid rgba(210, 153, 34, 0.4); }
+  .pill.broken { background: rgba(248, 81, 73, 0.12); color: var(--danger); border: 1px solid rgba(248, 81, 73, 0.4); }
+  .quote {
+    border-left: 3px solid var(--accent); padding: 10px 16px;
+    background: rgba(88, 166, 255, 0.08); color: var(--text);
+    border-radius: 0 6px 6px 0; font-size: 13px;
+  }
+  .alpha-card {
+    background: var(--surface-elev); border: 1px solid var(--border);
+    border-left: 3px solid var(--success); border-radius: 6px;
+    padding: 14px 16px;
+  }
+  .alpha-card h3 { color: var(--success); font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+  .alpha-card .url { font-family: 'SF Mono', monospace; font-size: 11.5px; color: var(--accent); margin: 4px 0; word-break: break-all; }
+  footer { margin-top: 40px; color: var(--text-muted); font-size: 12px; text-align: center; padding: 20px; }
+  footer a { color: var(--accent); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<header class="doc">
+  <div>
+    <h1>Polymarket CLOB V2 — Research Findings</h1>
+    <div class="subtitle">Reference for ora-et-labora v2 build · what's new, what's broken, what's unlocked</div>
+  </div>
+  <div class="meta">
+    <div>Researched 2026-05-02</div>
+    <div>V2 launched 2026-04-28</div>
+  </div>
+</header>
+
+<!-- ========================= 01 TL;DR ========================= -->
+<section>
+  <h2><span class="num">01</span>TL;DR</h2>
+  <div class="body">
+    <ul class="clean">
+      <li><strong>CLOB V2 went live April 28, 2026</strong> (4 days ago) — full exchange contract replacement, no backward compatibility with V1 SDKs.</li>
+      <li><strong>New collateral token pUSD</strong> (1:1 USDC-backed ERC-20) replaces direct USDC for collateral. Conversion required.</li>
+      <li><strong>Order struct changed:</strong> removed <code>salt</code>, <code>nonce</code>, <code>feeRateBps</code>, <code>taker</code>; added <code>timestamp</code>, <code>metadata</code>, <code>builder</code>. Fees now in USDC at match-time (not shares at order-time).</li>
+      <li><strong>Use TypeScript:</strong> <code>@polymarket/clob-client-v2</code> v1.0.2 is actively maintained (7 days ago). <code>py-clob-client-v2</code> exists but is "early-stage successor" with no migration docs — risky.</li>
+      <li><strong>ERC-1271 signatures supported</strong> — smart contract wallets are first-class in V2. This unlocks clean BYO-wallet UX for multi-user (P3+).</li>
+      <li><strong>Three new alpha sources unlocked:</strong> Sports WebSocket (real-time scores, no auth), builder rewards (register for fee-share), RTDS for crypto markets.</li>
+      <li><strong>v1 still partially works</strong> — py-clob-client v0.34.6 hits <code>order_version_mismatch</code> on every order since ~April 27. Production v1 instances bleeding.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ========================= 02 V2 CHANGES ========================= -->
+<section>
+  <h2><span class="num">02</span>What CLOB V2 changed</h2>
+  <div class="body">
+    <table class="tbl">
+      <tr><th>Area</th><th>V1 (before)</th><th>V2 (now)</th><th>Status</th></tr>
+      <tr>
+        <td>Collateral</td>
+        <td class="muted">USDC directly on Polygon</td>
+        <td class="mono">pUSD (1:1 USDC-backed ERC-20)</td>
+        <td><span class="pill changed">CHANGED</span></td>
+      </tr>
+      <tr>
+        <td>Exchange contracts</td>
+        <td class="muted">Binary: <code>0x4bFb...982E</code><br>NegRisk: <code>0xC5d5...f80a</code></td>
+        <td class="mono">New addresses (V2 contracts)<br>need to verify from clob-client-v2</td>
+        <td><span class="pill changed">CHANGED</span></td>
+      </tr>
+      <tr>
+        <td>Order struct</td>
+        <td class="muted">salt, nonce, feeRateBps, taker, expiration, signatureType, signature, side, makerAmount, takerAmount, tokenId, maker, signer</td>
+        <td class="mono">timestamp, metadata, builder, expiration, signatureType, signature, side, makerAmount, takerAmount, tokenId, maker, signer</td>
+        <td><span class="pill changed">CHANGED</span></td>
+      </tr>
+      <tr>
+        <td>Fees</td>
+        <td class="muted">In shares, computed at order placement, hardcoded in <code>feeRateBps</code></td>
+        <td class="mono">In USDC, computed at match time (server side)</td>
+        <td><span class="pill changed">CHANGED</span></td>
+      </tr>
+      <tr>
+        <td>Signature support</td>
+        <td class="muted">EOA only (signatureType 1 = proxy, 2 = EOA)</td>
+        <td class="mono">EOA + ERC-1271 smart contract wallets</td>
+        <td><span class="pill new">ADDED</span></td>
+      </tr>
+      <tr>
+        <td>Builder attribution</td>
+        <td class="muted">No on-chain builder field</td>
+        <td class="mono">Dedicated <code>builder</code> field for fee-revenue share</td>
+        <td><span class="pill new">ADDED</span></td>
+      </tr>
+      <tr>
+        <td>Order metadata</td>
+        <td class="muted">No metadata field</td>
+        <td class="mono">Optional <code>metadata</code> for tracking</td>
+        <td><span class="pill new">ADDED</span></td>
+      </tr>
+      <tr>
+        <td>V1 resting orders</td>
+        <td class="muted">Active</td>
+        <td class="mono">All wiped at cutover; must re-place with V2 signing</td>
+        <td><span class="pill removed">WIPED</span></td>
+      </tr>
+    </table>
+    <div style="margin-top: 14px;" class="quote">
+      <strong>Migration is non-optional.</strong> Polymarket explicitly stated "if your integration is still on the V1 SDK, it will not work against production CLOB V2." There is <em>no</em> backward-compatibility shim. Existing v1 bots are breaking right now (April 27+).
+    </div>
+  </div>
+</section>
+
+<!-- ========================= 03 SDK LANDSCAPE ========================= -->
+<section>
+  <h2><span class="num">03</span>SDK landscape</h2>
+  <div class="body">
+    <table class="tbl">
+      <tr><th>Package</th><th>Version</th><th>Last published</th><th>Status</th><th>Use it?</th></tr>
+      <tr>
+        <td class="mono">@polymarket/clob-client-v2</td>
+        <td>1.0.2</td>
+        <td class="muted">7 days ago</td>
+        <td><span class="pill maint">MAINTAINED</span></td>
+        <td><span class="pill new">YES — primary</span></td>
+      </tr>
+      <tr>
+        <td class="mono">@polymarket/clob-client</td>
+        <td>5.8.1</td>
+        <td class="muted">~1 month ago</td>
+        <td><span class="pill broken">V1 ONLY</span></td>
+        <td><span class="pill removed">NO</span></td>
+      </tr>
+      <tr>
+        <td class="mono">py-clob-client-v2</td>
+        <td>—</td>
+        <td class="muted">created April 2026</td>
+        <td><span class="pill early">EARLY-STAGE, NO DOCS</span></td>
+        <td><span class="pill removed">NO</span></td>
+      </tr>
+      <tr>
+        <td class="mono">py-clob-client</td>
+        <td>0.34.6</td>
+        <td class="muted">last stable</td>
+        <td><span class="pill broken">FAILING ON V2</span></td>
+        <td><span class="pill removed">NO</span></td>
+      </tr>
+      <tr>
+        <td class="mono">@polymarket/real-time-data-client</td>
+        <td>—</td>
+        <td class="muted">TS, current</td>
+        <td><span class="pill maint">SUPPLEMENT</span></td>
+        <td><span class="pill new">YES — optional</span></td>
+      </tr>
+      <tr>
+        <td class="mono">@polymarket/clob-order-utils</td>
+        <td>—</td>
+        <td class="muted">TS utility</td>
+        <td><span class="pill maint">SUPPLEMENT</span></td>
+        <td><span class="pill new">YES — for signing</span></td>
+      </tr>
+      <tr>
+        <td class="mono">rs-clob-client-v2</td>
+        <td>—</td>
+        <td class="muted">Rust V2 client</td>
+        <td><span class="pill early">EARLY-STAGE</span></td>
+        <td><span class="pill removed">NO (not our stack)</span></td>
+      </tr>
+    </table>
+    <div style="margin-top: 14px;" class="quote">
+      <strong>Decision:</strong> TypeScript is the only sensible path for V2 right now. <code>@polymarket/clob-client-v2</code> v1.0.2 is the only first-party SDK with V2 support that has a usable API surface. <code>py-clob-client-v2</code> exists but Polymarket explicitly says "migration notes have not yet been published" — production-grade trading on undocumented early-stage SDK is reckless.
+    </div>
+  </div>
+</section>
+
+<!-- ========================= 04 NEW ALPHA SOURCES ========================= -->
+<section>
+  <h2><span class="num">04</span>Three new alpha sources unlocked by V2</h2>
+  <div class="body grid-3">
+    <div class="alpha-card">
+      <h3>Sports WebSocket</h3>
+      <div class="url">wss://sports-api.polymarket.com/ws</div>
+      <ul class="clean" style="margin-top: 8px;">
+        <li>No auth required</li>
+        <li>No subscribe message (auto-streams all active events)</li>
+        <li>Real-time scores, periods, game status</li>
+        <li>NFL, NHL, MLB, NBA, CBB, CFB, Soccer, Esports, Tennis</li>
+        <li>Server pings every 5s; respond with pong &lt;10s or disconnect</li>
+        <li><strong>Edge:</strong> react to score changes faster than market price adjusts</li>
+        <li>For ora-v2: independent SignalSource for SportsScoreReactor strategy</li>
+      </ul>
+    </div>
+    <div class="alpha-card">
+      <h3>Builder rewards</h3>
+      <div class="url">on-chain <code>builder</code> attribution code</div>
+      <ul class="clean" style="margin-top: 8px;">
+        <li>V2 adds <code>builder</code> field to order struct</li>
+        <li>Routing flow through your builder address shares fee revenue</li>
+        <li>$1M reward pool announced at V2 launch</li>
+        <li>Useful for institutions + frontends; ora-v2 can register</li>
+        <li>Free side-revenue if registered correctly from day 1</li>
+        <li>For ora-v2: register builder address, populate field on every order</li>
+      </ul>
+    </div>
+    <div class="alpha-card">
+      <h3>RTDS — Real-Time Data</h3>
+      <div class="url">wss://ws-live-data.polymarket.com</div>
+      <ul class="clean" style="margin-top: 8px;">
+        <li>TS SDK: <code>@polymarket/real-time-data-client</code></li>
+        <li>Streams crypto prices (Binance, Chainlink) + comments</li>
+        <li>Useful for crypto markets (BTC, ETH price-bounded)</li>
+        <li>Lower latency than polling external APIs</li>
+        <li>For ora-v2: optional supplement for crypto-strategy in P4+</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ========================= 05 MIGRATION IMPACT ========================= -->
+<section>
+  <h2><span class="num">05</span>Impact on ora-v2 architecture</h2>
+  <div class="body">
+    <table class="tbl">
+      <tr><th>Architectural decision</th><th>How V2 affects it</th></tr>
+      <tr>
+        <td>Backend stack</td>
+        <td class="muted">Locked to TypeScript. <code>py-clob-client-v2</code> too risky to use in production.</td>
+      </tr>
+      <tr>
+        <td>Order signing</td>
+        <td class="muted">Cannot port v1's signing logic. Use <code>clob-client-v2</code> + <code>viem</code> + <code>@polymarket/clob-order-utils</code>. Sign with new struct (timestamp/metadata/builder).</td>
+      </tr>
+      <tr>
+        <td>Wallet model (P1 solo, P3 multi-user)</td>
+        <td class="muted">P3 BYO-wallet flow gets dramatically cleaner with ERC-1271. Smart wallet (Safe / AA) where user controls key, ora-v2 backend is delegated co-signer. Revocable any time. Cleaner than custodial.</td>
+      </tr>
+      <tr>
+        <td>Collateral handling</td>
+        <td class="muted">Add USDC↔pUSD conversion. Display balances in pUSD-units; convert for user-facing UI if confusing. P1: deposit/withdraw via Polymarket's standard pUSD flow.</td>
+      </tr>
+      <tr>
+        <td>Fee accounting</td>
+        <td class="muted">Fees in USDC at match-time, not shares at order-time. PnL math simpler (no share-fee deduction). Budget tracking accounts for USDC fee post-fill.</td>
+      </tr>
+      <tr>
+        <td>Sports strategy (P4+)</td>
+        <td class="muted">SportsScoreReactor reading from <code>wss://sports-api.polymarket.com/ws</code> is a new strategy class. SportsPreEventStrategy still valid (uses external odds).</td>
+      </tr>
+      <tr>
+        <td>Builder revenue</td>
+        <td class="muted">Free additional revenue stream if we register builder address and populate every order. Worth doing in P1.</td>
+      </tr>
+      <tr>
+        <td>v1 invariants port</td>
+        <td class="muted">Most still apply (M1-M5, D1-D3, O1-O2 from SPEC.md). Some change: no more <code>feeRateBps</code> mismatch (fees server-side); no more <code>order_version_mismatch</code> (one V2 contract per market type).</td>
+      </tr>
+      <tr>
+        <td>API.md doc</td>
+        <td class="muted">Order signing section needs full rewrite. Contract addresses table needs V2 values. SDK template uses clob-client-v2 + viem. Sports WS section to add. pUSD section to add.</td>
+      </tr>
+    </table>
+  </div>
+</section>
+
+<!-- ========================= 06 OPEN ITEMS ========================= -->
+<section>
+  <h2><span class="num">06</span>Open items requiring further verification</h2>
+  <div class="body">
+    <ul class="clean">
+      <li class="warn"><strong>V2 exchange contract addresses</strong> — to confirm by reading <code>clob-client-v2</code> source or official migration guide. Will update API.md once verified.</li>
+      <li class="warn"><strong>Exact V2 order struct field types</strong> — need to read <code>@polymarket/clob-order-utils</code> for canonical typings. Will update API.md SDK template once verified.</li>
+      <li class="warn"><strong>Builder registration process</strong> — Polymarket's docs on how to register a builder address and how revenue distributes. To research before P1 implementation.</li>
+      <li class="warn"><strong>pUSD deposit/withdrawal UX</strong> — does Polymarket auto-convert USDC→pUSD on deposit, or do users have to do it manually? Affects user onboarding flow in P3.</li>
+      <li class="warn"><strong>Sports WS message schema</strong> — exact JSON shape of game-state events. Need to subscribe and capture sample to design SportsScoreReactor strategy.</li>
+      <li class="warn"><strong>ERC-1271 signing flow with clob-client-v2</strong> — does the SDK abstract this, or do we sign manually via viem? Affects multi-user BYO-wallet in P3.</li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  Sources:
+  <a href="https://docs.polymarket.com/v2-migration">docs.polymarket.com/v2-migration</a> ·
+  <a href="https://github.com/Polymarket/clob-client-v2">github.com/Polymarket/clob-client-v2</a> ·
+  <a href="https://www.npmjs.com/package/@polymarket/clob-client-v2">npmjs.com/@polymarket/clob-client-v2</a> ·
+  <a href="https://docs.polymarket.com/market-data/websocket/sports">docs.polymarket.com/market-data/websocket/sports</a> ·
+  <a href="https://help.polymarket.com/en/articles/14762452-polymarket-exchange-upgrade-april-28-2026">Polymarket Exchange Upgrade help article</a>
+</footer>
+
+</body>
+</html>
