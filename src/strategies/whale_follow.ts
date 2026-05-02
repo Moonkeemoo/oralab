@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, gte, inArray } from "drizzle-orm";
 import { getDb } from "../db/client.js";
 import { positions, strategies, strategyFilters, whales } from "../db/schema.js";
 import { canAffordEntry } from "../execute/budget.js";
@@ -175,6 +175,20 @@ export class WhaleFollowStrategy implements Strategy {
       ),
     });
 
+    // Recently CLOSED positions for exit_reentry_cooldown filter — window is
+    // 30 min, which comfortably covers the default EXIT_REENTRY_COOLDOWN_S=600
+    // and any tuning headroom up to 1800s. Beyond that the filter is a no-op
+    // anyway, so a wider window would be wasted I/O.
+    const closedSinceTs = Date.now() - 30 * 60 * 1000;
+    const closed = await db.query.positions.findMany({
+      where: and(
+        eq(positions.userId, userId),
+        eq(positions.strategyId, strategyId),
+        inArray(positions.status, ["CLOSED", "RESOLVED"] as const),
+        gte(positions.lastStateChangeTs, closedSinceTs),
+      ),
+    });
+
     const totalExposureUsd = open.reduce((acc, p) => acc + Number(p.entryCostUsd ?? 0), 0);
     const committedUsd = open
       .filter((p) => p.status === "OPEN")
@@ -192,6 +206,10 @@ export class WhaleFollowStrategy implements Strategy {
         assetId: p.assetId,
         entryCostUsd: Number(p.entryCostUsd ?? 0),
         status: p.status as "PENDING" | "FILLED" | "OPEN" | "EXITING",
+      })),
+      recentlyClosedAssets: closed.map((p) => ({
+        assetId: p.assetId,
+        closedAtTs: Number(p.lastStateChangeTs),
       })),
       totalExposureUsd,
       cashPnl24hUsd: 0,

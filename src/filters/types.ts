@@ -19,6 +19,11 @@ export interface OpenPositionLite {
   readonly status: "PENDING" | "FILLED" | "OPEN" | "EXITING";
 }
 
+export interface RecentlyClosedAsset {
+  readonly assetId: string;
+  readonly closedAtTs: number;
+}
+
 export interface AccountState {
   readonly userId: number;
   readonly budgetUsd: number;
@@ -27,6 +32,7 @@ export interface AccountState {
   readonly openPositions: readonly OpenPositionLite[];
   readonly totalExposureUsd: number;
   readonly cashPnl24hUsd: number;
+  readonly recentlyClosedAssets?: readonly RecentlyClosedAsset[];
 }
 
 export interface MarketState {
