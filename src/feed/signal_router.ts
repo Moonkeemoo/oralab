@@ -12,6 +12,7 @@ import { recordOrder } from "../execute/order_recorder.js";
 import { telegramAlerterFromEnv } from "../notify/telegram.js";
 import { logger } from "../obs/logger.js";
 import { entryMutexWaitMs, entryRouteOutcome, whaleToBuyLatencyMs } from "../obs/metrics.js";
+import { withTiming } from "../obs/timing.js";
 import { withSpan } from "../obs/tracer.js";
 
 const alerter = telegramAlerterFromEnv();
@@ -201,13 +202,18 @@ async function routeInner(
   cfg: Awaited<ReturnType<typeof strategyConfigById>>,
   strategyId: number,
 ): Promise<RouteOutcome> {
+  // signalId not yet known here (signal persisted at the end); positionId
+  // not known until after INSERT. Use null at entry; later steps can
+  // re-bind ctx. For the entry chain we only need `chain: "entry"`.
+  const ctx = { signalId: null, positionId: null, chain: "entry" as const };
+
   const ageSec = (Date.now() - signal.receivedTs) / 1000;
   const STALE_AGE_SEC = Number(process.env["SIGNAL_STALE_AGE_SEC"] ?? 300);
   if (ageSec > STALE_AGE_SEC) {
     return { accepted: false, rejectReason: "signal_stale" };
   }
 
-  const market = await getMarketByTokenId(signal.assetId);
+  const market = await withTiming(ctx, "gamma_fetch", () => getMarketByTokenId(signal.assetId));
   if (!market) return { accepted: false, rejectReason: "market_not_found" };
   if (market.closed || market.archived || market.umaResolutionStatus === "resolved") {
     return { accepted: false, rejectReason: "market_already_resolved" };
@@ -257,7 +263,9 @@ async function routeInner(
     sportsMarketType: market.sportsMarketType,
   };
 
-  const decision = await strategy.evaluate(signal, marketMeta);
+  const decision = await withTiming(ctx, "filter_pipeline", () =>
+    strategy.evaluate(signal, marketMeta),
+  );
   if (decision.kind !== "enter") {
     return { accepted: false, rejectReason: decision.reason };
   }
@@ -275,22 +283,26 @@ async function routeInner(
 
   // Use real /book ask + slippage. INV-D1: never trust whale's stale price for
   // the actual order. Falls back to whale price only if /book unavailable.
-  const liveAsk = await liveAskWithSlippage(market, signal.assetId);
+  const liveAsk = await withTiming(ctx, "live_ask", () =>
+    liveAskWithSlippage(market, signal.assetId),
+  );
   const priceCeiling = liveAsk ?? decision.priceCap;
   if (priceCeiling > 0.99) {
     return { accepted: false, rejectReason: "ask_at_ceiling" };
   }
   const usdAmount = sizeShares * priceCeiling;
 
-  const buy = await placeBuy({
-    userId: cfg.userId,
-    tokenId: signal.assetId,
-    price: priceCeiling,
-    usdAmount,
-    tickSize: marketMeta.tickSize,
-    negRisk: marketMeta.negRisk,
-    correlationId: `sig-${signal.id}`,
-  });
+  const buy = await withTiming(ctx, "place_buy", () =>
+    placeBuy({
+      userId: cfg.userId,
+      tokenId: signal.assetId,
+      price: priceCeiling,
+      usdAmount,
+      tickSize: marketMeta.tickSize,
+      negRisk: marketMeta.negRisk,
+      correlationId: `sig-${signal.id}`,
+    }),
+  );
 
   // Always record the order attempt — audit trail of every CLOB call.
   await recordOrder({
@@ -341,27 +353,29 @@ async function routeInner(
   const db = getDb();
   let posRow: { id: number } | undefined;
   try {
-    const inserted = await db
-      .insert(positions)
-      .values({
-        userId: cfg.userId,
-        walletId: 1,
-        strategyId,
-        signalId: null,
-        conditionId: signal.conditionId,
-        assetId: signal.assetId,
-        side: signal.side,
-        status,
-        shares: filledShares,
-        fillPrice: priceCeiling,
-        peakPrice: priceCeiling,
-        fillTs: Date.now(),
-        lastStateChangeTs: Date.now(),
-        entryCostUsd: filledShares * priceCeiling,
-        trailArmed: false,
-        sweepCount: 0,
-      })
-      .returning({ id: positions.id });
+    const inserted = await withTiming(ctx, "position_insert", () =>
+      db
+        .insert(positions)
+        .values({
+          userId: cfg.userId,
+          walletId: 1,
+          strategyId,
+          signalId: null,
+          conditionId: signal.conditionId,
+          assetId: signal.assetId,
+          side: signal.side,
+          status,
+          shares: filledShares,
+          fillPrice: priceCeiling,
+          peakPrice: priceCeiling,
+          fillTs: Date.now(),
+          lastStateChangeTs: Date.now(),
+          entryCostUsd: filledShares * priceCeiling,
+          trailArmed: false,
+          sweepCount: 0,
+        })
+        .returning({ id: positions.id }),
+    );
     posRow = inserted[0];
   } catch (err) {
     // Race: another routeInner inserted a position for the same asset between

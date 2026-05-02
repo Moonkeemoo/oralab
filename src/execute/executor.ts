@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "../db/client.js";
 import { positions } from "../db/schema.js";
 import { logger } from "../obs/logger.js";
+import { withTiming } from "../obs/timing.js";
 import type { ExitIntent } from "../types/decide.js";
 import type { MarketSnapshot } from "../types/market.js";
 import type { PositionView } from "../types/position.js";
@@ -91,11 +92,19 @@ export async function executeExitIntent(
     }
   }
 
+  const ctx = {
+    signalId: null,
+    positionId: typeof pos.id === "number" ? pos.id : Number(pos.id) || null,
+    chain: "exit" as const,
+  };
+
   // QA-174 cancel-before-place: if this is a sweep retry, kill any prior open
   // SELL orders for this asset before placing the new one. Active enumeration,
   // not idempotency assumption. No-op in DRY.
   if (pos.sweepCount > 0) {
-    const cancel = await cancelOpenOrdersForAsset(pos.assetId, "SELL");
+    const cancel = await withTiming(ctx, "cancel_open", () =>
+      cancelOpenOrdersForAsset(pos.assetId, "SELL"),
+    );
     if (cancel.cancelled > 0) {
       log.info({ cancelled: cancel.cancelled }, "QA-174 cancel-before-place cleared prior SELLs");
     }
@@ -120,7 +129,7 @@ export async function executeExitIntent(
     correlationId: `pos-${pos.id}-sweep-${pos.sweepCount}`,
   };
 
-  const result = await placeSell(sellParams);
+  const result = await withTiming(ctx, "place_sell", () => placeSell(sellParams));
 
   if (!result.success) {
     log.warn(
@@ -131,15 +140,17 @@ export async function executeExitIntent(
   }
 
   // Transition to EXITING (if not already), bump sweepCount.
-  await db
-    .update(positions)
-    .set({
-      status: "EXITING",
-      sweepCount: pos.sweepCount + 1,
-      lastStateChangeTs: Date.now(),
-      updatedAt: new Date(),
-    })
-    .where(eq(positions.id, numericId));
+  await withTiming(ctx, "position_update", () =>
+    db
+      .update(positions)
+      .set({
+        status: "EXITING",
+        sweepCount: pos.sweepCount + 1,
+        lastStateChangeTs: Date.now(),
+        updatedAt: new Date(),
+      })
+      .where(eq(positions.id, numericId)),
+  );
 
   await recordOrder({
     userId: pos.userId,

@@ -6,7 +6,15 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { and, desc, eq, gte, inArray } from "drizzle-orm";
 import { getDb } from "../db/client.js";
-import { decisions, fills, positions, signals, strategies, whales } from "../db/schema.js";
+import {
+  decisions,
+  fills,
+  positions,
+  signals,
+  signalTimings,
+  strategies,
+  whales,
+} from "../db/schema.js";
 import { placeSell } from "../execute/order_manager.js";
 import { FILTER_REGISTRY } from "../filters/registry.js";
 import { loadEffectiveExitConfig } from "../monitor/exit_config_loader.js";
@@ -562,6 +570,39 @@ async function handleBuild(): Promise<unknown> {
   };
 }
 
+async function handleLatency(req: http.IncomingMessage): Promise<unknown> {
+  const url = new URL(req.url ?? "/", "http://x");
+  const windowHours = Math.max(
+    1,
+    Math.min(24 * 30, Number(url.searchParams.get("windowHours") ?? 24)),
+  );
+  const sinceMs = Date.now() - windowHours * 60 * 60 * 1000;
+  const db = getDb();
+  const rows = await db.query.signalTimings.findMany({
+    where: gte(signalTimings.ts, sinceMs),
+    columns: { chain: true, stage: true, durationMs: true },
+    limit: 50_000,
+  });
+  type Bucket = { chain: string; stage: string; count: number; sum: number; max: number };
+  const buckets = new Map<string, Bucket>();
+  for (const r of rows) {
+    const k = `${r.chain}:${r.stage}`;
+    let b = buckets.get(k);
+    if (!b) {
+      b = { chain: r.chain, stage: r.stage, count: 0, sum: 0, max: 0 };
+      buckets.set(k, b);
+    }
+    b.count += 1;
+    b.sum += r.durationMs;
+    if (r.durationMs > b.max) b.max = r.durationMs;
+  }
+  const stages = [...buckets.values()]
+    .map((b) => ({ ...b, avgMs: b.sum / b.count }))
+    .sort((a, b) => b.avgMs - a.avgMs);
+  const bottleneck = stages[0]?.stage ?? null;
+  return { windowHours, stages, bottleneck };
+}
+
 function send(res: http.ServerResponse, status: number, body: unknown): void {
   res.statusCode = status;
   res.setHeader("Content-Type", "application/json");
@@ -861,6 +902,8 @@ export function createRestServer(): http.Server {
         if (req.url?.startsWith("/api/audit")) return send(res, 200, await handleAudit(req));
         if (req.url?.startsWith("/api/kpi")) return send(res, 200, await handleKpi(req));
         if (req.url === "/api/build") return send(res, 200, await handleBuild());
+        if (req.url?.startsWith("/api/latency"))
+          return send(res, 200, await handleLatency(req));
       }
       if (req.method === "POST") {
         if (req.url === "/api/kill_switch") return send(res, 200, await handleKillSwitchPost(req, auth.userId ?? 0));
