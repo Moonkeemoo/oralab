@@ -46,7 +46,11 @@ export interface SellParams {
   readonly negRisk: boolean;
   readonly correlationId?: string;
   readonly expirationTs: number;
-  readonly orderType: "GTD" | "GTC";
+  /**
+   * Sell mode. GTD/GTC use createAndPostOrder (limit). FOK/FAK use
+   * createAndPostMarketOrder (market) — for emergency dump-at-floor exits.
+   */
+  readonly orderType: "GTD" | "GTC" | "FOK" | "FAK";
   readonly postOnly?: boolean;
 }
 
@@ -258,18 +262,30 @@ export async function placeSell(params: SellParams): Promise<OrderResult> {
     }
 
     try {
-      const resp: unknown = await client.createAndPostOrder(
-        {
-          tokenID: params.tokenId,
-          price: params.price,
-          side: Side.SELL,
-          size: effectiveSize,
-          expiration: params.expirationTs,
-        } as Parameters<typeof client.createAndPostOrder>[0],
-        { tickSize: tickAsTickSize(params.tickSize), negRisk: params.negRisk },
-        params.orderType === "GTD" ? OrderType.GTD : OrderType.GTC,
-        params.postOnly ?? false,
-      );
+      const isMarketOrder = params.orderType === "FOK" || params.orderType === "FAK";
+      const resp: unknown = isMarketOrder
+        ? await client.createAndPostMarketOrder(
+            {
+              tokenID: params.tokenId,
+              price: params.price,
+              side: Side.SELL,
+              amount: effectiveSize,
+            } as Parameters<typeof client.createAndPostMarketOrder>[0],
+            { tickSize: tickAsTickSize(params.tickSize), negRisk: params.negRisk },
+            params.orderType === "FOK" ? OrderType.FOK : OrderType.FAK,
+          )
+        : await client.createAndPostOrder(
+            {
+              tokenID: params.tokenId,
+              price: params.price,
+              side: Side.SELL,
+              size: effectiveSize,
+              expiration: params.expirationTs,
+            } as Parameters<typeof client.createAndPostOrder>[0],
+            { tickSize: tickAsTickSize(params.tickSize), negRisk: params.negRisk },
+            params.orderType === "GTD" ? OrderType.GTD : OrderType.GTC,
+            params.postOnly ?? false,
+          );
       orderPlacementDurationMs.record(performance.now() - start, { op: "placeSell" });
 
       const r = resp as {
@@ -278,6 +294,8 @@ export async function placeSell(params: SellParams): Promise<OrderResult> {
         errorMsg?: string;
         status?: string;
         takingAmount?: string;
+        makingAmount?: string;
+        transactionsHashes?: string[];
       };
       if (!r.success) {
         recordOutcome("placeSell", r.errorMsg ?? "rejected", false);
@@ -290,6 +308,28 @@ export async function placeSell(params: SellParams): Promise<OrderResult> {
           raw: resp,
           dry: false,
         };
+      }
+      // For FOK SELL: must fill immediately or be killed. Same delayed-with-no-fill
+      // pattern as BUY — treat as failure so executor retries with widened slippage.
+      if (params.orderType === "FOK") {
+        const filled = Number(r.takingAmount ?? 0);
+        const txCount = r.transactionsHashes?.length ?? 0;
+        if (filled <= 0 && txCount === 0) {
+          log.warn(
+            { status: r.status, taking: r.takingAmount, txs: txCount },
+            "placeSell FOK didn't fill — treating as kill",
+          );
+          recordOutcome("placeSell", "fok_unfilled", false);
+          return {
+            success: false,
+            clientOrderId,
+            clobOrderId: r.orderID,
+            errorCode: "fok_unfilled",
+            status: r.status ?? "FOK_KILLED",
+            raw: resp,
+            dry: false,
+          };
+        }
       }
       recordOutcome("placeSell", "success", false);
       return {

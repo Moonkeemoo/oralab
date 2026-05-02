@@ -69,7 +69,10 @@ export async function executeExitIntent(
     tickSize: snap.tickSize,
     negRisk: snap.negRisk,
     expirationTs: Math.floor(Date.now() / 1000) + SELL_GTD_DEFAULT_SEC,
-    orderType: intent.action === "sell_fok" ? ("GTC" as const) : ("GTD" as const),
+    // sell_fok = emergency dump-at-floor: must fill immediately or be killed.
+    // Use FOK market order (createAndPostMarketOrder), NOT GTC limit (which
+    // would sit forever).
+    orderType: intent.action === "sell_fok" ? ("FOK" as const) : ("GTD" as const),
     postOnly: intent.action === "sell_bid_probe",
     correlationId: `pos-${pos.id}-sweep-${pos.sweepCount}`,
   };
