@@ -156,6 +156,7 @@ export class PositionMonitor {
         trailArmed: Boolean(dbPos.trailArmed),
         sweepCount: Number(dbPos.sweepCount ?? 0),
         reconciliationDriftPct: rec?.result.drift ?? 0,
+        sportsHint: (dbPos.sportsHint as PositionView["sportsHint"]) ?? null,
       };
 
       let snap: Awaited<ReturnType<typeof buildSnapshot>>;

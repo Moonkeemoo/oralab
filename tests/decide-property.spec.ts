@@ -133,6 +133,7 @@ function buildPos(p: PosInput): PositionView {
     trailArmed: p.trailArmed,
     sweepCount: p.sweepCount,
     reconciliationDriftPct: p.reconciliationDriftPct,
+    sportsHint: null,
   };
 }
 

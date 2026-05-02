@@ -56,6 +56,7 @@ const basePos: PositionView = {
   trailArmed: false,
   sweepCount: 0,
   reconciliationDriftPct: 0,
+  sportsHint: null,
 };
 
 const holdIntent: ExitIntent = {

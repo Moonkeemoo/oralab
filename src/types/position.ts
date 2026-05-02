@@ -36,4 +36,11 @@ export interface PositionView {
   readonly trailArmed: boolean;
   readonly sweepCount: number;
   readonly reconciliationDriftPct: number;
+  readonly sportsHint: {
+    type: "game_ended";
+    gameId: string;
+    score: string;
+    league: string;
+    at: number;
+  } | null;
 }
