@@ -1,0 +1,55 @@
+{
+  "name": "ora-et-labora-v2",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Sports-focused Polymarket auto-trading bot. CLOB V2. TypeScript native.",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "dev:trader": "tsx watch src/main.ts",
+    "dev:feed": "tsx watch src/feed/main.ts",
+    "dev:watchdog": "tsx watch src/watchdog/main.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/main.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "db:generate": "drizzle-kit generate",
+    "db:push": "drizzle-kit push",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.0.0",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.74.0",
+    "@opentelemetry/sdk-node": "^0.216.0",
+    "@polymarket/clob-client-v2": "^1.0.2",
+    "@polymarket/real-time-data-client": "^1.4.0",
+    "drizzle-orm": "^0.45.0",
+    "grammy": "^1.42.0",
+    "hono": "^4.12.0",
+    "pino": "^9.5.0",
+    "postgres": "^3.4.4",
+    "viem": "^2.21.0",
+    "ws": "^8.18.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.0",
+    "@types/node": "^22.9.0",
+    "@types/ws": "^8.5.13",
+    "@vitest/coverage-v8": "^4.1.0",
+    "drizzle-kit": "^0.31.0",
+    "fast-check": "^3.22.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^4.1.0"
+  }
+}

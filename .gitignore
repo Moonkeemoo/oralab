@@ -1,0 +1,35 @@
+# Node
+node_modules/
+dist/
+*.tsbuildinfo
+.npm
+.pnpm-store/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+output/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Coverage / test artifacts
+coverage/
+.vitest/
+
+# Local-only state (DB dumps, captures, archives)
+*.sqlite
+*.db
+oralab-v1-archive-*.tar.gz
+captures/
