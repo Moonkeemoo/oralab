@@ -63,8 +63,28 @@
 - [ ] Tests for `cancelOpenOrdersForAsset` (need ClobClient mock)
 - [ ] Reconciler chain-vs-orders cross-check on startup (catch ghost open orders we forgot)
 - [ ] WS feed reconnect storm protection (limit reconnect rate to 1/min)
-- [ ] FillReconciler missed-fill recovery via /activity scan on reconnect
+- [x] FillReconciler missed-fill recovery via /activity scan on reconnect (commit cf62fee)
 - [ ] `ExitExecutor` redeem path for resolved markets (P3+)
+- [x] PositionMonitor advances `peakPrice` on each tick (trail-arm prerequisite)
+
+## NOT yet LIVE-verified (work fine in unit tests / DRY)
+
+These code paths are written and unit-covered but have not run a real
+order through CLOB end-to-end. Each is a candidate for the next LIVE
+exercise window:
+
+- [ ] `decide_exit` SL/TP/trail → `executor.executeExitIntent` → `placeSell GTD`
+  (manual exit-all uses placeSell FAK — different SDK call). Risk: signing
+  / auth / order shape difference between createAndPostMarketOrder and
+  createAndPostOrder.
+- [ ] `FillReconciler.onFill` against a real OrderFilled WS event from CLOB.
+  Earlier LIVE runs we exited via direct script, so DbFillHandler.onFill
+  was not exercised by real WS data — only the activity backfill path.
+- [ ] Trail giveback fire end-to-end. Now that `peakPrice` advances, this
+  is reachable. Needs a position that runs +15% above fillPrice then
+  drops 5%.
+- [ ] SL emergency `sell_fok` real FOK market order at outcome floor.
+  Code path corrected from GTC → FOK but not LIVE.
 
 ## Verified LIVE 2026-05-02
 

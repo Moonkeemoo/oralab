@@ -145,6 +145,21 @@ export class PositionMonitor {
         continue;
       }
 
+      // Trail-arming: persist peakPrice = max(prevPeak, currentMark) when the
+      // mark source is trustworthy (rest_book/chain — not cached_midpoint).
+      // QA-143/QA-152: peak advances only on non-cached sources.
+      if (
+        snap.mark > view.peakPrice &&
+        (snap.markSource === "rest_book" || snap.markSource === "chain")
+      ) {
+        await db
+          .update(positions)
+          .set({ peakPrice: snap.mark, updatedAt: new Date() })
+          .where(eq(positions.id, numericId));
+        // Reflect immediately for this tick's decide_exit
+        (view as { peakPrice: number }).peakPrice = snap.mark;
+      }
+
       const decideStart = performance.now();
       const intent = decideExit(view, snap, this.cfg);
       decideExitDurationMs.record(performance.now() - decideStart);
