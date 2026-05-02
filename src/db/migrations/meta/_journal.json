@@ -29,6 +29,13 @@
       "when": 1777757978496,
       "tag": "0003_skinny_jasper_sitwell",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1777759691123,
+      "tag": "0004_spooky_vivisector",
+      "breakpoints": true
     }
   ]
 }

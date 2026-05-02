@@ -489,3 +489,23 @@ export const signalTimings = pgTable(
     index("idx_signal_timings_chain_stage").on(t.chain, t.stage),
   ],
 );
+
+// =============================================================================
+// NOTIFICATION_SETTINGS — per-user, per-event toggle for Telegram alerts.
+//   Default behaviour (no row) is enabled=true. P2d gate.
+// =============================================================================
+
+export const notificationSettings = pgTable(
+  "notification_settings",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    userId: bigint("user_id", { mode: "number" })
+      .notNull()
+      .default(1)
+      .references(() => users.id, { onDelete: "cascade" }),
+    eventKey: varchar("event_key", { length: 64 }).notNull(),
+    enabled: boolean("enabled").notNull().default(true),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("uq_notif_user_event").on(t.userId, t.eventKey)],
+);
