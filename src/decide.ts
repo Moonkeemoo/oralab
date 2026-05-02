@@ -191,6 +191,20 @@ export function decideExit(pos: PositionView, snap: MarketSnapshot, cfg: ExitCon
     );
   }
 
+  // Gate 8.5 — Sports game_ended → lock in via aggressive bid before resolution
+  if (pos.sportsHint?.type === "game_ended") {
+    return buildSell(
+      "sell_bid_aggr",
+      snap.bid,
+      pos,
+      snap,
+      cfg,
+      4,
+      `sports game_ended (${pos.sportsHint.league} ${pos.sportsHint.score}) → lock at bid`,
+      ["SPORTS-RESOLVE"],
+    );
+  }
+
   // Gate 9 — Trailing stop
   // Armed once peak crossed fillPrice * (1 + trailActivate)
   const trailArmedThreshold = pos.fillPrice * (1 + cfg.trailActivate);

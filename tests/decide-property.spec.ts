@@ -293,6 +293,76 @@ describe("decide_exit — properties (SPEC §215)", () => {
     );
   });
 
+  it("Gate 8.5: sportsHint=game_ended on sane open position → sell_* (never hold)", () => {
+    // Tight arbitrary so we deterministically pass Gates 1-8 and reach the
+    // sports-hint gate. Validates that the new gate never gets stuck in HOLD
+    // for healthy positions: M1/M2 short-circuits acceptable but no plain
+    // "hold" outcomes for game_ended.
+    const arbSane = fc.record({
+      bid: fc.double({ min: 0.2, max: 0.8, noNaN: true }),
+      spread: fc.double({ min: 0.001, max: 0.05, noNaN: true }),
+      tickSize: fc.constantFrom(...TICK_SIZES),
+      expectedOutcomeValue: fc.double({ min: 0.4, max: 0.6, noNaN: true }),
+      markSource: fc.constantFrom<MarketSnapshot["markSource"]>("rest_book", "chain"),
+      shares: fc.double({ min: 5, max: 100, noNaN: true }),
+      fillPrice: fc.double({ min: 0.4, max: 0.6, noNaN: true }),
+    });
+    fc.assert(
+      fc.property(arbSane, (s) => {
+        const snap = buildSnap({
+          bid: s.bid,
+          ask: Math.min(0.99, s.bid + s.spread),
+          mark: s.bid + s.spread / 2,
+          tickSize: s.tickSize,
+          expectedOutcomeValue: s.expectedOutcomeValue,
+          markSource: s.markSource,
+          markTs: NOW,
+          fetchedAt: NOW,
+          resolved: false,
+          acceptingOrders: true,
+          umaResolutionStatus: null,
+        });
+        const pos: PositionView = {
+          id: "pos-sports",
+          userId: 1,
+          walletAddress: "0xprop",
+          conditionId: "0xprop",
+          assetId: "0",
+          side: "YES",
+          status: "OPEN",
+          shares: s.shares,
+          onChainShares: s.shares,
+          fillPrice: s.fillPrice,
+          peakPrice: s.fillPrice,
+          fillTs: NOW - 600_000,
+          lastStateChangeTs: NOW - 600_000,
+          trailArmed: false,
+          sweepCount: 0,
+          reconciliationDriftPct: 0,
+          sportsHint: {
+            type: "game_ended",
+            gameId: "g1",
+            score: "1-0",
+            league: "mlb",
+            at: NOW,
+          },
+        };
+        const intent = decideExit(pos, snap, cfg);
+        // Either sells, OR holds only because of M2 floor / M1 zero-shares.
+        if (intent.action === "hold") {
+          return intent.gates.includes("INV-M1") || intent.gates.includes("INV-M2");
+        }
+        // TP or SL-E might fire ahead of 8.5 (legitimate). Otherwise must be 8.5.
+        return (
+          intent.gates.includes("SPORTS-RESOLVE") ||
+          intent.gates.includes("TP") ||
+          intent.gates.includes("SL-E")
+        );
+      }),
+      { numRuns: 500 },
+    );
+  });
+
   it("Pure: never throws", () => {
     fc.assert(
       fc.property(arbSnapshot, arbPos, (s, p) => {

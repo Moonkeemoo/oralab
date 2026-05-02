@@ -90,6 +90,26 @@ describe("decide_exit — gate coverage", () => {
     expect(intent.gates).toContain("TP");
   });
 
+  it("Gate 8.5: sports game_ended hint forces sell_bid_aggr at bid", () => {
+    const snap = makeSnap({ bid: 0.45, ask: 0.55, mark: 0.5, tickSize: 0.01 });
+    const pos = makePos({
+      fillPrice: 0.5,
+      shares: 10,
+      onChainShares: 10,
+      sportsHint: {
+        type: "game_ended",
+        gameId: "g1",
+        score: "2-1",
+        league: "mlb",
+        at: NOW,
+      },
+    });
+    const intent = decideExit(pos, snap, cfg);
+    expect(intent.action).toBe("sell_bid_aggr");
+    expect(intent.gates).toContain("SPORTS-RESOLVE");
+    expect(intent.price).toBeCloseTo(0.45, 5);
+  });
+
   it("Gate 9: trail triggers at giveback breach", () => {
     const snap = makeSnap({ bid: 0.55, ask: 0.56, mark: 0.55, tickSize: 0.01 });
     // peak 0.6 → 20% above fill 0.5 (above 15% activation)
