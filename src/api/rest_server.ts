@@ -20,6 +20,12 @@ import { FILTER_REGISTRY } from "../filters/registry.js";
 import { loadEffectiveExitConfig } from "../monitor/exit_config_loader.js";
 import { writeAudit } from "../notify/audit_log.js";
 import { isRuntimeKillSwitchActive, setRuntimeKillSwitch } from "../notify/kill_switch.js";
+import {
+  listNotificationSettings,
+  NOTIFICATION_EVENTS,
+  type NotificationEvent,
+  setNotificationEnabled,
+} from "../notify/notification_settings.js";
 import { setRuntimeConfig } from "../notify/runtime_config.js";
 import { logger } from "../obs/logger.js";
 import {
@@ -852,6 +858,37 @@ async function handleWhaleTrackPost(
   return { ok: true, address, tracked: body.tracked };
 }
 
+async function handleNotificationsList(userId: number): Promise<unknown> {
+  return await listNotificationSettings(userId);
+}
+
+async function handleNotificationsPost(
+  req: http.IncomingMessage,
+  userId: number,
+): Promise<unknown> {
+  const raw = await readBody(req);
+  const body = JSON.parse(raw || "{}") as { event?: string; enabled?: boolean };
+  if (!body.event || typeof body.enabled !== "boolean") {
+    return { ok: false, error: "event + enabled required" };
+  }
+  if (!NOTIFICATION_EVENTS.includes(body.event as NotificationEvent)) {
+    return { ok: false, error: `unknown event; allowed: ${NOTIFICATION_EVENTS.join(", ")}` };
+  }
+  await setNotificationEnabled({
+    userId,
+    event: body.event as NotificationEvent,
+    enabled: body.enabled,
+  });
+  await writeAudit({
+    actor: "mini_app",
+    userId,
+    action: "notification_setting",
+    target: body.event,
+    payload: { enabled: body.enabled },
+  });
+  return { ok: true, event: body.event, enabled: body.enabled };
+}
+
 async function handleKillSwitchPost(
   req: http.IncomingMessage,
   userId: number,
@@ -930,8 +967,13 @@ export function createRestServer(): http.Server {
         if (req.url === "/api/build") return send(res, 200, await handleBuild());
         if (req.url?.startsWith("/api/latency"))
           return send(res, 200, await handleLatency(req));
+        if (req.url === "/api/notifications")
+          return send(res, 200, await handleNotificationsList(auth.userId ?? 1));
       }
       if (req.method === "POST") {
+        if (req.url === "/api/notifications") {
+          return send(res, 200, await handleNotificationsPost(req, auth.userId ?? 1));
+        }
         if (req.url === "/api/kill_switch") return send(res, 200, await handleKillSwitchPost(req, auth.userId ?? 0));
         if (req.url === "/api/exit_config") {
           return send(res, 200, await handleExitConfigPost(req, auth.userId ?? 0));
