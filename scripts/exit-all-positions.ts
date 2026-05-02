@@ -12,10 +12,13 @@
  */
 import process from "node:process";
 import { OrderType, Side, type TickSize } from "@polymarket/clob-client-v2";
+import { and, eq, inArray } from "drizzle-orm";
 import { getBookTop } from "../src/api/book.js";
 import { getClobClient } from "../src/api/clob.js";
 import { getActivity, getPositions } from "../src/api/data.js";
 import { getMarketByTokenId } from "../src/api/gamma.js";
+import { getDb } from "../src/db/client.js";
+import { positions as positionsTable } from "../src/db/schema.js";
 
 const SLIPPAGE_PCT = Number(process.env["EXIT_SLIPPAGE_PCT"] ?? 0.2);
 
@@ -119,6 +122,27 @@ async function exitOne(
   }
 }
 
+async function markDbExiting(assetIds: string[]): Promise<void> {
+  if (assetIds.length === 0) return;
+  const db = getDb();
+  // Move any active DB positions for these assets to EXITING so reconciler
+  // closes them via sell_filled_chain_lag instead of freezing on chain=0.
+  const updated = await db
+    .update(positionsTable)
+    .set({ status: "EXITING", lastStateChangeTs: Date.now(), updatedAt: new Date() })
+    .where(
+      and(
+        inArray(positionsTable.assetId, assetIds),
+        inArray(positionsTable.status, ["PENDING", "FILLED", "OPEN"] as const),
+      ),
+    )
+    .returning({ id: positionsTable.id, assetId: positionsTable.assetId });
+  if (updated.length > 0) {
+    console.log(`pre-marked ${updated.length} DB positions → EXITING for reconciler:`);
+    for (const u of updated) console.log(`  pos ${u.id} (asset ${u.assetId.slice(0, 12)}…)`);
+  }
+}
+
 async function main(): Promise<void> {
   const { client, walletAddress } = getClobClient();
   console.log("wallet:", walletAddress);
@@ -129,6 +153,10 @@ async function main(): Promise<void> {
     console.log("nothing to exit");
     return;
   }
+
+  // Pre-flight: flip DB positions to EXITING so reconciler can close
+  // (avoids `chain_invisible` FROZEN when next trader run sees OPEN+chain=0).
+  await markDbExiting(positions.map((p) => p.asset));
 
   const results: ExitResult[] = [];
   // Sequential to avoid hitting same book twice on same asset within ms

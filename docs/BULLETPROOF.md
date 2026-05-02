@@ -64,10 +64,13 @@
 - [ ] Tests for FOK kill detection in `placeBuy` / `placeSell` (need ClobClient mock)
 - [ ] Tests for `cancelOpenOrdersForAsset` (need ClobClient mock)
 - [ ] Reconciler chain-vs-orders cross-check on startup (catch ghost open orders we forgot)
-- [ ] WS feed reconnect storm protection (limit reconnect rate to 1/min)
-- [x] FillReconciler missed-fill recovery via /activity scan on reconnect (commit cf62fee)
+- [x] WS feed reconnect storm protection (commit `<63424be+>` — min backoff 5s, max 60s, stable-reset 60s, /activity backfill cooldown 5min)
+- [x] FillReconciler missed-fill recovery via /activity scan on reconnect (commit cf62fee + `<63424be+>` for actual onConnect wiring)
 - [ ] `ExitExecutor` redeem path for resolved markets (P3+)
 - [x] PositionMonitor advances `peakPrice` on each tick (trail-arm prerequisite)
+- [x] FillReconciler WS receives + handles real OrderFilled events (commit `63424be` — type:"user" lowercase, event_type:"trade", CONFIRMED triggers transition)
+- [x] `placeSell` dust floor — reject sub-tickSize SELLs that round to makerAmount=0/takerAmount=0 (env `SELL_DUST_FLOOR_SHARES`, default 0.1)
+- [x] `exit-all-positions.ts` flips matching DB positions to EXITING pre-flight, so reconciler closes via `sell_filled_chain_lag` instead of `chain_invisible` FROZEN
 
 ## NOT yet LIVE-verified (work fine in unit tests / DRY)
 
@@ -75,13 +78,15 @@ These code paths are written and unit-covered but have not run a real
 order through CLOB end-to-end. Each is a candidate for the next LIVE
 exercise window:
 
-- [ ] `decide_exit` SL/TP/trail → `executor.executeExitIntent` → `placeSell GTD`
-  (manual exit-all uses placeSell FAK — different SDK call). Risk: signing
-  / auth / order shape difference between createAndPostMarketOrder and
-  createAndPostOrder.
-- [ ] `FillReconciler.onFill` against a real OrderFilled WS event from CLOB.
-  Earlier LIVE runs we exited via direct script, so DbFillHandler.onFill
-  was not exercised by real WS data — only the activity backfill path.
+- [x] `decide_exit` SL/TP/trail → `executor.executeExitIntent` → `placeSell GTD`
+  Verified LIVE 2026-05-02 (test-2 + extended): pos 8 TP @+0.8% sell_bid_probe,
+  pos 9/10/12/13 SL @-7% sell_bid_probe→sell_bid_aggr; one GTD per asset matched
+  on chain at bid+1tick.
+- [x] `FillReconciler.onFill` against a real OrderFilled WS event from CLOB.
+  Verified 2026-05-02: pos 12 BUY+SELL closed via WS handler (`chain_sell_filled`
+  close_reason, `fills` table populated). All three trade status messages
+  (MATCHED → MINED → CONFIRMED) received and dispatched; only CONFIRMED triggers
+  the position status transition (INV-M3).
 - [ ] Trail giveback fire end-to-end. Now that `peakPrice` advances, this
   is reachable. Needs a position that runs +15% above fillPrice then
   drops 5%.
@@ -99,6 +104,15 @@ exercise window:
 | Manual exit SELL FOK at minPrice = bid×0.9 | ✅ partial fill (3.105/5.76) |
 | Manual exit SELL FAK at minPrice = bid×0.8 | ✅ remainder filled |
 | pUSD net effect on $15.94 deployed | -$0.19 (-1.2%) — ~$0.48 in fees+slippage |
+| placeBuy delayed-fill disambiguation | ✅ pos 8/12/13 BUY `via:order_poll, filled:N`; without fix would have orphaned chain positions |
+| TP gate via decide_exit → executor → placeSell GTD | ✅ pos 8 TP +0.8% → sell_bid_probe → GTD matched @ 0.61 |
+| SL standard via decide_exit → executor escalation | ✅ pos 9/10/12/13: sweep=0 sell_bid_probe → sweep≥1 sell_bid_aggr; GTD filled |
+| Sweep cooldown 5s (prevents CLOB hammering) | ✅ logs show `sweep_cooldown 527ms<5000ms`…`4914ms` then next sweep |
+| GTD 120s expiration (no CLOB rejection bombing) | ✅ 0 invalid-expiration errors post-fix (14 were pre-fix) |
+| INV-M1 cap with 1e6 unit fix | ✅ chain dust 0.003 shares correctly blocks SELL via dust_below_floor |
+| FillReconciler WS handler (real OrderFilled) | ✅ pos 12 closed via `chain_sell_filled` close_reason, `fills` row inserted |
+| WS reconnect-storm protection | ✅ min backoff 5s, max 60s, stable-reset only after 60s held, /activity cooldown 5min |
+| pUSD net across all test cycles (pos 8-13) | ~+$2.68 ($103.41 → $106.09); positives outweighed losses despite tight SL |
 
 ## Triggers to add to this list
 

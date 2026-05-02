@@ -94,11 +94,29 @@ interface FillReconcilerCfg {
 
 export class FillReconciler {
   private ws: WebSocket | null = null;
-  private backoffMs = 1_000;
-  private readonly maxBackoffMs = 16_000;
+  /**
+   * Reconnect backoff: 5s → 10s → 20s → 60s capped. Reset only after a
+   * connection is held STABLE_RESET_MS without disconnect (raw connect alone
+   * isn't enough — Polymarket can accept the WS, hold it for 30s, then drop).
+   */
+  private backoffMs: number;
+  private readonly minBackoffMs: number;
+  private readonly maxBackoffMs: number;
+  private readonly stableResetMs: number;
+  private stableResetTimer: NodeJS.Timeout | null = null;
   private stopped = false;
+  private lastBackfillTs = 0;
+  private readonly backfillCooldownMs: number;
 
-  constructor(private cfg: FillReconcilerCfg) {}
+  constructor(private cfg: FillReconcilerCfg) {
+    const numEnv = (k: string, fallback: number): number =>
+      Number(process.env[k] ?? fallback);
+    this.minBackoffMs = numEnv("FILL_WS_MIN_BACKOFF_MS", 5_000);
+    this.maxBackoffMs = numEnv("FILL_WS_MAX_BACKOFF_MS", 60_000);
+    this.stableResetMs = numEnv("FILL_WS_STABLE_RESET_MS", 60_000);
+    this.backfillCooldownMs = numEnv("FILL_WS_BACKFILL_COOLDOWN_MS", 5 * 60_000);
+    this.backoffMs = this.minBackoffMs;
+  }
 
   start(): void {
     this.stopped = false;
@@ -107,6 +125,10 @@ export class FillReconciler {
 
   stop(): void {
     this.stopped = true;
+    if (this.stableResetTimer) {
+      clearTimeout(this.stableResetTimer);
+      this.stableResetTimer = null;
+    }
     this.ws?.close();
     this.ws = null;
   }
@@ -121,7 +143,18 @@ export class FillReconciler {
 
     ws.on("open", () => {
       log.info("connected; sending auth");
-      this.backoffMs = 1_000;
+      // Schedule stable-reset: only drop backoff to floor if we hold the
+      // connection for stableResetMs. A server that accepts then drops at
+      // 30s shouldn't trigger 1s reconnects forever.
+      if (this.stableResetTimer) clearTimeout(this.stableResetTimer);
+      this.stableResetTimer = setTimeout(() => {
+        if (this.backoffMs !== this.minBackoffMs) {
+          log.debug({ heldMs: this.stableResetMs }, "WS held stable — resetting backoff");
+          this.backoffMs = this.minBackoffMs;
+        }
+      }, this.stableResetMs);
+      this.stableResetTimer.unref?.();
+
       Promise.resolve(this.cfg.marketsProvider())
         .then((markets) => {
           const payload = {
@@ -135,10 +168,20 @@ export class FillReconciler {
           };
           ws.send(JSON.stringify(payload));
           log.info({ marketCount: markets.length }, "user WS subscribed");
+
           if (this.cfg.onConnect) {
-            Promise.resolve(this.cfg.onConnect({ walletAddress: this.cfg.walletAddress })).catch(
-              (err) => log.warn({ err }, "onConnect callback threw"),
-            );
+            const sinceLast = Date.now() - this.lastBackfillTs;
+            if (sinceLast < this.backfillCooldownMs) {
+              log.debug(
+                { sinceLastSec: Math.round(sinceLast / 1000), cooldownSec: this.backfillCooldownMs / 1000 },
+                "skipping /activity backfill — within cooldown",
+              );
+            } else {
+              this.lastBackfillTs = Date.now();
+              Promise.resolve(this.cfg.onConnect({ walletAddress: this.cfg.walletAddress })).catch(
+                (err) => log.warn({ err }, "onConnect callback threw"),
+              );
+            }
           }
         })
         .catch((err) => log.error({ err }, "marketsProvider threw — closing WS"));
@@ -232,6 +275,10 @@ export class FillReconciler {
 
   private scheduleReconnect(): void {
     if (this.stopped) return;
+    if (this.stableResetTimer) {
+      clearTimeout(this.stableResetTimer);
+      this.stableResetTimer = null;
+    }
     const delay = this.backoffMs;
     this.backoffMs = Math.min(this.backoffMs * 2, this.maxBackoffMs);
     setTimeout(() => this.connect(), delay).unref?.();
