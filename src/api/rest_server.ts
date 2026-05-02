@@ -806,6 +806,27 @@ async function handlePositionFreezePost(
   return { ok: true, id };
 }
 
+async function handleWhaleProfile(addr: string): Promise<unknown> {
+  const db = getDb();
+  const w = await db.query.whales.findFirst({ where: eq(whales.address, addr.toLowerCase()) });
+  if (!w) return { error: "not_found" };
+  return {
+    address: w.address,
+    classification: w.classification,
+    confidence: Number(w.confidence ?? 0),
+    tracked: w.tracked,
+    smScore: Number(w.smScore ?? 0),
+    trustScore: Number(w.trustScore ?? 0),
+    totalTrades: w.totalTrades,
+    winRate: Number(w.winRate ?? 0),
+    avgHoldHours: Number(w.avgHoldHours ?? 0),
+    directionalRatio: Number(w.directionalRatio ?? 0),
+    domainBreakdown: w.domainBreakdown,
+    perDomainClassification: w.perDomainClassification,
+    lastActivityAt: w.lastActivityAt,
+  };
+}
+
 async function handleWhaleTrackPost(
   address: string,
   req: http.IncomingMessage,
@@ -896,6 +917,11 @@ export function createRestServer(): http.Server {
         if (req.url?.startsWith("/api/history")) return send(res, 200, await handleHistory(req));
         if (req.url === "/api/filters/registry") return send(res, 200, await handleFilterRegistry());
         if (req.url?.startsWith("/api/filters/stats")) return send(res, 200, await handleFilterStats(req));
+        const whaleProfileMatch = req.url?.match(/^\/api\/whales\/(0x[0-9a-fA-F]{40})\/profile$/);
+        if (whaleProfileMatch && whaleProfileMatch[1]) {
+          const result = await handleWhaleProfile(whaleProfileMatch[1]);
+          return send(res, (result as { error?: unknown }).error ? 404 : 200, result);
+        }
         if (req.url === "/api/whales") return send(res, 200, await handleWhalesList());
         if (req.url === "/api/connections") return send(res, 200, await handleConnections());
         if (req.url === "/api/perf") return send(res, 200, await handlePerf());
