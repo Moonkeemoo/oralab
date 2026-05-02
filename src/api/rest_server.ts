@@ -6,7 +6,7 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { and, desc, eq, gte, inArray } from "drizzle-orm";
 import { getDb } from "../db/client.js";
-import { decisions, fills, positions, strategies } from "../db/schema.js";
+import { decisions, fills, positions, signals, strategies } from "../db/schema.js";
 import { loadEffectiveExitConfig } from "../monitor/exit_config_loader.js";
 import { isRuntimeKillSwitchActive, setRuntimeKillSwitch } from "../notify/kill_switch.js";
 import { logger } from "../obs/logger.js";
@@ -309,6 +309,52 @@ async function handleHistory(req: http.IncomingMessage): Promise<unknown> {
   };
 }
 
+async function handleFilterStats(req: http.IncomingMessage): Promise<unknown> {
+  const url = new URL(req.url ?? "/", "http://x");
+  const windowHours = Math.max(1, Math.min(24 * 30, Number(url.searchParams.get("windowHours") ?? 24)));
+  const sinceMs = Date.now() - windowHours * 60 * 60 * 1000;
+  const db = getDb();
+  const rows = await db.query.signals.findMany({
+    where: gte(signals.processedAt, new Date(sinceMs)),
+    columns: { accepted: true, rejectReason: true },
+  });
+  const total = rows.length;
+  const accepted = rows.filter((r) => r.accepted).length;
+  const byReason: Record<string, number> = {};
+  for (const r of rows) {
+    if (!r.accepted && r.rejectReason) {
+      byReason[r.rejectReason] = (byReason[r.rejectReason] ?? 0) + 1;
+    }
+  }
+  const totalRejected = total - accepted;
+  const bottlenecks = Object.entries(byReason)
+    .filter(([, n]) => totalRejected > 0 && n / totalRejected >= 0.3)
+    .map(([k]) => k);
+  return {
+    windowHours,
+    total,
+    accepted,
+    rejected: totalRejected,
+    acceptRatePct: total > 0 ? (accepted / total) * 100 : 0,
+    byReason,
+    bottlenecks,
+  };
+}
+
+async function handleWhalesList(): Promise<unknown> {
+  const db = getDb();
+  const rows = await db.query.whales.findMany({
+    orderBy: (cols, { desc }) => [desc(cols.tracked), desc(cols.confidence)],
+    limit: 200,
+  });
+  return rows.map((w) => ({
+    address: w.address,
+    classification: w.classification,
+    confidence: Number(w.confidence ?? 0),
+    tracked: w.tracked,
+  }));
+}
+
 function send(res: http.ServerResponse, status: number, body: unknown): void {
   res.statusCode = status;
   res.setHeader("Content-Type", "application/json");
@@ -420,6 +466,8 @@ export function createRestServer(): http.Server {
         }
         if (req.url === "/api/exit_config") return send(res, 200, await handleExitConfig());
         if (req.url?.startsWith("/api/history")) return send(res, 200, await handleHistory(req));
+        if (req.url?.startsWith("/api/filters/stats")) return send(res, 200, await handleFilterStats(req));
+        if (req.url === "/api/whales") return send(res, 200, await handleWhalesList());
       }
       if (req.method === "POST") {
         if (req.url === "/api/kill_switch") return send(res, 200, await handleKillSwitchPost(req));
