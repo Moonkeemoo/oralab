@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { and, desc, eq, gte, inArray } from "drizzle-orm";
 import { getDb } from "../db/client.js";
 import { decisions, fills, positions, strategies } from "../db/schema.js";
+import { loadEffectiveExitConfig } from "../monitor/exit_config_loader.js";
 import { isRuntimeKillSwitchActive, setRuntimeKillSwitch } from "../notify/kill_switch.js";
 import { logger } from "../obs/logger.js";
 
@@ -249,6 +250,65 @@ async function handleStrategyById(id: number): Promise<unknown> {
   };
 }
 
+async function handleExitConfig(): Promise<unknown> {
+  const cfg = await loadEffectiveExitConfig();
+  return cfg;
+}
+
+async function handleHistory(req: http.IncomingMessage): Promise<unknown> {
+  const url = new URL(req.url ?? "/", "http://x");
+  const windowHours = Math.max(1, Math.min(24 * 30, Number(url.searchParams.get("windowHours") ?? 24)));
+  const sinceMs = Date.now() - windowHours * 60 * 60 * 1000;
+  const db = getDb();
+  const rows = await db.query.positions.findMany({
+    where: and(eq(positions.status, "CLOSED"), gte(positions.lastStateChangeTs, sinceMs)),
+    orderBy: desc(positions.id),
+    limit: 200,
+  });
+  const enriched = await Promise.all(
+    rows.map(async (p) => {
+      const sells = await db.query.fills.findMany({
+        where: and(eq(fills.positionId, Number(p.id)), eq(fills.side, "SELL")),
+      });
+      const exitUsd = sells.reduce((s, f) => s + Number(f.shares ?? 0) * Number(f.price ?? 0), 0);
+      const entryUsd = Number(p.entryCostUsd ?? 0);
+      const pnl = exitUsd - entryUsd;
+      return {
+        id: p.id,
+        closeReason: p.closeReason,
+        closeTs: Number(p.lastStateChangeTs ?? 0),
+        entryUsd,
+        exitUsd,
+        pnlUsd: pnl,
+        pnlPct: entryUsd > 0 ? pnl / entryUsd : 0,
+        outcome: pnl >= 0 ? "win" : "loss",
+      };
+    }),
+  );
+  const wins = enriched.filter((e) => e.outcome === "win").length;
+  const losses = enriched.length - wins;
+  const totalEntry = enriched.reduce((s, e) => s + e.entryUsd, 0);
+  const totalExit = enriched.reduce((s, e) => s + e.exitUsd, 0);
+  const netPnl = totalExit - totalEntry;
+  return {
+    windowHours,
+    aggregates: {
+      trades: enriched.length,
+      wins,
+      losses,
+      winRatePct: enriched.length > 0 ? (wins / enriched.length) * 100 : 0,
+      totalEntryUsd: totalEntry,
+      totalExitUsd: totalExit,
+      netPnlUsd: netPnl,
+      netPnlPct: totalEntry > 0 ? netPnl / totalEntry : 0,
+      avgUsd: enriched.length > 0 ? netPnl / enriched.length : 0,
+      bestUsd: Math.max(0, ...enriched.map((e) => e.pnlUsd)),
+      worstUsd: Math.min(0, ...enriched.map((e) => e.pnlUsd)),
+    },
+    trades: enriched,
+  };
+}
+
 function send(res: http.ServerResponse, status: number, body: unknown): void {
   res.statusCode = status;
   res.setHeader("Content-Type", "application/json");
@@ -358,6 +418,8 @@ export function createRestServer(): http.Server {
           const result = await handleStrategyById(Number(strategyMatch[1]));
           return send(res, result === null ? 404 : 200, result ?? { error: "not_found" });
         }
+        if (req.url === "/api/exit_config") return send(res, 200, await handleExitConfig());
+        if (req.url?.startsWith("/api/history")) return send(res, 200, await handleHistory(req));
       }
       if (req.method === "POST") {
         if (req.url === "/api/kill_switch") return send(res, 200, await handleKillSwitchPost(req));
