@@ -355,6 +355,76 @@ async function handleWhalesList(): Promise<unknown> {
   }));
 }
 
+async function handleConnections(): Promise<unknown> {
+  const db = getDb();
+  const sportsLast = await db.query.sportsEvents.findMany({
+    orderBy: (c, { desc }) => [desc(c.fetchedAt)],
+    limit: 1,
+  });
+  const sigLast = await db.query.signals.findMany({
+    orderBy: (c, { desc }) => [desc(c.processedAt)],
+    limit: 1,
+  });
+  const now = Date.now();
+  const sportsAgeMs = sportsLast[0]?.fetchedAt
+    ? now - sportsLast[0].fetchedAt.getTime()
+    : Number.POSITIVE_INFINITY;
+  const sigAgeMs = sigLast[0]?.processedAt
+    ? now - sigLast[0].processedAt.getTime()
+    : Number.POSITIVE_INFINITY;
+  return [
+    {
+      source: "sports_ws",
+      lastEventTs: sportsLast[0]?.fetchedAt?.getTime() ?? null,
+      ageMs: Number.isFinite(sportsAgeMs) ? sportsAgeMs : null,
+      state: sportsAgeMs < 60_000 ? "ok" : sportsAgeMs < 300_000 ? "stale" : "down",
+    },
+    {
+      source: "rtds_ws",
+      lastEventTs: sigLast[0]?.processedAt?.getTime() ?? null,
+      ageMs: Number.isFinite(sigAgeMs) ? sigAgeMs : null,
+      state: sigAgeMs < 60_000 ? "ok" : sigAgeMs < 600_000 ? "stale" : "down",
+    },
+  ];
+}
+
+async function handlePerf(): Promise<unknown> {
+  return {
+    nodeVersion: process.version,
+    uptimeSec: Math.round(process.uptime()),
+    memoryRssMb: Math.round(process.memoryUsage().rss / 1024 / 1024),
+    note: "decide_exit / monitor / WS metrics aggregation deferred to P3+",
+  };
+}
+
+async function handleAudit(req: http.IncomingMessage): Promise<unknown> {
+  const url = new URL(req.url ?? "/", "http://x");
+  const limit = Math.max(1, Math.min(500, Number(url.searchParams.get("limit") ?? 50)));
+  const db = getDb();
+  const rows = await db.query.auditLog.findMany({
+    orderBy: (c, { desc }) => [desc(c.ts)],
+    limit,
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    ts: Number(r.ts),
+    actor: r.actor,
+    userId: r.userId,
+    action: r.action,
+    target: r.target,
+    payload: r.payload,
+  }));
+}
+
+async function handleBuild(): Promise<unknown> {
+  return {
+    service: "ora2-api",
+    nodeVersion: process.version,
+    startedAt: process.env["ORA2_API_STARTED_AT"] ?? new Date().toISOString(),
+    gitCommit: process.env["GIT_COMMIT"] ?? "dev",
+  };
+}
+
 function send(res: http.ServerResponse, status: number, body: unknown): void {
   res.statusCode = status;
   res.setHeader("Content-Type", "application/json");
@@ -468,6 +538,10 @@ export function createRestServer(): http.Server {
         if (req.url?.startsWith("/api/history")) return send(res, 200, await handleHistory(req));
         if (req.url?.startsWith("/api/filters/stats")) return send(res, 200, await handleFilterStats(req));
         if (req.url === "/api/whales") return send(res, 200, await handleWhalesList());
+        if (req.url === "/api/connections") return send(res, 200, await handleConnections());
+        if (req.url === "/api/perf") return send(res, 200, await handlePerf());
+        if (req.url?.startsWith("/api/audit")) return send(res, 200, await handleAudit(req));
+        if (req.url === "/api/build") return send(res, 200, await handleBuild());
       }
       if (req.method === "POST") {
         if (req.url === "/api/kill_switch") return send(res, 200, await handleKillSwitchPost(req));

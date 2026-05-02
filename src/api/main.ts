@@ -9,6 +9,7 @@ import { startRestServer } from "./rest_server.js";
 async function main(): Promise<void> {
   bindService("ora2-api");
   startTelemetry({ serviceName: "ora2-api" });
+  process.env["ORA2_API_STARTED_AT"] = new Date().toISOString();
   const server = startRestServer();
 
   const shutdown = async (sig: string): Promise<void> => {
