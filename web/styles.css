@@ -286,3 +286,9 @@ main#view {
   font-size: 12px; cursor: pointer;
 }
 .chip.active { background: rgba(47,129,247,0.15); color: var(--accent); border-color: var(--accent); }
+
+table.filters { width: 100%; border-collapse: collapse; }
+table.filters th { text-align: left; color: var(--text-muted); font-weight: 500; font-size: 11px; padding: 4px 0; }
+table.filters td { padding: 4px 0; font-size: 13px; font-variant-numeric: tabular-nums; }
+table.filters tr { border-bottom: 1px solid rgba(255,255,255,0.04); }
+.switch { display: inline-block; }
