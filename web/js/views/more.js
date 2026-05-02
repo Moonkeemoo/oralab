@@ -1,21 +1,31 @@
 "use strict";
-import { fetchJson } from "../api.js";
+import { fetchJson, postJson } from "../api.js";
 import { escapeHtml, fmtAge } from "../format.js";
 
 export async function renderMore(root) {
-  const [conns, perf, audit, build, lat] = await Promise.all([
+  const [conns, perf, audit, build, lat, notifs] = await Promise.all([
     fetchJson("/api/connections"),
     fetchJson("/api/perf"),
     fetchJson("/api/audit?limit=30"),
     fetchJson("/api/build"),
     fetchJson("/api/latency?windowHours=24"),
+    fetchJson("/api/notifications"),
   ]);
   root.innerHTML = `
     <section class="card">
       <div class="card-title">Notifications</div>
-      <div class="card-body muted">
-        wired: BUY filled, position closed, FROZEN, fatal error.<br>
-        per-event toggles + daily summary scheduling: P2d.
+      <div class="card-body">
+        ${notifs.map((n) => `
+          <div class="kv">
+            <span class="k">${escapeHtml(n.event)}</span>
+            <span class="v">
+              <label class="switch">
+                <input type="checkbox" data-notif="${escapeHtml(n.event)}" ${n.enabled ? "checked" : ""}/>
+              </label>
+            </span>
+          </div>
+        `).join("")}
+        <div class="muted" style="margin-top:6px">Toggles take effect within ~5s (cached).</div>
       </div>
     </section>
 
@@ -85,4 +95,12 @@ export async function renderMore(root) {
       </div>
     </section>
   `;
+
+  root.querySelectorAll('input[data-notif]').forEach((el) => {
+    el.addEventListener('change', async (e) => {
+      const event = el.getAttribute('data-notif');
+      const enabled = e.target.checked;
+      await postJson('/api/notifications', { event, enabled });
+    });
+  });
 }
