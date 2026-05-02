@@ -6,7 +6,7 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { and, desc, eq, gte, inArray } from "drizzle-orm";
 import { getDb } from "../db/client.js";
-import { decisions, fills, positions } from "../db/schema.js";
+import { decisions, fills, positions, strategies } from "../db/schema.js";
 import { isRuntimeKillSwitchActive, setRuntimeKillSwitch } from "../notify/kill_switch.js";
 import { logger } from "../obs/logger.js";
 
@@ -224,6 +224,31 @@ async function handlePositionTimeline(id: number): Promise<unknown> {
   };
 }
 
+async function handleStrategiesList(): Promise<unknown> {
+  const db = getDb();
+  const rows = await db.query.strategies.findMany();
+  return rows.map((s) => ({
+    id: s.id,
+    userId: s.userId,
+    kind: s.kind,
+    enabled: s.enabled,
+    params: s.params,
+  }));
+}
+
+async function handleStrategyById(id: number): Promise<unknown> {
+  const db = getDb();
+  const s = await db.query.strategies.findFirst({ where: eq(strategies.id, id) });
+  if (!s) return null;
+  return {
+    id: s.id,
+    userId: s.userId,
+    kind: s.kind,
+    enabled: s.enabled,
+    params: s.params,
+  };
+}
+
 function send(res: http.ServerResponse, status: number, body: unknown): void {
   res.statusCode = status;
   res.setHeader("Content-Type", "application/json");
@@ -325,6 +350,12 @@ export function createRestServer(): http.Server {
             return send(res, 200, await handlePositionTimeline(id));
           }
           const result = await handlePositionById(id);
+          return send(res, result === null ? 404 : 200, result ?? { error: "not_found" });
+        }
+        if (req.url === "/api/strategies") return send(res, 200, await handleStrategiesList());
+        const strategyMatch = req.url?.match(/^\/api\/strategies\/(\d+)$/);
+        if (strategyMatch && strategyMatch[1]) {
+          const result = await handleStrategyById(Number(strategyMatch[1]));
           return send(res, result === null ? 404 : 200, result ?? { error: "not_found" });
         }
       }
