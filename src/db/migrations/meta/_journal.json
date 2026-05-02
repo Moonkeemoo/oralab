@@ -15,6 +15,13 @@
       "when": 1777752889569,
       "tag": "0001_milky_killer_shrike",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1777757683099,
+      "tag": "0002_strong_invisible_woman",
+      "breakpoints": true
     }
   ]
 }

@@ -454,3 +454,30 @@ export const auditLog = pgTable(
   },
   (t) => [index("idx_audit_log_ts").on(t.ts)],
 );
+
+// =============================================================================
+// SIGNAL_TIMINGS — per-stage latency capture for entry+exit chains.
+//   Fire-and-forget rows written by withTiming helper. Bottleneck analysis
+//   feeds GET /api/latency and the More tab Latency card.
+// =============================================================================
+
+export const signalTimings = pgTable(
+  "signal_timings",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    signalId: bigint("signal_id", { mode: "number" }).references(() => signals.id, {
+      onDelete: "cascade",
+    }),
+    positionId: bigint("position_id", { mode: "number" }).references(() => positions.id, {
+      onDelete: "set null",
+    }),
+    chain: varchar("chain", { length: 8 }).notNull(),
+    stage: varchar("stage", { length: 40 }).notNull(),
+    durationMs: integer("duration_ms").notNull(),
+    ts: bigint("ts", { mode: "number" }).notNull(),
+  },
+  (t) => [
+    index("idx_signal_timings_signal").on(t.signalId),
+    index("idx_signal_timings_chain_stage").on(t.chain, t.stage),
+  ],
+);
