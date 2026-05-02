@@ -132,3 +132,14 @@ export async function getMarketByConditionId(conditionId: string): Promise<Gamma
   if (!first) return null;
   return parseGammaMarket(first);
 }
+
+/**
+ * Find ALL open markets associated with a Polymarket sports gameId. A single
+ * game produces multiple markets (winner, spread, totals, …) — return all.
+ * Used by SportsScoreReactor / MarketMatcher to map ScoreEvent → markets.
+ */
+export async function getMarketsByGameId(gameId: string): Promise<GammaMarket[]> {
+  const url = `${GAMMA_API_URL}/markets?game_id=${encodeURIComponent(gameId)}`;
+  const arr = await fetchJson<GammaMarketRaw[]>(url);
+  return arr.map(parseGammaMarket);
+}

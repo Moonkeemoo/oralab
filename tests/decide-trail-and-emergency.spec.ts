@@ -17,12 +17,11 @@
  */
 import { describe, expect, it } from "vitest";
 import { decideExit } from "../src/decide.js";
-import { cfg, makePos, makeSnap, NOW } from "./helpers.js";
+import { cfg, makePos, makeSnap } from "./helpers.js";
 
 describe("Trail giveback — full price arc (P1.D synthetic LIVE replacement)", () => {
   const fillPrice = 0.5;
   const tickSize = 0.01;
-  const armActivate = fillPrice * (1 + cfg.trailActivate); // 0.575
 
   it("step 1: peak below activation → no trail signal, just HOLD", () => {
     // Mark just above fillPrice but below 0.575 → not armed yet

@@ -17,7 +17,7 @@
  *   - determinism: same input → same output (run twice)
  */
 import fc from "fast-check";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 import { decideExit } from "../src/decide.js";
 import { DEFAULT_EXIT_CONFIG } from "../src/types/decide.js";
 import type { MarketSnapshot } from "../src/types/market.js";
@@ -65,31 +65,57 @@ const arbPos = fc.record({
   reconciliationDriftPct: fc.double({ min: 0, max: 0.5, noNaN: true }),
 });
 
-function buildSnap(s: ReturnType<(typeof arbSnapshot)["map"]>): MarketSnapshot {
+type SnapInput = {
+  bid: number;
+  ask: number;
+  mark: number;
+  tickSize: number;
+  expectedOutcomeValue: number;
+  markSource: MarketSnapshot["markSource"];
+  markTs: number;
+  fetchedAt: number;
+  resolved: boolean;
+  acceptingOrders: boolean;
+  umaResolutionStatus: MarketSnapshot["umaResolutionStatus"];
+};
+
+type PosInput = {
+  status: PositionView["status"];
+  shares: number;
+  onChainShares: number;
+  fillPrice: number;
+  peakPrice: number;
+  fillTs: number;
+  trailArmed: boolean;
+  sweepCount: number;
+  reconciliationDriftPct: number;
+};
+
+function buildSnap(s: SnapInput): MarketSnapshot {
   return {
     conditionId: "0xprop",
     assetId: "0",
-    bid: s.bid as number,
-    ask: s.ask as number,
+    bid: s.bid,
+    ask: s.ask,
     bidSize: 100,
     askSize: 100,
-    mark: s.mark as number,
-    markSource: s.markSource as MarketSnapshot["markSource"],
-    markTs: s.markTs as number,
-    tickSize: s.tickSize as number,
+    mark: s.mark,
+    markSource: s.markSource,
+    markTs: s.markTs,
+    tickSize: s.tickSize,
     negRisk: false,
     minOrderSize: 5,
-    expectedOutcomeValue: s.expectedOutcomeValue as number,
-    acceptingOrders: s.acceptingOrders as boolean,
-    umaResolutionStatus: s.umaResolutionStatus as MarketSnapshot["umaResolutionStatus"],
-    resolved: s.resolved as boolean,
+    expectedOutcomeValue: s.expectedOutcomeValue,
+    acceptingOrders: s.acceptingOrders,
+    umaResolutionStatus: s.umaResolutionStatus,
+    resolved: s.resolved,
     winningOutcomeIndex: null,
     endDateTs: NOW + 86_400_000,
-    fetchedAt: s.fetchedAt as number,
+    fetchedAt: s.fetchedAt,
   };
 }
 
-function buildPos(p: ReturnType<(typeof arbPos)["map"]>): PositionView {
+function buildPos(p: PosInput): PositionView {
   return {
     id: "pos-prop",
     userId: 1,
@@ -97,16 +123,16 @@ function buildPos(p: ReturnType<(typeof arbPos)["map"]>): PositionView {
     conditionId: "0xprop",
     assetId: "0",
     side: "YES",
-    status: p.status as PositionView["status"],
-    shares: p.shares as number,
-    onChainShares: p.onChainShares as number,
-    fillPrice: p.fillPrice as number,
-    peakPrice: p.peakPrice as number,
-    fillTs: p.fillTs as number,
-    lastStateChangeTs: p.fillTs as number,
-    trailArmed: p.trailArmed as boolean,
-    sweepCount: p.sweepCount as number,
-    reconciliationDriftPct: p.reconciliationDriftPct as number,
+    status: p.status,
+    shares: p.shares,
+    onChainShares: p.onChainShares,
+    fillPrice: p.fillPrice,
+    peakPrice: p.peakPrice,
+    fillTs: p.fillTs,
+    lastStateChangeTs: p.fillTs,
+    trailArmed: p.trailArmed,
+    sweepCount: p.sweepCount,
+    reconciliationDriftPct: p.reconciliationDriftPct,
   };
 }
 
@@ -206,7 +232,7 @@ describe("decide_exit — properties (SPEC §215)", () => {
       fc.property(
         arbSnapshot,
         arbPos,
-        fc.constantFrom("CLOSED", "FAILED" as const),
+        fc.constantFrom<PositionView["status"]>("CLOSED", "FAILED"),
         (s, p, status) => {
           const intent = decideExit(buildPos({ ...p, status }), buildSnap(s), cfg);
           return intent.action === "hold";
