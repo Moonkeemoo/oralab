@@ -5,7 +5,12 @@ import { logger } from "../obs/logger.js";
 import type { ExitIntent } from "../types/decide.js";
 import type { MarketSnapshot } from "../types/market.js";
 import type { PositionView } from "../types/position.js";
-import { cancelByOrderId, type OrderResult, placeSell } from "./order_manager.js";
+import {
+  cancelByOrderId,
+  cancelOpenOrdersForAsset,
+  type OrderResult,
+  placeSell,
+} from "./order_manager.js";
 import { recordOrder } from "./order_recorder.js";
 
 /**
@@ -56,6 +61,16 @@ export async function executeExitIntent(
   if (pos.status === "EXITING" && pos.sweepCount === 0) {
     log.warn("INV-M5: position already EXITING with sweepCount=0; refusing duplicate");
     return { applied: false, skipReason: "double_act_blocked" };
+  }
+
+  // QA-174 cancel-before-place: if this is a sweep retry, kill any prior open
+  // SELL orders for this asset before placing the new one. Active enumeration,
+  // not idempotency assumption. No-op in DRY.
+  if (pos.sweepCount > 0) {
+    const cancel = await cancelOpenOrdersForAsset(pos.assetId, "SELL");
+    if (cancel.cancelled > 0) {
+      log.info({ cancelled: cancel.cancelled }, "QA-174 cancel-before-place cleared prior SELLs");
+    }
   }
 
   const db = getDb();

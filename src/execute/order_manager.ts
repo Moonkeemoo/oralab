@@ -372,3 +372,42 @@ export async function cancelByOrderId(
     }
   });
 }
+
+/**
+ * QA-174: actively enumerate open orders for an asset and cancel them all.
+ * Avoid double-placing on sweep retries. Idempotent: returns count cancelled.
+ */
+export async function cancelOpenOrdersForAsset(
+  assetId: string,
+  side?: "BUY" | "SELL",
+): Promise<{ cancelled: number }> {
+  if (isDryRun()) return { cancelled: 0 };
+  return await withSpan("clob.cancel_for_asset", async (span) => {
+    span.setAttribute("asset_id", assetId);
+    if (side) span.setAttribute("side", side);
+    try {
+      const { client } = getClobClient();
+      const open = (await client.getOpenOrders()) as
+        | { id: string; asset_id?: string; side?: string }[]
+        | { results?: { id: string; asset_id?: string; side?: string }[] };
+      const list = Array.isArray(open) ? open : (open.results ?? []);
+      const matches = list.filter(
+        (o) => o.asset_id === assetId && (!side || (o.side ?? "").toUpperCase() === side),
+      );
+      let cancelled = 0;
+      for (const o of matches) {
+        try {
+          await client.cancelOrder({ orderID: o.id });
+          cancelled += 1;
+        } catch (err) {
+          logger.warn({ err, orderId: o.id }, "cancelOpenOrdersForAsset: cancel one failed");
+        }
+      }
+      span.setAttribute("cancelled", cancelled);
+      return { cancelled };
+    } catch (err) {
+      logger.warn({ err, assetId }, "cancelOpenOrdersForAsset: enumerate failed");
+      return { cancelled: 0 };
+    }
+  });
+}
