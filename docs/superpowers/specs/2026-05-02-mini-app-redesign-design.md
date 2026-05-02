@@ -341,7 +341,163 @@ tables already cover the rest.
 - POST endpoints log every action to `audit_log` with actor='mini_app'
   + user_id from init-data.
 
-## Out-of-MVP — added to global plan
+## V1 feature catch-up — Phases G–K (added 2026-05-03 after v1 deep-dive)
+
+Per Taras: v2 Mini App as originally designed covers ~20% of v1's
+operator-facing surface. The v1 deep-dive surfaced significant gaps in
+KPIs, per-trade detail, filter pipeline, whale corpus, and latency
+telemetry that an experienced auto-trading PO will look for first.
+These extend the MVP scope, NOT defer it.
+
+### Phase G — KPI engine + dashboard
+
+New first card on Live tab: **KPIs (24h / 7d toggle)**.
+
+Computed from existing `positions` + `fills` + `signals` tables; no new
+schema. Backed by `GET /api/kpi?windowHours=N` returning:
+
+- **Pass rate** = `signals.accepted / signals.total` in window
+- **Signals/hour** = `signals.total / windowHours`
+- **Profit factor** = `sum(positive PnL) / abs(sum(negative PnL))` over closed positions
+- **Win rate** = `wins / closed_count`
+- **Avg hold duration** (sec) = avg(`closeTs - fillTs`) over closed positions
+- **Drawdown** = max(`peak_equity - cum_pnl`) along time-ordered closed-trade equity curve
+- **Bottleneck filter** = filter with highest reject share (already in `/api/filters/stats`)
+- **Bottleneck stage** (latency) — see Phase J
+
+Cockpit gains second-line summary: `WR 58% • PF 1.4 • DD -$3.20`.
+
+### Phase H — Per-trade rich detail (extends position drilldown sheet)
+
+Position drilldown adds an **"Initiator + Verification"** section above
+the timeline with these v1-parity fields:
+
+- whale address (shortened) + classification + confidence
+- whale `trustScore` (computed from win-rate × hold-time × directionality)
+- whale `smScore` (size-escalation: max bet / median bet)
+- `whaleSizeUsd` of the originating trade
+- conviction at entry time
+- `convergenceCount` — how many whales entered this market within ±60s of our entry
+- `markSource` at decision time (rest_book / chain / cached_midpoint)
+- `markFreshnessMs` at decision time
+- PnL verification source: `chain_per_trade` / `position_api` / `trade_reconciler` / `unverified`
+- PnL anomaly flag (Δ ≥ 50% or ≥ $0.50 vs alternate source)
+- exit verified flag (chain OrderFilled tx confirmed)
+
+Backend: extend `/api/positions/:id/timeline` response with `initiator` +
+`verification` sub-objects. Compute on the fly from joins; no new schema
+columns required for MVP (fields stored as JSONB in `positions.raw` /
+`signals.payload`). Phase G+1 may extract hot fields to dedicated
+columns once query patterns settle.
+
+### Phase I — Full filter pipeline view (Strategy tab → Filters card extension)
+
+Filters card today shows just the registered v2 filters (~5). Extend to
+mirror v1's **30+ filter registry**, organized by group:
+
+- **Hard Safety** (~18 filters: kill_switch, sell_trade, trade_age,
+  entry_cooldown, exit_reentry, price_band, category, intraday,
+  market_resolved, min_time_to_res, max_positions, dedup,
+  drawdown_stop, total_exposure, recent_reject_cache,
+  min_whale_size, post_resolution, bid_ask_spread)
+- **Conviction** (1: conviction_gate)
+- **Wallet Quality** (2: trust_gate, sm_score_gate)
+- **Market Quality** (1: market_volume)
+- **Price Quality** (5: price_impact, slippage, price_collapsed,
+  remaining_edge, tp_reachability)
+- **Risk Exposure** (3: correlation_cap, drawdown_minimal,
+  max_positions_per_event)
+
+Per-filter row: name, group, current threshold, last-24h seen / pass /
+reject count, bottleneck marker.
+
+⚠ The filters that don't exist in v2 yet (~25) are listed with
+`"v1 only — not ported"` badge in MVP. Editing controls land filter-by-
+filter as ported in subsequent phases. Spec change here is the **view**
+that surfaces all filters and their port status — operator gets a clear
+"missing from v2" list so the porting backlog is visible.
+
+Endpoint: `GET /api/filters/registry` — returns full descriptor list
+including ported/not-ported flag.
+
+### Phase J — Latency telemetry per signal stage
+
+Capture per-stage timings for entry chain (~19 stages) + exit chain
+(~9 stages) per v1 inventory. Stage names land in a new `signal_timings`
+table:
+
+```sql
+CREATE TABLE signal_timings (
+  id BIGSERIAL PRIMARY KEY,
+  signal_id BIGINT REFERENCES signals(id) ON DELETE CASCADE,
+  position_id BIGINT REFERENCES positions(id) ON DELETE SET NULL,
+  chain VARCHAR(8) NOT NULL,           -- 'entry' / 'exit'
+  stage VARCHAR(40) NOT NULL,
+  duration_ms INTEGER NOT NULL,
+  ts BIGINT NOT NULL
+);
+CREATE INDEX idx_signal_timings_signal ON signal_timings(signal_id);
+CREATE INDEX idx_signal_timings_chain_stage ON signal_timings(chain, stage);
+```
+
+Instrumentation: small `withTiming(stage, fn)` helper wraps each step in
+`signal_router.routeInner` + `executor.executeExitIntent`. Drops the
+row asynchronously (fire-and-forget, like decision_logger).
+
+UI: **Latency** sub-card in More tab shows per-stage avg / p50 / p95
+over last 24h, with bottleneck-stage badge. Endpoint: `GET /api/latency?windowHours=N`.
+
+### Phase K — Whale corpus + classifier (continuous profile refresh)
+
+**Schema additions** to existing `whales` table (most are nullable —
+classifier populates lazily):
+
+```sql
+ALTER TABLE whales
+  ADD COLUMN sm_score DOUBLE PRECISION,
+  ADD COLUMN trust_score DOUBLE PRECISION,
+  ADD COLUMN total_trades INTEGER DEFAULT 0,
+  ADD COLUMN win_rate DOUBLE PRECISION,
+  ADD COLUMN avg_hold_hours DOUBLE PRECISION,
+  ADD COLUMN directional_ratio DOUBLE PRECISION,
+  ADD COLUMN domain_breakdown JSONB DEFAULT '{}',
+  ADD COLUMN per_domain_classification JSONB DEFAULT '{}',
+  ADD COLUMN last_classified_at TIMESTAMPTZ,
+  ADD COLUMN last_activity_at TIMESTAMPTZ;
+```
+
+**Whale classifier** (port v1 logic to TS): hourly background job that
+aggregates last-90-day on-chain trades per wallet, computes the metrics
+above, assigns `classification ∈ {NOISE, FOLLOWER, INFORMED, SHARP}`
+per domain + global. Lives in `src/whale/classifier.ts`.
+
+**Whale corpus expansion**: import 1500-wallet seed list from v1
+archive (`output/wallet_profiles.json`) — replaces current 200-wallet
+hardcoded list. One-time migration script. Tracked subset still
+operator-controlled via `/api/whales/:addr/track`.
+
+**UI**: Whales tab gains:
+- additional chips: `INFORMED` / `SHARP` / `FOLLOWER` / `NOISE`
+- per-row badges: classification + confidence dot
+- whale detail sheet shows full breakdown (domain split, trade count,
+  win rate, avg hold, directional bias, sm_score) + signal history
+  (paginated)
+
+Endpoint: `GET /api/whales/:addr/profile` — full classifier output.
+
+### Phase L (deferred to P3+) — chain listener
+
+v1 has a Polygon `OrderFilled` event listener (HTTP polling + optional
+WS) that reconciles trades to canonical chain truth and feeds a
+`chain_marks` registry of real-time fill prices. This is non-trivial
+work (RPC provider plumbing, event decoding, dedup, WS↔HTTP fallback)
+and lives outside the Mini App's read surface. The Mini App's
+"Connections" card already shows the placeholder `polygon_rpc` row;
+when the chain listener lands, it just flips that row from `n/a` to
+healthy + the per-position drilldown gains an `on_chain_verified` field.
+
+Out-of-MVP — added to global plan
+---
 
 Each defers to a named future phase. Captured here so they don't get lost.
 

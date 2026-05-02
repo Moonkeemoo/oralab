@@ -2904,6 +2904,682 @@ git commit -m "BULLETPROOF.md: P2a Mini App redesign LIVE-verified end-to-end"
 
 ---
 
+---
+
+# v1 catch-up plan — Phases G–K (added 2026-05-03)
+
+After v1 deep-dive (recorded in spec) Taras flagged ~80% of v1's
+operator-facing surface missing from the original plan. The phases
+below extend MVP. Each task is bite-sized and committable; same TDD
+flow as Phases A–F.
+
+## Phase G — KPI engine + dashboard
+
+### Task 24: GET /api/kpi (computed from positions+fills+signals)
+
+**Files:** Modify: `src/api/rest_server.ts`
+
+- [ ] **Step 1: Append handler**
+
+```ts
+async function handleKpi(req: http.IncomingMessage): Promise<unknown> {
+  const url = new URL(req.url ?? "/", "http://x");
+  const windowHours = Math.max(1, Math.min(24 * 30, Number(url.searchParams.get("windowHours") ?? 24)));
+  const sinceMs = Date.now() - windowHours * 60 * 60 * 1000;
+  const db = getDb();
+  const sigRows = await db.query.signals.findMany({
+    where: gte(signals.processedAt, new Date(sinceMs)),
+    columns: { accepted: true, rejectReason: true },
+  });
+  const signalsTotal = sigRows.length;
+  const signalsAccepted = sigRows.filter((r) => r.accepted).length;
+
+  const closed = await db.query.positions.findMany({
+    where: and(eq(positions.status, "CLOSED"), gte(positions.lastStateChangeTs, sinceMs)),
+  });
+  let wins = 0;
+  let totalEntry = 0;
+  let totalExit = 0;
+  let posPnl = 0;
+  let negPnl = 0;
+  let holdSec = 0;
+  const equity: { ts: number; cum: number }[] = [];
+  let cum = 0;
+  // sort closures chronologically for drawdown curve
+  const sorted = closed.slice().sort((a, b) => Number(a.lastStateChangeTs) - Number(b.lastStateChangeTs));
+  for (const p of sorted) {
+    const sells = await db.query.fills.findMany({
+      where: and(eq(fills.positionId, Number(p.id)), eq(fills.side, "SELL")),
+    });
+    const exitUsd = sells.reduce((s, f) => s + Number(f.shares ?? 0) * Number(f.price ?? 0), 0);
+    const entryUsd = Number(p.entryCostUsd ?? 0);
+    const pnl = exitUsd - entryUsd;
+    totalEntry += entryUsd;
+    totalExit += exitUsd;
+    if (pnl >= 0) { wins += 1; posPnl += pnl; } else { negPnl += -pnl; }
+    holdSec += (Number(p.lastStateChangeTs) - Number(p.fillTs)) / 1000;
+    cum += pnl;
+    equity.push({ ts: Number(p.lastStateChangeTs), cum });
+  }
+  let peak = 0;
+  let maxDrawdown = 0;
+  for (const e of equity) {
+    if (e.cum > peak) peak = e.cum;
+    const dd = peak - e.cum;
+    if (dd > maxDrawdown) maxDrawdown = dd;
+  }
+  return {
+    windowHours,
+    passRatePct: signalsTotal > 0 ? (signalsAccepted / signalsTotal) * 100 : 0,
+    signalsPerHour: signalsTotal / windowHours,
+    profitFactor: negPnl > 0 ? posPnl / negPnl : (posPnl > 0 ? Infinity : 0),
+    winRatePct: closed.length > 0 ? (wins / closed.length) * 100 : 0,
+    avgHoldSec: closed.length > 0 ? holdSec / closed.length : 0,
+    drawdownUsd: maxDrawdown,
+    netPnlUsd: totalExit - totalEntry,
+    closedCount: closed.length,
+  };
+}
+```
+
+- [ ] **Step 2: Wire route** in `if (req.method === "GET")`:
+
+```ts
+if (req.url?.startsWith("/api/kpi")) return send(res, 200, await handleKpi(req));
+```
+
+- [ ] **Step 3: tsc + smoke**
+
+```bash
+npx tsc --noEmit
+DEV_AUTH_TOKEN=secretdev REST_PORT=8081 npm run dev:api > /tmp/api-t24.log 2>&1 &
+sleep 2
+curl -s -H "X-Dev-Bypass: secretdev" "http://localhost:8081/api/kpi?windowHours=24"
+pkill -f "tsx watch.*src/api/main\.ts"
+```
+
+Expected: JSON with `passRatePct`, `signalsPerHour`, `profitFactor`, `winRatePct`, `avgHoldSec`, `drawdownUsd`, `netPnlUsd`, `closedCount`.
+
+- [ ] **Step 4: Commit**: `git add src/api/rest_server.ts && git commit -m "api: GET /api/kpi (pass rate / PF / WR / drawdown / avg hold)"`
+
+### Task 25: KPI card on Live tab + cockpit second-line summary
+
+**Files:** Modify: `web/js/views/live.js`, `web/js/cockpit.js`
+
+- [ ] **Step 1: Live KPI card** — prepend a 4th card BEFORE "Now happening" in `renderLive`:
+
+```html
+<section class="card" id="kpi-card"><div class="card-title">KPIs · 24h</div><div class="card-body" id="kpi-body">…</div></section>
+```
+
+In `loadAll()` add `loadKpis()` and implement:
+
+```js
+async function loadKpis() {
+  const k = await fetchJson("/api/kpi?windowHours=24");
+  document.getElementById("kpi-body").innerHTML = `
+    <div class="kv"><span class="k">win rate</span><span class="v">${k.winRatePct.toFixed(1)}%</span></div>
+    <div class="kv"><span class="k">profit factor</span><span class="v">${isFinite(k.profitFactor) ? k.profitFactor.toFixed(2) : "—"}</span></div>
+    <div class="kv"><span class="k">drawdown</span><span class="v bad">-$${k.drawdownUsd.toFixed(2)}</span></div>
+    <div class="kv"><span class="k">avg hold</span><span class="v">${(k.avgHoldSec / 60).toFixed(1)} min</span></div>
+    <div class="kv"><span class="k">pass rate</span><span class="v">${k.passRatePct.toFixed(1)}%</span></div>
+    <div class="kv"><span class="k">signals/h</span><span class="v">${k.signalsPerHour.toFixed(0)}</span></div>
+  `;
+}
+```
+
+- [ ] **Step 2: Cockpit second line** — `cockpit.js` extend to add a second row:
+
+```html
+<div class="cockpit-line2">WR ${k.winRatePct.toFixed(0)}% • PF ${isFinite(k.profitFactor) ? k.profitFactor.toFixed(1) : '—'} • DD -$${k.drawdownUsd.toFixed(2)}</div>
+```
+
+Append to styles.css:
+
+```css
+.cockpit-line2 { font-size: 11px; color: var(--text-muted); margin-top: 2px; width: 100%; }
+.cockpit { flex-wrap: wrap; }
+```
+
+- [ ] **Step 3: Smoke + commit**: refresh Mini App, verify KPI card on Live + cockpit shows WR/PF/DD; `git add web/ && git commit -m "web: KPI card on Live tab + cockpit second-line summary"`
+
+## Phase H — Per-trade rich detail (initiator + verification)
+
+### Task 26: Extend /api/positions/:id/timeline with initiator + verification
+
+**Files:** Modify: `src/api/rest_server.ts`
+
+- [ ] **Step 1: Augment handler** — modify `handlePositionTimeline` to also pull the originating signal row:
+
+```ts
+async function handlePositionTimeline(id: number): Promise<unknown> {
+  const db = getDb();
+  const p = await db.query.positions.findFirst({ where: eq(positions.id, id) });
+  if (!p) return { error: "not_found" };
+
+  const fillRows = await db.query.fills.findMany({ where: eq(fills.positionId, id) });
+  const decisionRows = await db.query.decisions.findMany({
+    where: eq(decisions.positionId, id),
+    orderBy: (cols, { desc }) => [desc(cols.ts)],
+    limit: 10,
+  });
+
+  // Initiator: most recent signal for this conditionId+assetId before fillTs
+  const sigRows = await db.query.signals.findMany({
+    where: and(
+      eq(signals.assetId, p.assetId),
+      eq(signals.userId, p.userId),
+    ),
+    orderBy: (cols, { desc }) => [desc(cols.id)],
+    limit: 5,
+  });
+  const initiatorSig = sigRows.find((s) => Number(s.receivedTs) <= Number(p.fillTs ?? 0)) ?? sigRows[0];
+  const payload = (initiatorSig?.payload ?? {}) as Record<string, unknown>;
+
+  // Convergence count: signals on same asset within ±60s of fill
+  const fillTs = Number(p.fillTs ?? 0);
+  const window = 60_000;
+  const convergent = sigRows.filter((s) => Math.abs(Number(s.receivedTs) - fillTs) <= window).length;
+
+  // PnL verification source heuristic
+  const sells = fillRows.filter((f) => f.side === "SELL");
+  const verifSource = sells.length > 0 ? "chain_per_trade"
+    : (p.closeReason === "sell_filled_chain_lag" ? "trade_reconciler"
+      : (p.status === "CLOSED" ? "manual" : "unverified"));
+
+  return {
+    position: await handlePositionById(id),
+    initiator: {
+      whaleAddress: payload["whaleAddress"] ?? null,
+      whaleSizeShares: payload["whaleSizeShares"] ?? null,
+      whaleSizeUsd: typeof payload["whaleSizeShares"] === "number"
+        ? Number(payload["whaleSizeShares"]) * Number(p.fillPrice ?? 0)
+        : null,
+      conviction: payload["convictionScore"] ?? null,
+      trustScore: payload["trustScore"] ?? null,
+      smScore: payload["smScore"] ?? null,
+      title: payload["title"] ?? null,
+      signalReceivedTs: initiatorSig ? Number(initiatorSig.receivedTs) : null,
+      convergenceCount: convergent,
+    },
+    verification: {
+      pnlSource: verifSource,
+      exitTxHash: p.closeTxHash,
+      anomaly: false, // populated when chain reconciler ships (Phase L)
+    },
+    fills: fillRows.map((f) => ({
+      side: f.side,
+      shares: Number(f.shares ?? 0),
+      price: Number(f.price ?? 0),
+      txHash: f.txHash,
+      ts: Number(f.ts ?? 0),
+    })),
+    recentDecisions: decisionRows.map((d) => ({
+      ts: Number(d.ts),
+      action: (d.outputIntent as Record<string, unknown>)["action"],
+      reason: (d.outputIntent as Record<string, unknown>)["reason"],
+      gates: d.gates,
+      durationMs: d.durationMs,
+      markSource: ((d.inputSnapshot as Record<string, unknown>)["markSource"] ?? null),
+      markFreshnessMs: ((d.inputSnapshot as Record<string, unknown>)["markTs"] !== undefined
+        ? Number(d.ts) - Number((d.inputSnapshot as Record<string, unknown>)["markTs"])
+        : null),
+    })),
+  };
+}
+```
+
+- [ ] **Step 2: tsc + smoke + commit**
+
+```bash
+npx tsc --noEmit
+git add src/api/rest_server.ts && git commit -m "api: timeline adds initiator + verification + per-decision mark source"
+```
+
+### Task 27: Position drilldown UI extension
+
+**Files:** Modify: `web/js/sheets/position.js`
+
+- [ ] **Step 1**: After the existing key-value block in the sheet body, BEFORE "Timeline":
+
+```html
+<div class="card-title" style="margin-top:14px">Initiator</div>
+<div class="kv"><span class="k">whale</span><span class="v"><code>${escapeHtml((data.initiator?.whaleAddress ?? "—").toString().slice(0, 14))}</code></span></div>
+<div class="kv"><span class="k">whale size USD</span><span class="v">${data.initiator?.whaleSizeUsd ? "$" + Number(data.initiator.whaleSizeUsd).toFixed(2) : "—"}</span></div>
+<div class="kv"><span class="k">conviction</span><span class="v">${data.initiator?.conviction ?? "—"}</span></div>
+<div class="kv"><span class="k">trust score</span><span class="v">${data.initiator?.trustScore ?? "—"}</span></div>
+<div class="kv"><span class="k">sm score</span><span class="v">${data.initiator?.smScore ?? "—"}</span></div>
+<div class="kv"><span class="k">convergence (±60s)</span><span class="v">${data.initiator?.convergenceCount ?? 0}</span></div>
+
+<div class="card-title" style="margin-top:14px">Verification</div>
+<div class="kv"><span class="k">PnL source</span><span class="v">${escapeHtml(data.verification?.pnlSource ?? "—")}</span></div>
+<div class="kv"><span class="k">exit tx</span><span class="v">${data.verification?.exitTxHash ? `<code>${escapeHtml(String(data.verification.exitTxHash).slice(0, 14))}…</code>` : "—"}</span></div>
+${data.verification?.anomaly ? '<div class="kv"><span class="k">⚠ anomaly</span><span class="v bad">flagged</span></div>' : ""}
+```
+
+Also enrich each "Recent decisions" row with mark-source:
+
+```html
+<span class="muted">${d.markSource ?? ""}${d.markFreshnessMs !== null ? " " + Math.round(d.markFreshnessMs) + "ms" : ""}</span>
+```
+
+- [ ] **Step 2: Smoke + commit**
+
+```bash
+git add web/ && git commit -m "web: position drilldown shows initiator (whale/conviction/trust/sm/convergence) + verification source"
+```
+
+## Phase I — Filter pipeline registry (full v1 list as view)
+
+### Task 28: src/filters/registry.ts + GET /api/filters/registry
+
+**Files:** Create: `src/filters/registry.ts`. Modify: `src/api/rest_server.ts`
+
+- [ ] **Step 1: Create registry**
+
+```ts
+// src/filters/registry.ts
+export type FilterGroup =
+  | "hard_safety" | "conviction" | "wallet_quality"
+  | "market_quality" | "price_quality" | "risk_exposure";
+
+export interface FilterDescriptor {
+  name: string;
+  group: FilterGroup;
+  ported: boolean;
+  description: string;
+  defaultThreshold?: number | string | null;
+}
+
+export const FILTER_REGISTRY: readonly FilterDescriptor[] = [
+  // Hard Safety (~18 from v1)
+  { name: "kill_switch", group: "hard_safety", ported: true, description: "Block all entries when kill switch active" },
+  { name: "sell_trade", group: "hard_safety", ported: false, description: "Reject SELL signals (BUY-only mode)" },
+  { name: "trade_age", group: "hard_safety", ported: false, description: "Reject signals older than MAX_TRADE_AGE_SEC", defaultThreshold: 120 },
+  { name: "entry_cooldown", group: "hard_safety", ported: false, description: "Block re-entry within ENTRY_COOLDOWN_S", defaultThreshold: 120 },
+  { name: "exit_reentry", group: "hard_safety", ported: false, description: "Block re-entry within EXIT_REENTRY_COOLDOWN_S after a close", defaultThreshold: 600 },
+  { name: "price_band", group: "hard_safety", ported: true, description: "Reject if price outside [PRICE_MIN, PRICE_MAX]", defaultThreshold: "[0.15, 0.85]" },
+  { name: "category", group: "hard_safety", ported: true, description: "Block markets not in allowed category list" },
+  { name: "intraday_binary", group: "hard_safety", ported: false, description: "Reject intraday-binary + crypto coin-flip markets" },
+  { name: "market_resolved", group: "hard_safety", ported: true, description: "Reject resolved/closed markets" },
+  { name: "min_time_to_res", group: "hard_safety", ported: false, description: "Reject if market resolves too soon" },
+  { name: "max_positions", group: "hard_safety", ported: true, description: "Reject if open_positions >= MAX_OPEN_POSITIONS" },
+  { name: "dedup", group: "hard_safety", ported: false, description: "Reject duplicate entry on same market in window" },
+  { name: "drawdown_full_stop", group: "hard_safety", ported: false, description: "Hard stop if drawdown > DRAWDOWN_STOP_PCT" },
+  { name: "total_exposure_cap", group: "hard_safety", ported: true, description: "Reject if open_cost sum > MAX_TOTAL_EXPOSURE_USD" },
+  { name: "recent_reject_cache", group: "hard_safety", ported: false, description: "Skip recently rejected tokens for cooldown" },
+  { name: "min_whale_size", group: "hard_safety", ported: false, description: "Reject whale size < MIN_WHALE_SIZE_USD" },
+  { name: "post_resolution", group: "hard_safety", ported: false, description: "Block entry after market resolution" },
+  { name: "bid_ask_spread", group: "hard_safety", ported: false, description: "Reject if spread > MAX_BID_ASK_SPREAD_BPS" },
+  // Conviction
+  { name: "conviction_gate", group: "conviction", ported: false, description: "Gate on conviction score threshold" },
+  // Wallet Quality
+  { name: "trust_gate", group: "wallet_quality", ported: false, description: "Gate on whale trust_score" },
+  { name: "sm_score_gate", group: "wallet_quality", ported: false, description: "Gate on whale sm_score (size escalation)" },
+  // Market Quality
+  { name: "market_volume", group: "market_quality", ported: false, description: "Reject low-volume markets" },
+  // Price Quality
+  { name: "price_impact", group: "price_quality", ported: false, description: "Reject orders with high price impact" },
+  { name: "slippage", group: "price_quality", ported: false, description: "Reject if slippage > threshold" },
+  { name: "price_collapsed", group: "price_quality", ported: false, description: "Reject if price collapsed to 0 or 1" },
+  { name: "remaining_edge", group: "price_quality", ported: false, description: "Reject if remaining edge < threshold" },
+  { name: "tp_reachability", group: "price_quality", ported: false, description: "Reject if TP unreachable" },
+  // Risk Exposure
+  { name: "correlation_cap", group: "risk_exposure", ported: false, description: "Cap exposure for correlated positions" },
+  { name: "drawdown_minimal", group: "risk_exposure", ported: false, description: "Minimal drawdown sanity check" },
+  { name: "max_positions_per_event", group: "risk_exposure", ported: false, description: "Cap positions per event/domain" },
+  // v2-only additions
+  { name: "sport_only", group: "hard_safety", ported: true, description: "Sports-only domain restriction (v2 P1 default)" },
+  { name: "price_too_high", group: "price_quality", ported: true, description: "Reject if entry price > PRICE_CEILING (v2)" },
+  { name: "budget_exhausted", group: "hard_safety", ported: true, description: "Reject when strategy budget exhausted (v2)" },
+];
+```
+
+- [ ] **Step 2: Endpoint** in rest_server.ts:
+
+```ts
+import { FILTER_REGISTRY } from "../filters/registry.js";
+
+async function handleFilterRegistry(): Promise<unknown> {
+  return { count: FILTER_REGISTRY.length, filters: FILTER_REGISTRY };
+}
+```
+
+Route: `if (req.url === "/api/filters/registry") return send(res, 200, await handleFilterRegistry());`
+
+- [ ] **Step 3: tsc + commit**
+
+```bash
+npx tsc --noEmit
+git add src/filters/registry.ts src/api/rest_server.ts && git commit -m "filters: registry of all 30+ v1 filters with ported flag + GET /api/filters/registry"
+```
+
+### Task 29: Strategy tab — Filters card upgraded to grouped-by-group
+
+**Files:** Modify: `web/js/views/strategy.js`
+
+- [ ] **Step 1**: Replace the simple table with grouped sections. Pull both `/api/filters/registry` and `/api/filters/stats?windowHours=24`. Render a section per `FilterGroup`:
+
+```js
+const [strategies, exitCfg, filterStats, filterRegistry] = await Promise.all([
+  fetchJson("/api/strategies"),
+  fetchJson("/api/exit_config"),
+  fetchJson("/api/filters/stats?windowHours=24"),
+  fetchJson("/api/filters/registry"),
+]);
+// ... existing render code ...
+
+// Group filters by `group`, show ported status + count from stats.byReason
+const groups = filterRegistry.filters.reduce((acc, f) => {
+  (acc[f.group] = acc[f.group] || []).push(f);
+  return acc;
+}, {});
+```
+
+Render each group as a `<section class="card">` with a small `<table>` listing name / threshold / 24h count / ported badge.
+
+- [ ] **Step 2: Smoke + commit**
+
+```bash
+git add web/ && git commit -m "web: Strategy filters card grouped by FilterGroup with ported badges"
+```
+
+## Phase J — Latency telemetry per signal stage
+
+### Task 30: signal_timings table + withTiming helper + instrumentation
+
+**Files:** Modify: `src/db/schema.ts`. Create: `src/obs/timing.ts`. Modify: `src/feed/signal_router.ts`, `src/execute/executor.ts`
+
+- [ ] **Step 1: Schema add**
+
+```ts
+export const signalTimings = pgTable(
+  "signal_timings",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    signalId: bigint("signal_id", { mode: "number" }).references(() => signals.id, { onDelete: "cascade" }),
+    positionId: bigint("position_id", { mode: "number" }).references(() => positions.id, { onDelete: "set null" }),
+    chain: varchar("chain", { length: 8 }).notNull(),
+    stage: varchar("stage", { length: 40 }).notNull(),
+    durationMs: integer("duration_ms").notNull(),
+    ts: bigint("ts", { mode: "number" }).notNull(),
+  },
+  (t) => [
+    index("idx_signal_timings_signal").on(t.signalId),
+    index("idx_signal_timings_chain_stage").on(t.chain, t.stage),
+  ],
+);
+```
+
+Run `npm run db:generate && npm run db:push`.
+
+- [ ] **Step 2: withTiming helper**
+
+```ts
+// src/obs/timing.ts
+import { getDb } from "../db/client.js";
+import { signalTimings } from "../db/schema.js";
+import { logger } from "./logger.js";
+
+export interface TimingCtx {
+  signalId: number | null;
+  positionId: number | null;
+  chain: "entry" | "exit";
+}
+
+export async function withTiming<T>(
+  ctx: TimingCtx, stage: string, fn: () => Promise<T>,
+): Promise<T> {
+  const start = performance.now();
+  try {
+    return await fn();
+  } finally {
+    const ms = Math.round(performance.now() - start);
+    void (async () => {
+      try {
+        await getDb().insert(signalTimings).values({
+          signalId: ctx.signalId,
+          positionId: ctx.positionId,
+          chain: ctx.chain,
+          stage,
+          durationMs: ms,
+          ts: Date.now(),
+        });
+      } catch (err) {
+        logger.debug({ err, stage }, "signal_timings insert failed");
+      }
+    })();
+  }
+}
+```
+
+- [ ] **Step 3: Instrument routeInner** — wrap each major step (gamma fetch, filter pipeline, sizing, placeBuy, INSERT) with `withTiming(ctx, "<stage>", ...)`. Stages: `gamma_fetch`, `filter_pipeline`, `sizing`, `place_buy`, `position_insert`. Same pattern for `executeExitIntent`: stages `cancel_open`, `place_sell`, `position_update`.
+
+- [ ] **Step 4: GET /api/latency** in rest_server.ts
+
+```ts
+async function handleLatency(req: http.IncomingMessage): Promise<unknown> {
+  const url = new URL(req.url ?? "/", "http://x");
+  const windowHours = Math.max(1, Math.min(24 * 30, Number(url.searchParams.get("windowHours") ?? 24)));
+  const sinceMs = Date.now() - windowHours * 60 * 60 * 1000;
+  const db = getDb();
+  const rows = await db.query.signalTimings.findMany({
+    where: gte(signalTimings.ts, sinceMs),
+    columns: { chain: true, stage: true, durationMs: true },
+    limit: 50_000,
+  });
+  type Bucket = { chain: string; stage: string; count: number; sum: number; max: number };
+  const buckets = new Map<string, Bucket>();
+  for (const r of rows) {
+    const k = `${r.chain}:${r.stage}`;
+    let b = buckets.get(k);
+    if (!b) { b = { chain: r.chain, stage: r.stage, count: 0, sum: 0, max: 0 }; buckets.set(k, b); }
+    b.count += 1; b.sum += r.durationMs; if (r.durationMs > b.max) b.max = r.durationMs;
+  }
+  const stages = [...buckets.values()].map((b) => ({
+    ...b, avgMs: b.sum / b.count,
+  })).sort((a, b) => b.avgMs - a.avgMs);
+  const bottleneck = stages[0]?.stage ?? null;
+  return { windowHours, stages, bottleneck };
+}
+```
+
+Route: `if (req.url?.startsWith("/api/latency")) return send(res, 200, await handleLatency(req));`
+
+- [ ] **Step 5: tsc + smoke + commit**
+
+```bash
+npx tsc --noEmit
+git add src/db/schema.ts drizzle/ src/db/migrations/ src/obs/timing.ts src/feed/signal_router.ts src/execute/executor.ts src/api/rest_server.ts && git commit -m "obs: signal_timings table + withTiming helper + entry/exit chain instrumentation + GET /api/latency"
+```
+
+### Task 31: Latency sub-card on More tab
+
+**Files:** Modify: `web/js/views/more.js`
+
+- [ ] **Step 1**: Add a `Latency` card after `Performance`:
+
+```js
+const lat = await fetchJson("/api/latency?windowHours=24");
+// ... in More render:
+<section class="card">
+  <div class="card-title">Latency · 24h ${lat.bottleneck ? `· bottleneck: ${escapeHtml(lat.bottleneck)}` : ""}</div>
+  <div class="card-body">
+    <table class="filters">
+      <tr><th>chain</th><th>stage</th><th>avg ms</th><th>count</th></tr>
+      ${lat.stages.slice(0, 20).map((s) => `<tr><td>${escapeHtml(s.chain)}</td><td>${escapeHtml(s.stage)}</td><td>${s.avgMs.toFixed(0)}</td><td>${s.count}</td></tr>`).join("")}
+    </table>
+  </div>
+</section>
+```
+
+- [ ] **Step 2: Commit**: `git add web/ && git commit -m "web: More tab latency sub-card with per-stage avg + bottleneck"`
+
+## Phase K — Whale corpus + classifier
+
+### Task 32: ALTER TABLE whales + import 1500-wallet seed
+
+**Files:** Modify: `src/db/schema.ts`. Create: `scripts/import-v1-whales.ts`
+
+- [ ] **Step 1: Schema additions**
+
+```ts
+// extend `whales` pgTable definition
+smScore: doublePrecision("sm_score"),
+trustScore: doublePrecision("trust_score"),
+totalTrades: integer("total_trades").default(0),
+winRate: doublePrecision("win_rate"),
+avgHoldHours: doublePrecision("avg_hold_hours"),
+directionalRatio: doublePrecision("directional_ratio"),
+domainBreakdown: jsonb("domain_breakdown").default({}),
+perDomainClassification: jsonb("per_domain_classification").default({}),
+lastClassifiedAt: timestamp("last_classified_at", { withTimezone: true }),
+lastActivityAt: timestamp("last_activity_at", { withTimezone: true }),
+```
+
+Add `doublePrecision` to drizzle-orm/pg-core import if missing.
+
+`npm run db:generate && npm run db:push`.
+
+- [ ] **Step 2: Import script** — reads `~/Documents/GitHub/ora-et-labora/output/wallet_profiles.json` and UPSERTs into `whales`. Default `tracked=false` for newly imported; existing tracked rows preserved.
+
+```ts
+// scripts/import-v1-whales.ts
+import fs from "node:fs";
+import { sql } from "drizzle-orm";
+import { getDb } from "../src/db/client.js";
+import { whales } from "../src/db/schema.js";
+
+const FILE = process.env["V1_WALLETS"] ?? `${process.env["HOME"]}/Documents/GitHub/ora-et-labora/output/wallet_profiles.json`;
+const data = JSON.parse(fs.readFileSync(FILE, "utf8")) as Record<string, Record<string, unknown>>;
+const db = getDb();
+let inserted = 0;
+let updated = 0;
+for (const [addr, prof] of Object.entries(data)) {
+  const lower = addr.toLowerCase();
+  const m = (prof["metrics"] ?? {}) as Record<string, unknown>;
+  const values = {
+    address: lower,
+    classification: String(prof["classification"] ?? "NOISE"),
+    confidence: Number(prof["confidence"] ?? 0),
+    smScore: Number(m["size_escalation_score"] ?? 0),
+    trustScore: Number(m["win_rate"] ?? 0) * Number(m["avg_hold_hours"] ?? 0),
+    totalTrades: Number(m["total_trades"] ?? 0),
+    winRate: Number(m["win_rate"] ?? 0),
+    avgHoldHours: Number(m["avg_hold_hours"] ?? 0),
+    directionalRatio: Number(m["directional_ratio"] ?? 0),
+    domainBreakdown: (prof["domain_breakdown"] ?? {}) as Record<string, unknown>,
+    perDomainClassification: (prof["per_domain_classification"] ?? {}) as Record<string, unknown>,
+    lastClassifiedAt: prof["last_classified"] ? new Date(Number(prof["last_classified"]) * 1000) : null,
+    lastActivityAt: prof["last_activity_ts"] ? new Date(Number(prof["last_activity_ts"]) * 1000) : null,
+  };
+  const r = await db.insert(whales)
+    .values({ ...values, strategyId: 1, tracked: false })
+    .onConflictDoUpdate({ target: whales.address, set: values })
+    .returning({ id: whales.id });
+  if (r.length > 0) inserted += 1; else updated += 1;
+}
+console.log(`done: inserted=${inserted} updated=${updated}`);
+process.exit(0);
+```
+
+(Note: `whales` may need composite unique on `(strategy_id, address)` — verify in schema and adjust onConflict target.)
+
+- [ ] **Step 3: Run + verify**
+
+```bash
+npx tsx --env-file=.env scripts/import-v1-whales.ts
+psql postgresql://ora:ora@localhost:5433/ora_v2 -c "SELECT count(*) FROM whales;"
+```
+
+Expected: count grows from ~200 to ~1500.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add src/db/schema.ts drizzle/ src/db/migrations/ scripts/import-v1-whales.ts && git commit -m "whales: schema + 1500-wallet seed import from v1 wallet_profiles.json"
+```
+
+### Task 33: GET /api/whales/:addr/profile + classification chips
+
+**Files:** Modify: `src/api/rest_server.ts`, `web/js/views/whales.js`, `web/js/sheets/whale.js`
+
+- [ ] **Step 1: Endpoint**
+
+```ts
+async function handleWhaleProfile(addr: string): Promise<unknown> {
+  const db = getDb();
+  const w = await db.query.whales.findFirst({ where: eq(whales.address, addr.toLowerCase()) });
+  if (!w) return { error: "not_found" };
+  return {
+    address: w.address,
+    classification: w.classification,
+    confidence: Number(w.confidence ?? 0),
+    tracked: w.tracked,
+    smScore: Number(w.smScore ?? 0),
+    trustScore: Number(w.trustScore ?? 0),
+    totalTrades: w.totalTrades,
+    winRate: Number(w.winRate ?? 0),
+    avgHoldHours: Number(w.avgHoldHours ?? 0),
+    directionalRatio: Number(w.directionalRatio ?? 0),
+    domainBreakdown: w.domainBreakdown,
+    perDomainClassification: w.perDomainClassification,
+    lastActivityAt: w.lastActivityAt,
+  };
+}
+```
+
+Route: regex `^\/api\/whales\/(0x[0-9a-fA-F]{40})\/profile$` → `handleWhaleProfile(match[1])`.
+
+- [ ] **Step 2: Whales tab** — add classification chips: `INFORMED / SHARP / FOLLOWER / NOISE`. Filter list by selected classification AND tracked/all chip combinedly.
+
+- [ ] **Step 3: Whale sheet** — call `/api/whales/:addr/profile` and render full breakdown (smScore, trustScore, winRate, avgHoldHours, directionalRatio, domain table).
+
+- [ ] **Step 4: tsc + smoke + commit**
+
+```bash
+npx tsc --noEmit
+git add src/api/rest_server.ts web/ && git commit -m "api+web: whale profile endpoint + classification chips + full sheet breakdown"
+```
+
+### Task 34: (deferred) Whale classifier daemon
+
+**Files:** Create: `src/whale/classifier.ts` (placeholder)
+
+This is significant porting work from v1 (computing metrics from
+historical chain trades). Out of MVP scope; lands in P2c-like phase.
+For MVP, the classifier columns are populated by the one-time import
+in Task 32 from v1's already-classified profiles.
+
+Mark this in BULLETPROOF.md as a P2c follow-up. No code change beyond
+a stub README in `src/whale/README.md` flagging the gap.
+
+```bash
+mkdir -p src/whale
+echo "# Whale classifier — port from v1 (P2c)" > src/whale/README.md
+git add src/whale/README.md && git commit -m "whale: placeholder for classifier port (P2c follow-up)"
+```
+
+## Phase F (continued) — re-verify smoke after G–K
+
+### Task 35: Re-run end-to-end LIVE smoke with new tabs
+
+After all phases G–K land, re-do the Phase F smoke checklist (Task 23)
+PLUS:
+
+- [ ] Live tab shows KPI card (WR/PF/DD/avg-hold/pass-rate/signals-h)
+- [ ] Cockpit shows second-line summary
+- [ ] Position drilldown shows Initiator + Verification sections
+- [ ] Strategy tab Filters card shows all 30+ filters grouped, ported badges visible
+- [ ] More tab shows Latency card with per-stage avg + bottleneck
+- [ ] Whales tab classification chips filter; whale sheet shows full breakdown
+- [ ] `psql … -c "SELECT count(*) FROM whales"` ≥ 1500
+- [ ] `psql … -c "SELECT count(*) FROM signal_timings WHERE ts > extract(epoch from now())*1000 - 60000"` > 0 (timings flowing)
+
+Commit BULLETPROOF.md update with v1 catch-up confirmation.
+
+---
+
 ## Self-review checklist
 
 After implementation, verify against the spec:
