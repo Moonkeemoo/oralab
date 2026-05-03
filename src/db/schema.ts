@@ -518,3 +518,32 @@ export const notificationSettings = pgTable(
   },
   (t) => [uniqueIndex("uq_notif_user_event").on(t.userId, t.eventKey)],
 );
+
+// =============================================================================
+// CALIBRATOR_RECOMMENDATIONS — adaptive filter-threshold tuning output (P2c)
+//   Daemon writes one row per (cycle, filter). Read-only for now: emit-only,
+//   never auto-apply to strategy_filters. Purely advisory.
+// =============================================================================
+
+export const calibratorRecommendations = pgTable(
+  "calibrator_recommendations",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    cycleId: varchar("cycle_id", { length: 64 }).notNull(),
+    filterName: varchar("filter_name", { length: 64 }).notNull(),
+    paramKey: varchar("param_key", { length: 64 }).notNull(),
+    currentValue: doublePrecision("current_value").notNull(),
+    recommendedValue: doublePrecision("recommended_value").notNull(),
+    direction: varchar("direction", { length: 16 }).notNull(), // relax | tighten | hold
+    liftEstimateUsd: doublePrecision("lift_estimate_usd").notNull(),
+    liftKpi: varchar("lift_kpi", { length: 32 }).notNull(),
+    confidence: varchar("confidence", { length: 16 }).notNull(), // stable | exploring | low_data
+    sampleSize: integer("sample_size").notNull(),
+    reason: text("reason").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("idx_calibrator_recs_cycle").on(t.cycleId),
+    index("idx_calibrator_recs_created").on(t.createdAt.desc()),
+  ],
+);
