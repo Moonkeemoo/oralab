@@ -5,6 +5,7 @@ import { renderLive } from "./js/views/live.js";
 import { renderHistory } from "./js/views/history.js";
 import { renderStrategy } from "./js/views/strategy.js";
 import { renderWhales } from "./js/views/whales.js";
+import { renderCalibrator } from "./js/views/calibrator.js";
 import { renderMore } from "./js/views/more.js";
 
 const VIEWS = {
@@ -12,6 +13,7 @@ const VIEWS = {
   history: renderHistory,
   strategy: renderStrategy,
   whales: renderWhales,
+  calib: renderCalibrator,
   more: renderMore,
 };
 

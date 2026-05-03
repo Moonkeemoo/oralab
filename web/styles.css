@@ -579,3 +579,39 @@ table.filters tr { border-bottom: 1px solid rgba(255,255,255,0.04); }
 .closed-arrow { margin-left: auto; font-size: 14px; }
 .closed-collapsed { display: none; }
 
+
+/* Calibrator tab — recommendation cards with direction-coded left border. */
+.calib-rec {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-left-width: 3px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  background: rgba(255,255,255,0.02);
+}
+.calib-rec:last-child { margin-bottom: 0; }
+.calib-relax   { border-left-color: var(--ok); }
+.calib-tighten { border-left-color: var(--warn); }
+.calib-hold    { border-left-color: var(--text-muted); }
+
+.calib-dir {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.calib-rec.calib-relax   .calib-dir { color: var(--ok); }
+.calib-rec.calib-tighten .calib-dir { color: var(--warn); }
+
+.calib-conf {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--bg);
+}
+.calib-stable     { color: var(--ok); border: 1px solid rgba(63,185,80,0.4); }
+.calib-exploring  { color: var(--text); border: 1px dashed var(--border); }
+.calib-low-data   { color: var(--text-muted); opacity: 0.6; }

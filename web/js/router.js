@@ -1,6 +1,6 @@
 "use strict";
 
-const TABS = ["live", "history", "strategy", "whales", "more"];
+const TABS = ["live", "history", "strategy", "whales", "calib", "more"];
 
 export function currentTab() {
   const hash = location.hash.replace("#", "");
