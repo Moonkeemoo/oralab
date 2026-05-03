@@ -685,6 +685,7 @@ async function handleKpi(req: http.IncomingMessage): Promise<unknown> {
   const url = new URL(req.url ?? "/", "http://x");
   const windowHours = Math.max(1, Math.min(24 * 30, Number(url.searchParams.get("windowHours") ?? 24)));
   const sinceMs = Date.now() - windowHours * 60 * 60 * 1000;
+  const mode = currentMode();
   const db = getDb();
   const sigRows = await db.query.signals.findMany({
     where: gte(signals.processedAt, new Date(sinceMs)),
@@ -692,10 +693,25 @@ async function handleKpi(req: http.IncomingMessage): Promise<unknown> {
   });
   const signalsTotal = sigRows.length;
   const signalsAccepted = sigRows.filter((r) => r.accepted).length;
+  const signalsRejected = signalsTotal - signalsAccepted;
+  const byReason: Record<string, number> = {};
+  for (const r of sigRows) {
+    if (!r.accepted && r.rejectReason) {
+      byReason[r.rejectReason] = (byReason[r.rejectReason] ?? 0) + 1;
+    }
+  }
+  let topRejection: string | null = null;
+  let topRejectionCount = 0;
+  for (const [k, v] of Object.entries(byReason)) {
+    if (v > topRejectionCount) {
+      topRejectionCount = v;
+      topRejection = k;
+    }
+  }
 
   const closed = await db.query.positions.findMany({
     where: and(
-      eq(positions.mode, currentMode()),
+      eq(positions.mode, mode),
       eq(positions.status, "CLOSED"),
       gte(positions.lastStateChangeTs, sinceMs),
     ),
@@ -706,8 +722,13 @@ async function handleKpi(req: http.IncomingMessage): Promise<unknown> {
   let posPnl = 0;
   let negPnl = 0;
   let holdSec = 0;
+  let tpHits = 0;
+  let slHits = 0;
+  let peakUnrealizedSum = 0;
+  let realizedForPeakSum = 0;
   const equity: { ts: number; cum: number }[] = [];
   let cum = 0;
+  const lossPnls: number[] = [];
   const sorted = closed.slice().sort((a, b) => Number(a.lastStateChangeTs) - Number(b.lastStateChangeTs));
   for (const p of sorted) {
     const sells = await db.query.fills.findMany({
@@ -723,10 +744,27 @@ async function handleKpi(req: http.IncomingMessage): Promise<unknown> {
       posPnl += pnl;
     } else {
       negPnl += -pnl;
+      lossPnls.push(pnl);
     }
     holdSec += (Number(p.lastStateChangeTs) - Number(p.fillTs)) / 1000;
     cum += pnl;
     equity.push({ ts: Number(p.lastStateChangeTs), cum });
+
+    // Exit-family classification — drives TP/SL hit rates and exit efficiency.
+    const reason = renderExitReason(p.closeReason);
+    if (reason.family === "tp") tpHits += 1;
+    if (reason.family === "sl_standard" || reason.family === "sl_emergency") slHits += 1;
+
+    // Theoretical peak unrealised PnL for this trade — based on peak_price tracker
+    // captured live by the position monitor. (peak - fill) * shares.
+    const fillPrice = Number(p.fillPrice ?? 0);
+    const peakPrice = Number(p.peakPrice ?? 0);
+    const shares = Number(p.shares ?? 0);
+    const peakUnrealised = (peakPrice - fillPrice) * shares;
+    if (peakUnrealised > 0) {
+      peakUnrealizedSum += peakUnrealised;
+      realizedForPeakSum += pnl;
+    }
   }
   let peak = 0;
   let maxDrawdown = 0;
@@ -735,16 +773,78 @@ async function handleKpi(req: http.IncomingMessage): Promise<unknown> {
     const dd = peak - e.cum;
     if (dd > maxDrawdown) maxDrawdown = dd;
   }
+
+  // Exposure: how much of total budget is locked up in OPEN positions right now.
+  const active = await db.query.positions.findMany({
+    where: and(
+      eq(positions.mode, mode),
+      inArray(positions.status, [...ACTIVE_STATUSES]),
+    ),
+    columns: { entryCostUsd: true },
+  });
+  const exposureUsd = active.reduce((s, p) => s + Number(p.entryCostUsd ?? 0), 0);
+  const openPositionCount = active.length;
+
+  let totalBudgetUsd = 0;
+  if (mode === "DRY") {
+    const strats = await db.query.strategies.findMany({ columns: { params: true, enabled: true } });
+    totalBudgetUsd = strats
+      .filter((s) => s.enabled)
+      .reduce(
+        (s, st) => s + Number(((st.params as Record<string, unknown>) ?? {})["budgetUsd"] ?? 0),
+        0,
+      );
+  }
+  const exposurePct = totalBudgetUsd > 0 ? exposureUsd / totalBudgetUsd : 0;
+
+  // Counter-factual saved-by-rejection — DRY-mode estimate. We can't replay
+  // every rejected signal, so approximate as: (#rejects) * avg loss per losing
+  // trade * (1/10 of an aggressive accept-everything baseline).  Plausibility >
+  // accuracy here; v1 used a similar back-of-the-envelope number. Returns 0
+  // when there are no losing trades to anchor against.
+  const avgLoss = lossPnls.length > 0
+    ? lossPnls.reduce((s, v) => s + v, 0) / lossPnls.length
+    : 0;
+  const cfSaved = Math.max(0, signalsRejected * Math.abs(avgLoss) * 0.1);
+  const cfNet = (totalExit - totalEntry) + cfSaved;
+
+  const closedCount = closed.length;
+  const exitEfficiency = peakUnrealizedSum > 0 ? realizedForPeakSum / peakUnrealizedSum : 0;
+  const leftOnTable = peakUnrealizedSum - realizedForPeakSum;
+
   return {
     windowHours,
+    // Original v1-equivalent fields retained
     passRatePct: signalsTotal > 0 ? (signalsAccepted / signalsTotal) * 100 : 0,
     signalsPerHour: signalsTotal / windowHours,
     profitFactor: negPnl > 0 ? posPnl / negPnl : posPnl > 0 ? Infinity : 0,
-    winRatePct: closed.length > 0 ? (wins / closed.length) * 100 : 0,
-    avgHoldSec: closed.length > 0 ? holdSec / closed.length : 0,
+    winRatePct: closedCount > 0 ? (wins / closedCount) * 100 : 0,
+    avgHoldSec: closedCount > 0 ? holdSec / closedCount : 0,
     drawdownUsd: maxDrawdown,
     netPnlUsd: totalExit - totalEntry,
-    closedCount: closed.length,
+    closedCount,
+    // ── v1-parity additions ──
+    signalsTotal,
+    signalsAccepted,
+    signalsRejected,
+    topRejection,
+    topRejectionCount,
+    tpHitRatePct: closedCount > 0 ? (tpHits / closedCount) * 100 : 0,
+    slRatePct: closedCount > 0 ? (slHits / closedCount) * 100 : 0,
+    exitEfficiencyPct: exitEfficiency * 100,
+    leftOnTableUsd: leftOnTable,
+    cfNetUsd: cfNet,
+    cfSavedUsd: cfSaved,
+    avgPnlPerTradeUsd: closedCount > 0 ? (totalExit - totalEntry) / closedCount : 0,
+    avgDurationSec: closedCount > 0 ? holdSec / closedCount : 0,
+    grossWinUsd: posPnl,
+    grossLossUsd: negPnl,
+    winsCount: wins,
+    lossesCount: closedCount - wins,
+    exposureUsd,
+    exposurePct,
+    openPositionCount,
+    totalBudgetUsd,
   };
 }
 
