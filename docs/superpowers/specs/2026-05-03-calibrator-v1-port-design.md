@@ -221,6 +221,114 @@ SAFETY_VERIFY_TIMEOUT    = 30s
 
 ---
 
+## Sport-tag analytics (Спорт sub-tab — first-class)
+
+User explicitly flagged this as critical: "трекає по тегам... який спорт найбільше заробив і коли".
+The Sport sub-tab in v1 has TWO views:
+
+### A. Per-sport KPI table
+
+| Sport | Угод | Win | Loss | NET PNL | WR | TP% | SL% | Сер.час | Сер.ставка | Performance bar |
+|-------|------|-----|------|---------|------|-----|-----|---------|------------|----------------|
+| NHL   | 4    | 3   | 1    | +$1.61  | 75%  | 25% | 0%  | 57m     | $3.76      | green 100%     |
+| NBA   | 1    | 1   | 0    | +$0.59  | 100% | 100%| 0%  | 56m     | $3.08      | green 37%      |
+| Tennis| 1    | 1   | 0    | +$0.64  | 100% | 100%| 0%  | 31m     | $3.38      | green 48%      |
+| Soccer| 6    | 2   | 4    | -$0.02  | 17%  | 17% | 33% | 10m     | $3.72      | red 1%         |
+| Other | 7    | 2   | 3    | -$0.47  | 29%  | 14% | 29% | 12m     | $10.33     | red 29%        |
+| Esports|10   | 5   | 5    | -$1.29  | 50%  | 30% | 30% | 21m     | $5.15      | red 88%        |
+
+Sortable by NET PNL.
+
+### B. Hour-of-day heatmap
+
+Y-axis: sports rows (NHL/Tennis/NBA/Soccer/Other/Esports/...)
+X-axis: 24 hours UTC (00..23)
+Cell value: depending on toggle:
+- **PNL ($)** — sum(realized_pnl_usd) for that sport × hour bucket. Green/red gradient.
+- **WIN RATE (%)**
+- **КІЛЬКІСТЬ УГОД** — count of trades
+
+Identifies time-of-day windows where specific sports overperform (e.g. NHL +$1.16 at 02:00 UTC + +$0.35 at 03:00 vs Esports -$3.96 at 09:00).
+
+### Data flow in v2
+
+| Need | Current state | Action |
+|------|---------------|--------|
+| Sport per market | `gamma market.sportsMarketType` + `isSportsMarket`. Plus `sports_events.league` (mlb/cs2/lol/...) keyed by gameId. | Cache `league` on `positions.league` at INSERT time. Source: `gamma.gameId → sports_events.league`, fallback to deriving from market.slug regex. |
+| Tags[] | gamma exposes but we don't store | Optional: store as `positions.tags jsonb` for richer drilldowns later. v1 uses single `league` for table; tags can wait. |
+| Sport mapping | Raw league codes vary (`mlb`/`nba`/`nhl`/`cs2`/`lol`/`val`/`ufc`/`mls`/`fr2`/`epl`/etc) | Add `LEAGUE_TO_SPORT` map: `{cs2,lol,val,codmw} → "Esports"`, `{mlb} → "MLB"`, `{nba,wnba} → "NBA"`, `{nhl} → "NHL"`, `{soccer,mls,epl,fr2,bra,arg,j2100,mex} → "Soccer"`, etc. Single source of truth in `src/calibrator/sport_taxonomy.ts`. |
+
+### Schema
+
+```sql
+ALTER TABLE positions ADD COLUMN league varchar(32);
+ALTER TABLE positions ADD COLUMN sport varchar(32);  -- canonical group
+CREATE INDEX idx_positions_sport_lastchange ON positions(sport, last_state_change_ts DESC);
+```
+
+`league` set at INSERT time in `signal_router.ts` from gamma metadata (already fetched). `sport` derived via `LEAGUE_TO_SPORT[league]`.
+
+### Aggregation queries
+
+**Per-sport table** (24h window):
+```sql
+SELECT
+  sport,
+  count(*) AS trades,
+  count(*) FILTER (WHERE realized_pnl_usd > 0) AS wins,
+  count(*) FILTER (WHERE realized_pnl_usd < 0) AS losses,
+  sum(realized_pnl_usd)::numeric(10,2) AS net_pnl,
+  (count(*) FILTER (WHERE realized_pnl_usd > 0)::float / GREATEST(count(*),1))::numeric(4,2) AS win_rate,
+  (count(*) FILTER (WHERE close_reason ~* '^tp')::float / GREATEST(count(*),1))::numeric(4,2) AS tp_pct,
+  (count(*) FILTER (WHERE close_reason ~* '^sl')::float / GREATEST(count(*),1))::numeric(4,2) AS sl_pct,
+  avg((last_state_change_ts - fill_ts) / 1000)::int AS avg_dur_sec,
+  avg(entry_cost_usd)::numeric(10,2) AS avg_stake_usd
+FROM positions
+WHERE status='CLOSED' AND mode = $mode
+  AND last_state_change_ts > extract(epoch from now()-interval '24 hours')*1000
+  AND sport IS NOT NULL
+GROUP BY sport
+ORDER BY net_pnl DESC;
+```
+
+**Hour-of-day heatmap** (any window):
+```sql
+SELECT
+  sport,
+  EXTRACT(hour FROM to_timestamp(fill_ts/1000) AT TIME ZONE 'UTC')::int AS hour_utc,
+  count(*) AS trades,
+  sum(realized_pnl_usd)::numeric(10,2) AS pnl_usd,
+  (count(*) FILTER (WHERE realized_pnl_usd > 0)::float / GREATEST(count(*),1))::numeric(4,2) AS win_rate
+FROM positions
+WHERE status='CLOSED' AND mode = $mode
+  AND last_state_change_ts > extract(epoch from now()-interval '7 days')*1000
+  AND sport IS NOT NULL
+GROUP BY sport, hour_utc
+ORDER BY sport, hour_utc;
+```
+Returns sparse rows; UI fills 24-cell grid with 0 for missing hours.
+
+### REST endpoints
+
+```
+GET /api/calibrator/sport?windowHours=24
+  → { sports: [{sport, trades, wins, losses, netPnl, winRate, tpPct, slPct, avgDurSec, avgStakeUsd}, ...] }
+
+GET /api/calibrator/sport/heatmap?days=7&metric={pnl|wr|count}
+  → { sports: ["NHL", "Soccer", ...], hours: [0..23], cells: { "NHL_3": 1.16, "Soccer_15": -0.28, ... } }
+```
+
+### Use cases (per-sport calibration question from earlier)
+
+Even if v1 never wired per-sport threshold tuning, the analytics enable:
+- **Manual decision support**: "Esports lose 88% of stake at 09:00 UTC — pause sport_only filter to allow only NHL/NBA/MLB during 02:00–10:00."
+- **Future enhancement**: per-sport multipliers on conviction threshold (`conviction_gate.params.sportMultiplier.NHL = 0.8`).
+- **Sanity gate**: if any sport's WR drops below 30% over rolling 50 trades → auto-disable that sport's signals via runtime_config.
+
+This is part of Phase D (REST) + Phase E (UI sub-tab Спорт). Schema migration goes in Phase A.
+
+---
+
 ## v2 Mini App tabs (7 sub-tabs from v1 walkthrough)
 
 | Tab            | Source data                                                |
