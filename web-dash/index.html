@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ora et Labora</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐋</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800;900&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/styles.css">
+<link rel="stylesheet" href="/static/mobile.css">
+</head>
+<body>
+
+<div class="page-wrap">
+<!-- HEADER (slimmed: brand + lang + USDC). All controls moved to ControlBar below. -->
+<header class="hdr">
+  <button class="lang-toggle" id="langToggle" onclick="App.switchLocale()">
+    <span class="lang-flag">🇺🇦</span>
+  </button>
+  <div class="hdr-brand">
+    <span class="hdr-name">OraLab</span>
+    <span class="hdr-eye">Ora et Labora</span>
+  </div>
+  <div class="hdr-gap"></div>
+  <div class="usdc-pill" id="usdcPill" style="display:none"><span class="usdc-dot"></span>USDC $<span id="usdcBal">--</span></div>
+</header>
+
+<!-- CONTROL BAR — MODE · BOTS · HEALTH · MONITOR · CONTROL -->
+<div class="ctl-bar" id="ctlBar">
+
+  <!-- MODE -->
+  <div class="ctl-sec ctl-mode">
+    <span class="ctl-sec-lbl">MODE</span>
+    <div class="mode-toggle" id="modeToggle">
+      <button class="mode-opt active-dry" id="modeDryBtn" onclick="switchMode('dry_run')"><span class="mode-dot" style="background:var(--ind)"></span> DRY</button>
+      <button class="mode-opt" id="modeLiveBtn" onclick="switchMode('live')"><span class="mode-dot" style="background:var(--t3)"></span> LIVE</button>
+    </div>
+    <div class="ctl-mode-foot">
+      <span class="hdr-time" id="ts">Оновлено —</span>
+      <span class="hdr-fresh" id="hdrFresh" style="display:none" title="">
+        <span class="hdr-fresh-dot" id="hdrFreshDot"></span><span id="hdrFreshText">—</span>
+      </span>
+    </div>
+  </div>
+
+  <!-- BOTS -->
+  <div class="ctl-sec ctl-bots">
+    <span class="ctl-sec-lbl" id="ctlBotsLabel">BOTS</span>
+    <div class="infra-bots" id="botsAlloc"></div>
+    <div class="ctl-bots-foot">
+      <button class="bp-b bp-bulk" id="startAllBots" title="Запустити всі" data-i18n-title="hdr.start_all_title">▶ All</button>
+      <button class="bp-b bp-bulk" id="stopAllBots" title="Зупинити всі" data-i18n-title="hdr.stop_all_title">⏹ All</button>
+    </div>
+  </div>
+
+  <!-- HEALTH -->
+  <div class="ctl-sec ctl-health">
+    <span class="ctl-sec-lbl">HEALTH</span>
+    <div class="ctl-health-top">
+      <span class="sys-pill" id="systemHealth"><span class="sys-pill-dot"></span> HEALTHY</span>
+    </div>
+    <div class="infra-health" id="healthDots">
+      <span class="hd"><span class="hd-dot" id="healthWsDot"></span><span class="hd-t" id="healthWs">WS —</span></span>
+      <span class="hd"><span class="hd-dot" id="healthPriceDot"></span><span class="hd-t" id="healthPriceAge">Prices —</span></span>
+      <span class="hd"><span class="hd-dot" id="healthTraderDot"></span><span class="hd-t" id="healthTrader">Trader —</span></span>
+      <span class="hd"><span class="hd-dot" id="healthDecisionsDot"></span><span class="hd-t" id="healthDecisions">Decisions —</span></span>
+      <span class="hd"><span class="hd-dot" id="healthChainDot"></span><span class="hd-t" id="healthChain">Chain —</span></span>
+      <span class="hd" style="color:var(--t3)"><span class="hd-t" id="healthChainEvents">—</span></span>
+    </div>
+    <!-- Hidden legacy elements for health.js compat -->
+    <span id="healthChainReconnects" style="display:none"></span>
+    <span id="onchainCard" style="display:none"></span>
+    <span id="chainUsdc" style="display:none"></span>
+    <span id="chainRecon" style="display:none"></span>
+    <span id="chainReconDot" style="display:none"></span>
+    <span id="chainPending" style="display:none"></span>
+    <span id="chainPhantom" style="display:none"></span>
+    <span id="healthCard" style="display:none"></span>
+  </div>
+
+  <!-- MONITOR -->
+  <div class="ctl-sec ctl-monitor">
+    <span class="ctl-sec-lbl">MONITOR</span>
+    <div class="wd-pill" id="wdPill" title="Watchdog daemon — ./scripts/run-watchdog.sh">
+      <span class="wd-dot" id="wdDot"></span><span id="wdText">WD —</span>
+    </div>
+    <div class="ctl-monitor-hint" data-i18n="monitor.future_checks">+ майбутні перевірки</div>
+  </div>
+
+  <!-- CONTROL -->
+  <div class="ctl-sec ctl-ctrl">
+    <span class="ctl-sec-lbl">CONTROL</span>
+    <div class="ctl-ctrl-grid">
+      <button class="hdr-btn" id="refreshBtn" data-i18n="hdr.refresh">🔄 Оновити</button>
+      <button class="hdr-btn" id="restartDashboardBtn" data-i18n="hdr.restart">♻️ Перезапуск</button>
+      <button class="kill-btn" id="killBtn" style="display:none" onclick="toggleKillSwitch()">KILL</button>
+      <div class="reset-wrap">
+        <button class="hdr-btn" id="pmResetAll" style="color:var(--red);border-color:var(--red-brd)" data-i18n="hdr.reset">❌ Скидання</button>
+        <div class="reset-menu hidden" id="resetMenu">
+          <button class="reset-opt danger" id="resetSoft">
+            <span class="reset-opt-icon">🔄</span>
+            <span class="reset-opt-body">
+              <span class="reset-opt-title" data-i18n="reset.soft_title">М'яке скидання</span>
+              <span class="reset-opt-desc" data-i18n="reset.soft_desc">Скинути баланси, закрити позиції. Історія торгів та гаманці збережені.</span>
+            </span>
+          </button>
+          <button class="reset-opt danger" id="resetHard">
+            <span class="reset-opt-icon">⚠️</span>
+            <span class="reset-opt-body">
+              <span class="reset-opt-title" data-i18n="reset.hard_title">Повне скидання</span>
+              <span class="reset-opt-desc" data-i18n="reset.hard_desc">Скинути баланси, стерти історію торгів, trust scores та логи. Гаманці збережені.</span>
+            </span>
+          </button>
+          <button class="reset-menu-cancel" id="resetCancel" data-i18n="reset.cancel">Скасувати</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- B1: Bot alive banner — only visible when a worker thread is stale/dead.
+     Populated by App.refreshThreadHealth() in js/health.js. -->
+<div id="botAliveBanner" class="bot-alive-banner" style="display:none">
+  <span class="bot-alive-banner-icon">⚠️</span>
+  <span class="bot-alive-banner-text" id="botAliveBannerText">Перевірка ботів…</span>
+  <span class="bot-alive-banner-threads" id="botAliveBannerThreads"></span>
+</div>
+
+<!-- DASHBOARD STRIP (L26 redesign) -->
+<div class="dash-strip">
+  <!-- COL 1: Balance -->
+  <div class="ds-cell ds-bal">
+    <div class="ds-label">Balance <button id="topUpBtn" class="ds-btn-sm" data-i18n="hdr.topup">↑ Поповнити</button></div>
+    <div class="ds-num" id="portfolioVal">—</div>
+    <div class="ds-sub">
+      <span><span class="ds-dot" style="background:var(--ind)"></span> <span data-i18n="dash.positions_label">Позиції</span> <b id="inPositions">—</b></span>
+      <span><span class="ds-dot" style="background:var(--grn)"></span> <span data-i18n="dash.available_label">Вільно</span> <b id="available">—</b></span>
+    </div>
+    <div class="ds-meter"><div class="ds-meter-fill" id="portfolioMeter" style="width:0%"></div></div>
+    <span id="reconStatus" style="display:none"></span>
+  </div>
+
+  <!-- COL 2: P&L -->
+  <div class="ds-cell ds-pnl">
+    <div class="ds-label">Profit & Loss</div>
+    <div class="ds-num neg" id="pnlVal">—</div>
+    <div class="ds-periods">
+      <div class="ds-prd" data-prd="1D"><div class="ds-prd-l">Today</div><div class="ds-prd-v neg" id="pnlToday">—</div></div>
+      <div class="ds-prd" data-prd="1W"><div class="ds-prd-l">Week</div><div class="ds-prd-v neg" id="pnlWeek">—</div></div>
+      <div class="ds-prd" data-prd="ALL"><div class="ds-prd-l">All</div><div class="ds-prd-v neg" id="pnlAll">—</div></div>
+    </div>
+    <canvas class="ds-spark" id="pnlChart"></canvas>
+  </div>
+
+  <!-- COL 3: KPI panel (4 groups × 4 cells) -->
+  <div class="ds-kpi-panel">
+    <div class="ds-kpi-group entry">
+      <div class="ds-kpi-g-head">
+        <span class="ds-kpi-g-accent"></span>
+        <span class="ds-kpi-g-title" data-i18n="kpi.group.entry">Вхід</span>
+      </div>
+      <div class="ds-kpi-g-cells">
+        <div class="ds-kpi"><div class="ds-kpi-l" data-i18n="kpi.pass_rate">Pass Rate</div><div class="ds-kpi-v" id="kpiPassRate">—</div><div class="ds-kpi-s" id="kpiPassRateSub"></div></div>
+        <div class="ds-kpi"><div class="ds-kpi-l" data-i18n="kpi.top_rejection">Top Rejection</div><div class="ds-kpi-v" id="kpiTopRej">—</div><div class="ds-kpi-s" id="kpiTopRejSub"></div></div>
+        <div class="ds-kpi"><div class="ds-kpi-l" data-i18n="kpi.signals_hr">Signals/hr</div><div class="ds-kpi-v" id="kpiSignalsHr">—</div><div class="ds-kpi-s" id="kpiSignalsHrSub"></div></div>
+        <div class="ds-kpi"><div class="ds-kpi-l" data-i18n="kpi.cf_net">CF Net</div><div class="ds-kpi-v" id="kpiCfNet">—</div><div class="ds-kpi-s" id="kpiCfNetSub"></div></div>
+      </div>
+    </div>
+    <div class="ds-kpi-group exit">
+      <div class="ds-kpi-g-head">
+        <span class="ds-kpi-g-accent"></span>
+        <span class="ds-kpi-g-title" data-i18n="kpi.group.exit">Вихід</span>
+      </div>
+      <div class="ds-kpi-g-cells">
+        <div class="ds-kpi"><div class="ds-kpi-l" data-i18n="kpi.tp_hit_rate">TP Hit Rate</div><div class="ds-kpi-v" id="kpiTpHit">—</div><div class="ds-kpi-s" id="kpiTpHitSub"></div></div>
+        <div class="ds-kpi"><div class="ds-kpi-l" data-i18n="kpi.sl_rate">SL Rate</div><div class="ds-kpi-v" id="kpiSlRate">—</div><div class="ds-kpi-s" id="kpiSlRateSub"></div></div>
+        <div class="ds-kpi"><div class="ds-kpi-l" data-i18n="kpi.exit_efficiency">Exit Efficiency</div><div class="ds-kpi-v" id="kpiExitEff">—</div><div class="ds-kpi-s" id="kpiExitEffSub"></div></div>
+        <div class="ds-kpi"><div class="ds-kpi-l" data-i18n="kpi.left_on_table">Left on Table</div><div class="ds-kpi-v" id="kpiLeftOnTable">—</div><div class="ds-kpi-s" id="kpiLeftOnTableSub"></div></div>
+      </div>
+    </div>
+    <div class="ds-kpi-group perf">
+      <div class="ds-kpi-g-head">
+        <span class="ds-kpi-g-accent"></span>
+        <span class="ds-kpi-g-title" data-i18n="kpi.group.performance">Результат</span>
+      </div>
+      <div class="ds-kpi-g-cells">
+        <div class="ds-kpi"><div class="ds-kpi-l" data-i18n="kpi.win_rate">Win Rate</div><div class="ds-kpi-v green" id="kpiWinRate">—</div><div class="ds-kpi-s" id="kpiWinRateSub"></div></div>
+        <div class="ds-kpi"><div class="ds-kpi-l" data-i18n="kpi.profit_factor">Profit Factor</div><div class="ds-kpi-v" id="kpiProfitFactor">—</div><div class="ds-kpi-s" id="kpiProfitFactorSub"></div></div>
+        <div class="ds-kpi"><div class="ds-kpi-l" data-i18n="kpi.avg_pnl">Avg PnL/Trade</div><div class="ds-kpi-v" id="kpiAvgPnl">—</div><div class="ds-kpi-s" id="kpiAvgPnlSub"></div></div>
+        <div class="ds-kpi"><div class="ds-kpi-l" data-i18n="kpi.drawdown">Max Drawdown</div><div class="ds-kpi-v" id="kpiDrawdown">—</div><div class="ds-kpi-s" id="kpiDrawdownSub"></div></div>
+      </div>
+    </div>
+    <div class="ds-kpi-group tech">
+      <div class="ds-kpi-g-head">
+        <span class="ds-kpi-g-accent"></span>
+        <span class="ds-kpi-g-title" data-i18n="kpi.group.technical">Технічні</span>
+      </div>
+      <div class="ds-kpi-g-cells">
+        <div class="ds-kpi"><div class="ds-kpi-l" data-i18n="kpi.latency">Avg Latency</div><div class="ds-kpi-v" id="kpiLatency">—</div><div class="ds-kpi-s" id="kpiLatencySub"></div></div>
+        <div class="ds-kpi"><div class="ds-kpi-l" data-i18n="kpi.duration">Avg Duration</div><div class="ds-kpi-v" id="kpiDuration">—</div><div class="ds-kpi-s" id="kpiDurationSub"></div></div>
+        <div class="ds-kpi"><div class="ds-kpi-l" data-i18n="kpi.exposure">Exposure</div><div class="ds-kpi-v" id="kpiExposure">—</div><div class="ds-kpi-s" id="kpiExposureSub"></div></div>
+        <div class="ds-kpi"><div class="ds-kpi-l" data-i18n="kpi.open_positions">Open Positions</div><div class="ds-kpi-v" id="kpiOpenPos">—</div><div class="ds-kpi-s" id="kpiOpenPosSub"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- infra-bar removed — merged into ControlBar above (MODE · BOTS · HEALTH · MONITOR · CONTROL) -->
+
+<!-- TABS -->
+<div class="tabs-bar">
+  <button class="tab on" onclick="sw('trades',this)"><span data-i18n="tab.trades">Трейди</span> <span class="tbadge" id="tradesCount">0</span></button>
+  <button class="tab" onclick="sw('filters',this)" data-i18n="tab.settings">Налаштування</button>
+  <button class="tab" onclick="sw('whales',this)"><span data-i18n="tab.whales">🐋 Whales</span> <span class="tbadge" id="walCount">0</span></button>
+  <button class="tab" onclick="sw('calibration',this)" data-i18n="tab.calibration">⚙️ Калібрація</button>
+  <button class="tab" onclick="sw('timing',this)" data-i18n="tab.chain">⚡ Chain</button>
+  <button class="tab" onclick="sw('logs',this)" data-i18n="tab.logs">📋 Логи</button>
+  <span class="tabs-right" id="tr">Updated —</span>
+</div>
+
+<!-- TRADES (replaces history + decisions + logs) -->
+<div class="pane on" id="pane-trades">
+
+  <!-- Summary Strip -->
+  <div class="tr-summary" id="tradesSummary">
+    <div class="tr-stat">
+      <span class="tr-label">P&amp;L</span>
+      <span class="tr-val" id="trPnl">—</span>
+    </div>
+    <div class="tr-sep"></div>
+    <div class="tr-stat">
+      <span class="tr-label">Win Rate</span>
+      <span class="tr-val" id="trWR">—</span>
+    </div>
+    <div class="tr-sep"></div>
+    <div class="tr-stat">
+      <span class="tr-label" data-i18n="trades.summary_avg_dur">Середня трив.</span>
+      <span class="tr-val" id="trDur">—</span>
+    </div>
+    <div class="tr-sep"></div>
+    <div class="tr-stat">
+      <span class="tr-label">Wins</span>
+      <span class="tr-val pos" id="trWins">—</span>
+    </div>
+    <div class="tr-sep"></div>
+    <div class="tr-stat">
+      <span class="tr-label">Losses</span>
+      <span class="tr-val neg" id="trLosses">—</span>
+    </div>
+    <div class="tr-sep"></div>
+    <div class="tr-stat">
+      <span class="tr-label">Open</span>
+      <span class="tr-val" id="trOpen">—</span>
+    </div>
+    <div class="tr-sep"></div>
+    <div class="tr-stat" title="Медіанна свіжість марків (час з останнього оновлення від сервера)" data-i18n-title="trades.summary_freshness_tip">
+      <span class="tr-label" data-i18n="trades.summary_freshness">Свіжість марків</span>
+      <span class="tr-val" id="trFreshness">—</span>
+      <canvas id="trFreshnessChart" width="200" height="24" style="vertical-align:middle;margin-left:6px"></canvas>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="tr-toolbar">
+    <button class="tr-btn active" onclick="setTradeFilter(this,'all')" data-i18n="trades.filter_all">Всі</button>
+    <button class="tr-btn" onclick="setTradeFilter(this,'won')">Won</button>
+    <button class="tr-btn" onclick="setTradeFilter(this,'lost')">Lost</button>
+    <button class="tr-btn" onclick="setTradeFilter(this,'open')">Open</button>
+    <button class="tr-btn" onclick="setTradeFilter(this,'live')">LIVE</button>
+    <button class="tr-btn" onclick="setTradeFilter(this,'dry')">DRY</button>
+    <input class="tr-search" id="trSearch" type="text"
+           placeholder="trade_id, market..."
+           oninput="tradeSearch(this)">
+    <button class="tr-copy-all" onclick="App.copyAllTradesJSON()">
+      📋 Copy All JSON
+    </button>
+  </div>
+
+  <!-- Table -->
+  <div class="twrap">
+    <table>
+      <tbody id="tradesTbody"></tbody>
+      <tfoot id="tradesFooter"></tfoot>
+    </table>
+  </div>
+</div>
+
+
+<!-- SETTINGS (formerly Filters) -->
+<div class="pane" id="pane-filters">
+
+  <!-- TRADING MODE -->
+  <div class="sec" id="settingsModeSection">
+    <div class="sec-hdr"><span class="sec-title" data-i18n="settings.mode_title">Режим торгівлі</span><span class="sec-badge" id="settingsModeBadge" style="background:var(--ind-bg);color:var(--ind);border:1px solid var(--ind-brd)">DRY RUN</span></div>
+    <div class="sec-body" id="settingsModeBody"></div>
+    <div class="sec-footer"><button class="btn btn-green" id="switchModeBtn" onclick="switchModeFromSettings()" data-i18n="settings.mode_to_live">Перейти на Live</button></div>
+  </div>
+
+  <!-- BUDGET (dry run only) -->
+  <div class="sec" id="budgetSection">
+    <div class="sec-hdr"><span class="sec-title" data-i18n="settings.budget_title">Бюджет</span><span id="settingsBudgetInfo" style="font-size:12px;color:var(--t3);font-family:var(--fm)"></span></div>
+    <div class="sec-body">
+      <div class="f-grid">
+        <div><div class="f-row"><span class="f-label"><span data-i18n="settings.budget_label">Виділений бюджет</span><small>Фіксована сума для ризику</small></span><div class="f-input-wrap"><input class="f-input" id="settingsBudgetInput" value="50" style="width:100px"><span class="f-unit">USDC</span></div></div></div>
+        <div><div class="f-row"><span class="f-label">Статус</span><div id="settingsBudgetStatus" style="text-align:right"></div></div></div>
+      </div>
+      <div class="section-note" data-i18n="settings.budget_note">Бюджет вичерпано = повна зупинка. В DRY RUN це симульований капітал.</div>
+    </div>
+    <div class="sec-footer"><button class="btn btn-ghost" onclick="resetBudget()" data-i18n="settings.budget_reset">Скинути</button><button class="btn btn-primary" onclick="saveBudget()" data-i18n="settings.budget_save">Зберегти</button></div>
+  </div>
+
+  <!-- DRAWDOWN PROTECTION -->
+  <div class="sec" id="drawdownSection">
+    <div class="sec-hdr"><span class="sec-title" data-i18n="settings.drawdown_title">Просадка та розмір позицій</span></div>
+    <div class="sec-body" id="drawdownBody"></div>
+  </div>
+
+  <!-- SAFETY / HARD LIMITS — active in both DRY and LIVE -->
+  <div class="sec" id="liveSafetySection" style="border-color:rgba(244,63,94,0.1)">
+    <div class="sec-hdr"><span class="sec-title"><span data-i18n="settings.safety_title">Ліміти та безпека</span> <span class="sec-badge" style="background:var(--red-bg);color:var(--red);border:1px solid var(--red-brd)">CRITICAL</span></span></div>
+    <div class="sec-body" id="liveSafetyBody"></div>
+  </div>
+
+  <!-- EXIT SETTINGS -->
+  <div class="sec">
+    <div class="sec-hdr"><span class="sec-title" data-i18n="settings.exit_title">Налаштування виходу</span></div>
+    <div class="sec-body" id="exitSettingsBody"></div>
+  </div>
+
+  <!-- UNIFIED SAVE BAR -->
+  <div class="sec" id="settingsSaveBar" style="border-color:rgba(99,102,241,0.2);background:rgba(99,102,241,0.04)">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span id="settingsDirtyDot" style="width:8px;height:8px;border-radius:50%;background:var(--amb);display:none"></span>
+        <span id="settingsDirtyLabel" style="font-size:12px;color:var(--t3);font-family:var(--fm)" data-i18n="settings.no_dirty_label">Немає незбережених змін</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <span id="settingsSaveStatus" style="font-size:12px;font-family:var(--fm)"></span>
+        <button class="btn btn-primary" id="settingsSaveAllBtn" onclick="_saveAllSettings()" data-i18n="settings.save_all">Зберегти все</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="pipelineDashboard"></div>
+</div>
+
+<!-- WHALES (replaces wallets + intent + leaderboard) -->
+<div class="pane" id="pane-whales">
+
+  <!-- Summary Cards -->
+  <div class="wh-summary">
+    <div class="wsc"><div class="wsc-icon">🐋</div><div class="wsc-val" id="walletTotal">—</div><div class="wsc-lbl" data-i18n="whales.summary_total">Всього</div></div>
+    <div class="wsc"><div class="wsc-icon">⭐</div><div class="wsc-val" id="walletAvgTrust">—</div><div class="wsc-lbl" data-i18n="whales.summary_avg_trust">Сер. довіра</div></div>
+    <div class="wsc"><div class="wsc-icon">🆕</div><div class="wsc-val" id="walletActive">—</div><div class="wsc-lbl" data-i18n="whales.summary_active">Активні</div></div>
+    <div class="wsc"><div class="wsc-icon">✂️</div><div class="wsc-val" id="walletPruned">—</div><div class="wsc-lbl" data-i18n="whales.summary_pruned">Відсіяні</div></div>
+    <div class="wsc"><div class="wsc-icon">🎯</div><div class="wsc-val" id="whaleSignalCount">—</div><div class="wsc-lbl" data-i18n="whales.summary_signals">Сигналів</div></div>
+    <div class="wsc"><div class="wsc-icon">🏷️</div><div class="wsc-val" id="walletTypes">—</div><div class="wsc-lbl" data-i18n="whales.summary_categories">Категорії</div></div>
+  </div>
+
+  <!-- Controls Row -->
+  <div class="wh-controls">
+    <!-- Mode Switch -->
+    <div class="wh-mode-switch">
+      <button class="wh-mode-btn on" data-mode="wallets" onclick="switchWhalesMode('wallets',this)">Wallets</button>
+      <button class="wh-mode-btn" data-mode="signals" onclick="switchWhalesMode('signals',this)">Signals <span class="tbadge a" id="wh-signal-badge">0</span></button>
+    </div>
+
+    <!-- Sort pills — wallet mode -->
+    <div class="wh-sorts" id="whSortWallets">
+      <button class="sort-b on" data-sort="conviction" onclick="setWhaleSort(this)">Conviction</button>
+      <button class="sort-b" data-sort="sm" onclick="setWhaleSort(this)">SM Score</button>
+      <button class="sort-b" data-sort="capital" onclick="setWhaleSort(this)">Capital</button>
+      <button class="sort-b" data-sort="pnl" onclick="setWhaleSort(this)">PNL</button>
+      <button class="sort-b" data-sort="trust" onclick="setWhaleSort(this)">Trust</button>
+    </div>
+
+    <!-- Sort pills — signal mode -->
+    <div class="wh-sorts hidden" id="whSortSignals">
+      <button class="sort-b on" data-sort="level" onclick="setSignalSort(this)">Level</button>
+      <button class="sort-b" data-sort="total" onclick="setSignalSort(this)">Total $</button>
+      <button class="sort-b" data-sort="trades" onclick="setSignalSort(this)">Trades</button>
+      <button class="sort-b" data-sort="last_trade" onclick="setSignalSort(this)">Last Trade</button>
+    </div>
+
+    <!-- Filters (right-aligned) -->
+    <div class="wh-filters">
+      <button class="disco-btn" id="discoToggle" onclick="toggleDisco()">⚡ Discovery</button>
+      <select class="f-sel" id="whTypeFilter" onchange="setWhaleTypeFilter(this)">
+        <option value="" data-i18n="whales.all_types">Всі типи</option>
+        <option value="INFORMED">INFORMED</option>
+        <option value="SNIPER">SNIPER</option>
+        <option value="ACCUMULATOR">ACCUMULATOR</option>
+        <option value="MARKET_MAKER">MARKET_MAKER</option>
+        <option value="COPYCAT">COPYCAT</option>
+        <option value="NOISE">NOISE</option>
+      </select>
+      <select class="f-sel" id="whDomainFilter" onchange="setWhaleDomainFilter(this)">
+        <option value="" data-i18n="whales.all_domains">Всі домени</option>
+        <option value="sports">Sports</option>
+        <option value="politics">Politics</option>
+        <option value="crypto">Crypto</option>
+        <option value="other">Other</option>
+      </select>
+      <input class="f-search" id="whSearch" type="text" placeholder="Пошук гаманців…" data-i18n-placeholder="whales.search_placeholder" oninput="setWhaleSearch(this)">
+    </div>
+  </div>
+
+  <!-- Discovery Panel (slide-down) -->
+  <div class="disco-panel" id="discoPanel">
+    <div class="disco-grid">
+      <div class="disco-field">
+        <label data-i18n="disco.count_label">Кількість</label>
+        <select class="disco-sel" id="discoverCount">
+          <option value="50" data-i18n="disco.wallets_50">50 гаманців</option>
+          <option value="100" data-i18n="disco.wallets_100">100 гаманців</option>
+          <option value="200" selected data-i18n="disco.wallets_200">200 гаманців</option>
+          <option value="500" data-i18n="disco.wallets_500">500 гаманців</option>
+        </select>
+      </div>
+      <div class="disco-field">
+        <label data-i18n="disco.source_label">Джерело</label>
+        <select class="disco-sel" id="discoverSource">
+          <option value="all" data-i18n="disco.source_all">Всі джерела</option>
+          <option value="month_pnl" data-i18n="disco.source_month_pnl">Місяць / PnL</option>
+          <option value="month_vol" data-i18n="disco.source_month_vol">Місяць / Об'єм</option>
+          <option value="alltime_pnl" data-i18n="disco.source_alltime_pnl">Весь час / PnL</option>
+          <option value="alltime_vol" data-i18n="disco.source_alltime_vol">Весь час / Об'єм</option>
+        </select>
+      </div>
+      <div class="disco-field">
+        <label data-i18n="disco.category_label">Категорія</label>
+        <select class="disco-sel" id="discoverCategory">
+          <option value="OVERALL" data-i18n="disco.cat_all">Всі категорії</option>
+          <option value="SPORTS">🏆 Sports</option>
+          <option value="POLITICS">🏛️ Politics</option>
+          <option value="CRYPTO">₿ Crypto</option>
+          <option value="FINANCE">💹 Finance</option>
+          <option value="TECH">💻 Tech</option>
+        </select>
+      </div>
+      <div class="disco-field" style="display:flex;gap:4px;align-items:end">
+        <button class="disco-run" id="discoverBtn" data-i18n="disco.btn">⚡ Пошук китів</button>
+        <button class="disco-stop hidden" id="discoverStopBtn" title="Зупинити">❌</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Signal Summary (visible in signal mode only) -->
+  <div class="wh-signal-summary hidden" id="whSignalSummary">
+    <span class="i-dot p"><span id="intentProbes">0</span> <span data-i18n="whales.intent_probes">зондів</span></span>
+    <span class="i-sep">·</span>
+    <span class="i-dot c"><span id="intentConfirms">0</span> <span data-i18n="whales.intent_confirms">підтвердж.</span></span>
+    <span class="i-sep">·</span>
+    <span class="i-dot v"><span id="intentConvictions">0</span> <span data-i18n="whales.intent_convictions">конвікцій</span></span>
+    <div class="i-tracked" id="intentTracked">$0 tracked</div>
+  </div>
+
+  <!-- Wallet Table (default) -->
+  <div class="twrap" id="whWalletTable">
+    <table>
+      <thead><tr>
+        <th>＃</th>
+        <th>WALLET</th>
+        <th>SM SCORE</th>
+        <th>TRUST</th>
+        <th>CONV RATE</th>
+        <th>DOMAIN</th>
+        <th>WIN RATE</th>
+        <th>PNL</th>
+        <th>CAPITAL</th>
+        <th>MARKETS</th>
+        <th>SIGNALS</th>
+        <th>CATEGORY</th>
+        <th>TYPE</th>
+      </tr></thead>
+      <tbody id="whWalletsTbody"></tbody>
+    </table>
+  </div>
+
+  <!-- Signal Table (hidden by default) -->
+  <div class="twrap hidden" id="whSignalTable">
+    <table>
+      <thead><tr>
+        <th>WHALE</th>
+        <th>MARKET</th>
+        <th>SIDE</th>
+        <th>LEVEL</th>
+        <th>TRADES</th>
+        <th>TOTAL $</th>
+        <th>SM</th>
+        <th>TRUST</th>
+        <th>FIRST SEEN</th>
+        <th>LAST TRADE</th>
+        <th>EXPIRY</th>
+      </tr></thead>
+      <tbody id="whSignalsTbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- CALIBRATION -->
+<div class="pane" id="pane-calibration">
+
+  <!-- STATUS BAR (v3: mode switch + run) -->
+  <div class="cal-status-bar">
+    <span class="cal-mode-badge" id="calModeBadge">WATCH</span>
+    <span class="cal-status-item"><span data-i18n="cal.cycle_label">Цикл:</span> <strong id="calLastTs">—</strong></span>
+    <span class="cal-status-item"><span data-i18n="cal.data_points">Точок даних:</span> <strong id="calDataPoints">0</strong></span>
+    <span class="cal-status-item"><span data-i18n="cal.history_label">Історія:</span> <strong id="calHistoryCount">0</strong></span>
+    <span style="flex:1"></span>
+    <div class="cal-mode-switch">
+      <button class="cal-mode-btn" data-mode="manual" onclick="CalShell.setMode('manual')" data-i18n="cal.mode_manual">Manual</button>
+      <button class="cal-mode-btn active" data-mode="watch" onclick="CalShell.setMode('watch')" data-i18n="cal.mode_watch">Watch</button>
+      <button class="cal-mode-btn" data-mode="auto" onclick="CalShell.setMode('auto')" data-i18n="cal.mode_auto">Auto</button>
+    </div>
+    <button class="cal-btn cal-btn-accent" style="margin-left:8px" onclick="CalShell.runNow()" data-i18n="cal.run_btn">Запустити</button>
+  </div>
+
+  <!-- SUB-TABS -->
+  <div class="cal-sub-tabs" id="calSubTabs">
+    <button class="cal-sub-tab active" data-tab="overview" onclick="CalShell.switchTab('overview',this)"><span data-i18n="cal.tab_overview">Огляд</span> <span class="cal-tab-badge" id="calRecsBadge" style="display:none">0</span></button>
+    <button class="cal-sub-tab" data-tab="analytics" onclick="CalShell.switchTab('analytics',this)" data-i18n="cal.tab_entry">Entry</button>
+    <button class="cal-sub-tab" data-tab="exit" onclick="CalShell.switchTab('exit',this)" data-i18n="cal.tab_exit">Exit</button>
+    <button class="cal-sub-tab" data-tab="whales" onclick="CalShell.switchTab('whales',this)" data-i18n="cal.tab_whales">Кити</button>
+    <button class="cal-sub-tab" data-tab="sports" onclick="CalShell.switchTab('sports',this)" data-i18n="cal.tab_sports">Спорт</button>
+    <button class="cal-sub-tab" data-tab="log" onclick="CalShell.switchTab('log',this)" data-i18n="cal.tab_log">Журнал</button>
+    <button class="cal-sub-tab" data-tab="settings" onclick="CalShell.switchTab('settings',this)" data-i18n="cal.tab_settings">Налаштування</button>
+  </div>
+
+  <!-- TAB CONTENT CONTAINERS -->
+  <div class="cal-tab-content" id="calTabOverview"></div>
+  <div class="cal-tab-content" id="calTabAnalytics" style="display:none"></div>
+  <div class="cal-tab-content" id="calTabExit" style="display:none"></div>
+  <div class="cal-tab-content" id="calTabWhales" style="display:none"></div>
+  <div class="cal-tab-content" id="calTabSports" style="display:none"></div>
+  <div class="cal-tab-content" id="calTabLog" style="display:none"></div>
+  <div class="cal-tab-content" id="calTabSettings" style="display:none"></div>
+
+</div>
+
+<!-- EXECUTION CHAIN -->
+<div class="pane" id="pane-timing">
+  <!-- Sub-tabs + chain toggle -->
+  <div class="tc-bar">
+    <button class="tc-subtab on" data-sub="current" onclick="switchTimingSubTab('current',this)" data-i18n="chain.tab_current">Поточний стан</button>
+    <button class="tc-subtab" data-sub="trends" onclick="switchTimingSubTab('trends',this)" data-i18n="chain.tab_trends">Тренди</button>
+    <button class="tc-subtab" data-sub="drylive" onclick="switchTimingSubTab('drylive',this)" data-i18n="chain.tab_drylive">Dry vs Live</button>
+    <span style="flex:1"></span>
+    <span class="tc-legend">
+      <span><span class="tc-legend-dot" style="background:#3fb950"></span>CPU</span>
+      <span><span class="tc-legend-dot" style="background:#f0883e"></span>Network</span>
+      <span><span class="tc-legend-dot" style="background:#bc8cff"></span>On-chain</span>
+      <span><span class="tc-legend-dot" style="background:#f85149"></span>Bottleneck</span>
+    </span>
+    <span style="flex:1"></span>
+    <button class="tc-chain-btn on" data-chain="entry" onclick="switchTimingChain('entry',this)">Entry</button>
+    <button class="tc-chain-btn" data-chain="exit" onclick="switchTimingChain('exit',this)">Exit</button>
+    <button class="tc-chain-btn" style="color:var(--red);border-color:var(--red-brd);margin-left:8px" onclick="clearTimingData()" data-i18n="chain.clear_btn">🗑 Очистити</button>
+  </div>
+
+  <!-- Summary cards -->
+  <div class="tc-cards" id="timingCards"></div>
+
+  <!-- Main: waterfall + detail -->
+  <div class="tc-main">
+    <div class="tc-panel">
+      <div class="tc-panel-header" id="timingPanelTitle">Waterfall — Entry Chain</div>
+      <div id="timingWaterfall" style="padding:6px 0;max-height:580px;overflow-y:auto"></div>
+    </div>
+    <div class="tc-panel">
+      <div class="tc-panel-header" data-i18n="chain.details_header">Деталі</div>
+      <div id="timingRight" style="padding:8px;max-height:580px;overflow-y:auto"></div>
+    </div>
+  </div>
+
+  <div id="timingContent"></div>
+</div>
+
+<!-- LOGS -->
+<div class="pane" id="pane-logs">
+  <div class="log-panel">
+    <div class="log-toolbar">
+      <span class="log-title">Events</span>
+      <button class="log-filter-btn active" data-level="" onclick="App.setLogLevel(this,'')">ALL</button>
+      <button class="log-filter-btn" data-level="ERROR" onclick="App.setLogLevel(this,'ERROR')">ERROR</button>
+      <button class="log-filter-btn" data-level="WARNING" onclick="App.setLogLevel(this,'WARNING')">WARN</button>
+      <button class="log-filter-btn" data-level="INFO" onclick="App.setLogLevel(this,'INFO')">INFO</button>
+      <span style="border-left:1px solid var(--brd);height:16px;margin:0 6px"></span>
+      <button class="log-filter-btn log-src-btn active" data-src="" onclick="App.setLogSource(this,'')">All</button>
+      <button class="log-filter-btn log-src-btn" data-src="pipeline" onclick="App.setLogSource(this,'pipeline')">Pipeline</button>
+      <button class="log-filter-btn log-src-btn" data-src="execution" onclick="App.setLogSource(this,'execution')">Execution</button>
+      <button class="log-filter-btn log-src-btn" data-src="exit" onclick="App.setLogSource(this,'exit')">Exit</button>
+      <button class="log-filter-btn log-src-btn" data-src="calibrator" onclick="App.setLogSource(this,'calibrator')">Calibrator</button>
+      <button class="log-filter-btn log-src-btn" data-src="system" onclick="App.setLogSource(this,'system')">System</button>
+      <span style="border-left:1px solid var(--brd);height:16px;margin:0 6px"></span>
+      <input class="log-search" id="logSearch" placeholder="Search... (trade_id, market, reason)" oninput="App.renderLogs()">
+      <button class="log-filter-btn" id="copyLogBtn" onclick="App.copyLogs()" style="margin-left:auto">Copy</button>
+      <button class="log-filter-btn" id="clearLogBtn" onclick="App.clearLogs()" style="color:var(--red);border-color:var(--red-brd)">Clear</button>
+    </div>
+    <div class="log-body" id="logBody"></div>
+    <div class="log-footer">
+      <span><span class="log-footer-dot"></span> events.jsonl</span>
+      <span id="logEntryCount">0 entries</span>
+    </div>
+  </div>
+</div>
+
+</div><!-- /.page-wrap -->
+<!-- modular JS (split from monolithic app.js) -->
+<script src="/static/js/state.js"></script>
+<script src="/static/js/i18n.js"></script>
+<script src="/static/js/utils.js"></script>
+<script src="/static/js/api.js"></script>
+<script src="/static/js/chart.js"></script>
+<script src="/static/js/tabs.js"></script>
+<script src="/static/js/portfolio.js"></script>
+<script src="/static/js/health.js"></script>
+<script src="/static/js/watchdog.js"></script>
+<script src="/static/js/positions.js"></script>
+<script src="/static/js/trades.js"></script>
+<script src="/static/js/filters.js"></script>
+<script src="/static/js/whales.js"></script>
+<script src="/static/js/calibration.js"></script>
+<script src="/static/js/cal-overview.js"></script>
+<script src="/static/js/cal-analytics.js"></script>
+<script src="/static/js/cal-whales.js"></script>
+<script src="/static/js/cal-sports.js"></script>
+<script src="/static/js/cal-exit.js"></script>
+<script src="/static/js/cal-log.js"></script>
+<script src="/static/js/cal-settings.js"></script>
+<script src="/static/js/timing.js"></script>
+
+
+<script src="/static/js/controls.js"></script>
+<script src="/static/js/settings.js"></script>
+<script src="/static/js/sse.js"></script>
+<script src="/static/js/init.js"></script>
+</body>
+</html>

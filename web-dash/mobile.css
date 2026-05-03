@@ -1,0 +1,187 @@
+/* mobile.css — proposed mobile layer (≤720px, tighter at ≤480px).
+   Standalone so it can be previewed without touching styles.css. */
+
+@media (max-width:720px){
+  .page-wrap{padding:0}
+  body{font-size:13px}
+
+  /* HEADER: sticky, compact, one row */
+  .hdr{
+    position:sticky;top:0;z-index:50;
+    background:var(--bg);
+    min-height:44px;padding:6px 10px;gap:8px;
+    border-bottom:1px solid var(--brd);
+  }
+  .hdr-eye{display:none}
+  .hdr-name{font-size:13px}
+  .lang-toggle{flex-shrink:0}
+  .usdc-pill{font-size:11px;padding:3px 8px;flex-shrink:0}
+
+  /* CONTROL BAR: 1 column stack */
+  .ctl-bar{
+    grid-template-columns:1fr !important;
+    gap:10px;
+    margin:14px 10px 0;
+  }
+  .ctl-bar > .ctl-ctrl{grid-column:auto}
+  .ctl-sec{padding:18px 12px 10px;min-height:auto}
+  .ctl-sec-lbl{font-size:9px;top:-7px;left:10px;padding:0 6px}
+  .ctl-bots .infra-bots{grid-template-columns:1fr 1fr;gap:4px}
+  .ctl-ctrl-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .ctl-ctrl-grid .reset-wrap{grid-column:1/-1}
+  .ctl-ctrl-grid .hdr-btn,.ctl-ctrl-grid .kill-btn{min-height:40px}
+
+  /* DASH STRIP: single column */
+  .dash-strip{
+    display:flex !important;flex-direction:column;
+    gap:10px;margin:12px 10px;
+  }
+  .ds-cell,.ds-kpi-panel{width:100%}
+  .ds-kpi-panel{grid-template-columns:1fr 1fr !important}
+  .ds-kpi-g-cells{grid-template-columns:1fr 1fr !important}
+  .ds-num{font-size:22px}
+  .ds-periods{gap:8px}
+
+  /* TABS: horizontal scroll with snap */
+  .tabs-bar{
+    overflow-x:auto;overflow-y:hidden;flex-wrap:nowrap;
+    -webkit-overflow-scrolling:touch;scrollbar-width:none;
+    scroll-snap-type:x mandatory;
+    padding:0 10px;gap:4px;
+  }
+  .tabs-bar::-webkit-scrollbar{display:none}
+  .tabs-bar .tab{flex-shrink:0;scroll-snap-align:start;font-size:12px;padding:8px 12px}
+  .tabs-right{display:none}
+
+  /* SUMMARY STRIPS (trades/positions): wrap */
+  .tr-summary{flex-wrap:wrap;gap:6px 10px;padding:8px 10px}
+  .tr-sep{display:none}
+  .tr-stat{min-width:calc(50% - 8px);flex:0 0 auto}
+  .tr-label{font-size:9px}
+  .tr-val{font-size:13px}
+  #trFreshnessChart{display:none}
+
+  /* TOOLBAR: wrap, search full width */
+  .tr-toolbar{flex-wrap:wrap;gap:6px;padding:8px 10px}
+  .tr-search{flex:1 1 100%;order:10;min-height:36px}
+  .tr-copy-all{order:11;flex:1 1 100%}
+  .tr-btn{min-height:36px;padding:6px 10px}
+
+  /* TABLES: horizontal scroll */
+  .twrap,.pane .twrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table{font-size:11px}
+  th,td{padding:6px 8px;white-space:nowrap}
+
+  /* MODALS / RESET MENU: full-screen sheet */
+  .reset-menu{
+    position:fixed !important;inset:auto 0 0 0;top:auto;
+    width:100%;max-width:100%;border-radius:14px 14px 0 0;
+    padding:16px;z-index:100;
+    box-shadow:0 -8px 24px rgba(0,0,0,.45);
+  }
+  .reset-opt{padding:14px}
+
+  /* BANNER */
+  .bot-alive-banner{margin:8px 10px;flex-wrap:wrap}
+
+  /* Touch targets */
+  button,.tab,.bp-b{min-height:36px}
+}
+
+@media (max-width:480px){
+  .hdr-name{font-size:12px}
+  .ds-kpi-panel{grid-template-columns:1fr !important}
+  .ctl-bots .infra-bots{grid-template-columns:1fr}
+  .ctl-ctrl-grid{grid-template-columns:1fr}
+  .ctl-ctrl-grid .reset-wrap{grid-column:auto}
+  .ds-num{font-size:20px}
+  .tr-stat{min-width:calc(50% - 6px)}
+  th,td{padding:5px 6px;font-size:10.5px}
+}
+
+/* ── CALIBRATOR — mobile layout ────────────────────────────────────────── */
+@media (max-width:720px){
+  /* Status bar: compact, allow wrap, smaller fonts */
+  .cal-status-bar{
+    padding:8px 10px;
+    gap:8px;
+    font-size:10px;
+  }
+  .cal-status-item{font-size:10px}
+  .cal-status-item strong{font-size:11px}
+  .cal-mode-badge{font-size:9.5px;padding:2px 7px;letter-spacing:0.04em}
+
+  /* Mode switch + run button: compact, prevent shrink */
+  .cal-mode-switch{flex-shrink:0;border-radius:5px}
+  .cal-mode-btn{padding:5px 10px;font-size:9.5px}
+  .cal-btn{padding:6px 10px;font-size:10px}
+  .cal-btn-accent{padding:6px 12px}
+
+  /* Sub-tabs: horizontal scroll instead of overflow/wrap.
+     7 buttons can never fit on a phone — better one-line scroll than ugly wrap. */
+  .cal-sub-tabs{
+    overflow-x:auto;
+    overflow-y:hidden;
+    flex-wrap:nowrap;
+    padding:0 10px;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;            /* Firefox */
+  }
+  .cal-sub-tabs::-webkit-scrollbar{display:none}  /* Webkit */
+  .cal-sub-tab{
+    flex-shrink:0;
+    padding:10px 12px;
+    font-size:11.5px;
+    white-space:nowrap;
+  }
+  .cal-tab-badge{font-size:9px;padding:1px 5px}
+
+  /* Tab content: tighter padding */
+  .cal-tab-content{padding:10px}
+
+  /* Overview top panels (3 inline cards): collapse to single column.
+     The grid was set inline in cal-overview.js — now uses class
+     .cal-overview-panels which we override here. */
+  .cal-overview-panels{grid-template-columns:1fr;gap:10px;margin-bottom:14px}
+
+  /* Cards: tighter padding, no fixed min-height (was 280px — bigger than viewport area) */
+  .cal-card{padding:12px}
+  .cal-card-fixed{min-height:auto}
+  .cal-card-hdr{margin-bottom:8px;gap:5px;font-size:12px}
+  .cal-card-sub{font-size:10px}
+
+  /* Metrics inside cards: smaller, denser */
+  .cal-metrics{
+    grid-template-columns:repeat(auto-fit,minmax(72px,1fr));
+    gap:4px;
+    margin-bottom:8px;
+  }
+  .cal-metric{padding:0 6px 8px 0}
+  .cal-metric-val{font-size:16px;letter-spacing:-0.3px}
+  .cal-metric-label,.cal-metric-hint{font-size:9px}
+
+  /* Split layout (used in cal-card sections): allow wrap on narrow */
+  .cal-split{padding:6px;font-size:10px}
+  .cal-split-col{padding:0 6px}
+  .cal-split-label{font-size:9px}
+}
+
+@media (max-width:480px){
+  /* Drop the longest status items so the run button stays visible
+     without status bar wrapping into 3 lines. */
+  .cal-status-bar > .cal-status-item:nth-of-type(2),
+  .cal-status-bar > .cal-status-item:nth-of-type(3){display:none}
+
+  .cal-mode-btn{padding:4px 8px;font-size:9px}
+  .cal-btn{padding:5px 9px;font-size:9.5px}
+
+  /* Sub-tabs even more compact on phone */
+  .cal-sub-tab{padding:8px 10px;font-size:10.5px}
+
+  /* Cal-grid-4 was already 2-col at 820px — collapse to 1 on phone */
+  .cal-grid-4{grid-template-columns:1fr}
+
+  /* Cal cards content even tighter */
+  .cal-card{padding:10px}
+  .cal-metric-val{font-size:15px}
+}

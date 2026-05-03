@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<title>ControlBar preview — Ora et Labora</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800;900&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/styles.css">
+<style>
+.preview-wrap { padding: 24px; max-width: 1880px; margin: 0 auto; }
+.preview-h { font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--t3); margin:0 0 10px; }
+
+/* ──────── CONTROL BAR ──────── */
+.ctl-bar {
+  display:grid;
+  grid-template-columns: 200px minmax(480px,1fr) minmax(520px,1fr) 220px 300px;
+  gap:14px;
+  align-items:stretch;
+}
+
+.ctl-sec {
+  position:relative;
+  border:1px solid var(--brd2);
+  border-radius:10px;
+  padding:22px 14px 12px;
+  background:var(--bg1);
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  min-height:108px;
+}
+.ctl-sec-lbl {
+  position:absolute;
+  top:-8px;
+  left:14px;
+  padding:0 8px;
+  font-size:10px;
+  font-weight:600;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  background:var(--bg);
+  line-height:1;
+}
+
+/* label tints per section */
+.ctl-mode    .ctl-sec-lbl { color:var(--ind); }
+.ctl-bots    .ctl-sec-lbl { color:#22d3ee; }
+.ctl-health  .ctl-sec-lbl { color:var(--grn); }
+.ctl-monitor .ctl-sec-lbl { color:#f59e0b; }
+.ctl-ctrl    .ctl-sec-lbl { color:var(--red); }
+
+.ctl-mode    { border-color:var(--ind-brd); }
+.ctl-bots    { border-color:rgba(34,211,238,0.22); }
+.ctl-health  { border-color:var(--grn-brd); }
+.ctl-monitor { border-color:rgba(245,158,11,0.22); }
+.ctl-ctrl    { border-color:var(--red-brd); }
+
+/* MODE */
+.ctl-mode-row { display:flex; align-items:center; gap:10px; }
+.ctl-mode-toggle {
+  display:inline-flex; gap:0; padding:4px; border:1px solid var(--brd2);
+  border-radius:8px; background:var(--bg2);
+}
+.ctl-mode-opt {
+  border:none; background:transparent; cursor:pointer;
+  font:500 12px/1 var(--f); color:var(--t2);
+  padding:6px 10px; border-radius:6px;
+  display:inline-flex; align-items:center; gap:6px;
+}
+.ctl-mode-opt.on { background:var(--ind-bg); color:var(--ind); }
+.ctl-mode-dot { width:6px; height:6px; border-radius:50%; background:currentColor; }
+.ctl-mode-foot { font-size:11px; color:var(--t3); display:flex; gap:8px; align-items:center; }
+.ctl-fresh {
+  display:inline-flex; align-items:center; gap:5px;
+  padding:2px 8px; border-radius:999px; font-size:10px; font-weight:600;
+  color:var(--grn); background:var(--grn-bg); border:1px solid var(--grn-brd);
+}
+.ctl-fresh-dot { width:5px; height:5px; border-radius:50%; background:var(--grn); }
+
+/* BOTS */
+.ctl-bots-grid { display:grid; grid-template-columns: repeat(3, minmax(120px,1fr)); gap:6px; }
+.ctl-bot-chip {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:6px 10px; border:1px solid var(--brd); border-radius:6px;
+  background:var(--bg2); font:500 12px/1 var(--f); color:var(--t1);
+}
+.ctl-bot-dot { width:6px; height:6px; border-radius:50%; background:var(--grn); box-shadow:0 0 6px rgba(34,197,94,.6); }
+.ctl-bot-pid { color:var(--t3); font:400 11px/1 var(--f-mono); margin-left:auto; }
+.ctl-bots-foot { display:flex; gap:6px; margin-top:2px; }
+.ctl-bots-foot .ctl-btn-sm { min-width:58px; }
+
+.ctl-btn, .ctl-btn-sm {
+  display:inline-flex; align-items:center; gap:6px; justify-content:center;
+  border:1px solid var(--brd2); background:var(--bg2); color:var(--t1);
+  padding:7px 12px; border-radius:7px; cursor:pointer;
+  font:500 12px/1 var(--f); transition:border-color .15s, background .15s;
+}
+.ctl-btn:hover, .ctl-btn-sm:hover { border-color:var(--brd2); background:var(--bg3); }
+.ctl-btn-sm { padding:5px 10px; font-size:11px; }
+
+/* HEALTH */
+.ctl-health-top { display:flex; align-items:center; gap:8px; }
+.ctl-health-pill {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:4px 12px; border-radius:999px; font-size:11px; font-weight:600;
+  letter-spacing:.06em; color:var(--grn); background:var(--grn-bg);
+  border:1px solid var(--grn-brd);
+}
+.ctl-health-pill-dot { width:6px; height:6px; border-radius:50%; background:var(--grn); box-shadow:0 0 6px rgba(34,197,94,.6); }
+.ctl-health-dots {
+  display:grid;
+  grid-template-columns: repeat(3, auto);
+  gap:4px 16px;
+  font:500 11px/1.4 var(--f);
+}
+.ctl-hd { display:inline-flex; align-items:center; gap:6px; color:var(--t2); white-space:nowrap; }
+.ctl-hd-dot { width:6px; height:6px; border-radius:50%; background:var(--grn); }
+.ctl-hd b { color:var(--t1); font-weight:600; font-family:var(--f-mono); font-size:11px; }
+.ctl-hd.run b { color:var(--grn); }
+.ctl-hd.muted { color:var(--t3); }
+.ctl-hd.muted .ctl-hd-dot { background:var(--t3); }
+
+/* MONITOR */
+.ctl-wd-pill {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:4px 10px; border-radius:6px;
+  border:1px solid var(--red-brd); background:var(--red-bg); color:var(--red);
+  font:600 11px/1 var(--f); letter-spacing:.04em;
+}
+.ctl-wd-pill .ctl-wd-dot { width:6px; height:6px; border-radius:50%; background:var(--red); }
+.ctl-monitor-hint { font-size:11px; color:var(--t3); font-style:italic; }
+
+/* CONTROL */
+.ctl-ctrl-grid { display:grid; grid-template-columns: 1fr 1fr; gap:6px; }
+.ctl-ctrl-grid .ctl-btn { justify-content:center; }
+.ctl-btn.danger   { color:var(--red); border-color:var(--red-brd); background:transparent; font-weight:600; }
+.ctl-btn.danger:hover { background:var(--red-bg); }
+.ctl-btn.warn     { color:#f59e0b; border-color:rgba(245,158,11,0.25); }
+.ctl-btn.warn:hover { background:rgba(245,158,11,0.06); }
+
+.ctl-caption { font-size:11px; color:var(--t3); margin:0 0 6px; font-family:var(--f-mono); }
+</style>
+</head>
+<body>
+<div class="preview-wrap">
+  <p class="preview-h">Prototype — ControlBar redesign</p>
+
+  <p class="ctl-caption">v1 · full match to reference (5 framed sections, label tints)</p>
+  <div class="ctl-bar">
+    <!-- MODE -->
+    <div class="ctl-sec ctl-mode">
+      <span class="ctl-sec-lbl">MODE</span>
+      <div class="ctl-mode-toggle">
+        <button class="ctl-mode-opt on"><span class="ctl-mode-dot"></span>DRY</button>
+        <button class="ctl-mode-opt"><span class="ctl-mode-dot" style="color:var(--t3)"></span>LIVE</button>
+      </div>
+      <div class="ctl-mode-foot">
+        <span>Upd 08:08</span>
+        <span class="ctl-fresh"><span class="ctl-fresh-dot"></span>FRESH</span>
+      </div>
+    </div>
+
+    <!-- BOTS -->
+    <div class="ctl-sec ctl-bots">
+      <span class="ctl-sec-lbl">BOTS · 4 RUNNING</span>
+      <div class="ctl-bots-grid">
+        <span class="ctl-bot-chip"><span class="ctl-bot-dot"></span>Calibrator<span class="ctl-bot-pid">142185</span></span>
+        <span class="ctl-bot-chip"><span class="ctl-bot-dot"></span>RTDS Feed<span class="ctl-bot-pid">141828</span></span>
+        <span class="ctl-bot-chip"><span class="ctl-bot-dot"></span>Trader<span class="ctl-bot-pid">126228</span></span>
+        <span class="ctl-bot-chip"><span class="ctl-bot-dot"></span>WS Feed<span class="ctl-bot-pid">120612</span></span>
+      </div>
+      <div class="ctl-bots-foot">
+        <button class="ctl-btn-sm">▶ All</button>
+        <button class="ctl-btn-sm">⏹ All</button>
+      </div>
+    </div>
+
+    <!-- HEALTH -->
+    <div class="ctl-sec ctl-health">
+      <span class="ctl-sec-lbl">HEALTH</span>
+      <div class="ctl-health-top">
+        <span class="ctl-health-pill"><span class="ctl-health-pill-dot"></span>HEALTHY</span>
+      </div>
+      <div class="ctl-health-dots">
+        <span class="ctl-hd"><span class="ctl-hd-dot"></span>WS <b>0s</b></span>
+        <span class="ctl-hd"><span class="ctl-hd-dot"></span>Prices <b>0s</b></span>
+        <span class="ctl-hd run"><span class="ctl-hd-dot"></span>Trader <b>run</b></span>
+        <span class="ctl-hd"><span class="ctl-hd-dot"></span>Decisions <b>7s</b></span>
+        <span class="ctl-hd"><span class="ctl-hd-dot"></span>Chain <b>0s</b></span>
+        <span class="ctl-hd muted"><b>348</b> whales</span>
+      </div>
+    </div>
+
+    <!-- MONITOR -->
+    <div class="ctl-sec ctl-monitor">
+      <span class="ctl-sec-lbl">MONITOR</span>
+      <div>
+        <span class="ctl-wd-pill"><span class="ctl-wd-dot"></span>WD ×</span>
+      </div>
+      <div class="ctl-monitor-hint">+ future checks</div>
+    </div>
+
+    <!-- CONTROL -->
+    <div class="ctl-sec ctl-ctrl">
+      <span class="ctl-sec-lbl">CONTROL</span>
+      <div class="ctl-ctrl-grid">
+        <button class="ctl-btn">🔄 Refresh</button>
+        <button class="ctl-btn warn">♻ Restart</button>
+        <button class="ctl-btn danger">KILL</button>
+        <button class="ctl-btn danger">✕ Reset</button>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
