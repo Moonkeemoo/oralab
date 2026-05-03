@@ -33,3 +33,6 @@ coverage/
 *.db
 oralab-v1-archive-*.tar.gz
 captures/
+
+# scheduled task runtime locks
+.claude/scheduled_tasks.lock
