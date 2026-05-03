@@ -304,6 +304,9 @@
   }
 
   // ── Pattern-based router for paths with embedded IDs ────────────────────
+  // Runs BEFORE ENDPOINT_MAP lookup — only matches very specific id-shapes.
+  // Generic "any unknown calibration/* path" catch-all moved to fallbackRouter
+  // (after ENDPOINT_MAP lookup) so static map entries take precedence.
   function patternRouter(pathOnly, queryStr, opts) {
     // /api/polymarket/positions/:id/exit  → /api/positions/:id/exit
     let m = pathOnly.match(/^\/api\/polymarket\/positions\/(\d+)\/exit$/);
@@ -317,15 +320,18 @@
     m = pathOnly.match(/^\/api\/polymarket\/calibration\/rollback\/(\d+)$/);
     if (m) return v2Fetch('/api/calibrator/rollback/' + m[1], opts);
 
-    // /api/polymarket/bots/<name>/<action> → UNWIRED
+    return null;
+  }
+
+  // Catch-all for paths still unhandled after ENDPOINT_MAP lookup.
+  function fallbackRouter(pathOnly) {
     if (/^\/api\/polymarket\/bots\//.test(pathOnly)) {
-      return Promise.resolve(unwiredResponse(pathOnly, { ok: false, reason: 'unwired' }));
+      return unwiredResponse(pathOnly, { ok: false, reason: 'unwired' });
     }
-    // /api/polymarket/calibration/<unknown> → UNWIRED
     if (/^\/api\/polymarket\/calibration\//.test(pathOnly)) {
-      return Promise.resolve(unwiredResponse(pathOnly, []));
+      return unwiredResponse(pathOnly, []);
     }
-    return null;   // not handled here — caller falls through to default unwired
+    return null;
   }
 
   // ── window.fetch override ────────────────────────────────────────────────
@@ -355,6 +361,9 @@
     const target = ENDPOINT_MAP[pathOnly];
 
     if (target === undefined) {
+      // Fallback patterns for paths the static map doesn't list (bots/<x>, calibration/<unknown>).
+      const fb = fallbackRouter(pathOnly);
+      if (fb) return fb;
       console.warn('[v2-shim] unmapped v1 endpoint:', pathOnly);
       return unwiredResponse(pathOnly, defaultShape(pathOnly));
     }
