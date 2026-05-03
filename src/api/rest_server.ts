@@ -4,12 +4,13 @@ import http from "node:http";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
-import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 import { getDb } from "../db/client.js";
 import {
   calibratorRecommendations,
   decisions,
   fills,
+  killSwitches,
   positions,
   signals,
   signalTimings,
@@ -1877,6 +1878,86 @@ async function handleNotificationsPost(
   return { ok: true, event: body.event, enabled: body.enabled };
 }
 
+async function handleKillSwitchGet(): Promise<unknown> {
+  // Desktop dash bootstrap calls GET on init. Returns the cached active flag
+  // plus best-effort source/since from latest open `kill_switches` row.
+  // Falls back to {active:false, source:null, since:null} when DB is absent.
+  const active = await isRuntimeKillSwitchActive();
+  let source: string | null = null;
+  let since: number | null = null;
+  try {
+    const db = getDb();
+    const rows = await db.query.killSwitches.findMany({
+      where: and(eq(killSwitches.scope, "global"), isNull(killSwitches.clearedAt)),
+      orderBy: (c, { desc: d }) => [d(c.setAt)],
+      limit: 1,
+    });
+    const head = rows[0];
+    if (head) {
+      source = head.reason ?? null;
+      since = head.setAt instanceof Date ? head.setAt.getTime() : null;
+    }
+  } catch {
+    // ignore — return defaults
+  }
+  return { active, source, since };
+}
+
+async function handleWatchdogStatus(): Promise<unknown> {
+  // ora2-watchdog runs as systemd unit; from the api process we can't probe
+  // its liveness directly, so we hardcode `running:true` for MVP and derive
+  // per-rule health from the same WS-age signals /api/connections uses, plus
+  // a cheap `SELECT 1` for db_alive.
+  const db = getDb();
+  const now = Date.now();
+  let dbAlive = false;
+  try {
+    await db.execute(sql`SELECT 1`);
+    dbAlive = true;
+  } catch {
+    dbAlive = false;
+  }
+
+  const sportsLast = await db.query.sportsEvents.findMany({
+    orderBy: (c, { desc: d }) => [d(c.fetchedAt)],
+    limit: 1,
+  });
+  const sigLast = await db.query.signals.findMany({
+    orderBy: (c, { desc: d }) => [d(c.processedAt)],
+    limit: 1,
+  });
+  const sportsAgeMs = sportsLast[0]?.fetchedAt
+    ? now - sportsLast[0].fetchedAt.getTime()
+    : Number.POSITIVE_INFINITY;
+  const sigAgeMs = sigLast[0]?.processedAt
+    ? now - sigLast[0].processedAt.getTime()
+    : Number.POSITIVE_INFINITY;
+
+  return {
+    running: true,
+    lastTickTs: now,
+    rules: [
+      {
+        name: "sports_ws_alive",
+        ok: sportsAgeMs < 300_000,
+        lastEvalTs: now,
+        ageMs: Number.isFinite(sportsAgeMs) ? sportsAgeMs : null,
+      },
+      {
+        name: "rtds_ws_alive",
+        ok: sigAgeMs < 600_000,
+        lastEvalTs: now,
+        ageMs: Number.isFinite(sigAgeMs) ? sigAgeMs : null,
+      },
+      {
+        name: "db_alive",
+        ok: dbAlive,
+        lastEvalTs: now,
+      },
+    ],
+  };
+}
+
 async function handleKillSwitchPost(
   req: http.IncomingMessage,
   userId: number,
@@ -1980,6 +2061,10 @@ export function createRestServer(): http.Server {
           return send(res, 200, await handleCalibratorSport(req));
         if (req.url === "/api/calibrator/settings")
           return send(res, 200, await handleCalibratorSettingsGet());
+        if (req.url === "/api/kill_switch")
+          return send(res, 200, await handleKillSwitchGet());
+        if (req.url === "/api/watchdog/status")
+          return send(res, 200, await handleWatchdogStatus());
       }
       if (req.method === "POST") {
         if (req.url === "/api/notifications") {
