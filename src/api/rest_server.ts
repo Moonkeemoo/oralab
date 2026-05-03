@@ -743,6 +743,57 @@ async function handleWhalesList(req: http.IncomingMessage): Promise<unknown> {
     offset,
   });
 
+  // Per-whale trade aggregates from positions table (WHERE whale_address IN
+  // page). One query for the whole page; rows without trades simply absent.
+  type AggRow = {
+    whale_address: string;
+    trades: number;
+    open_count: number;
+    closed_count: number;
+    wins: number;
+    losses: number;
+    pnl_usd: string | null;
+    capital_usd: string | null;
+    markets: number;
+  };
+  const addrList = rows.map((w) => w.address.toLowerCase());
+  const aggByAddr = new Map<string, AggRow>();
+  if (addrList.length > 0) {
+    // Build a comma-separated quoted list — addresses are validated 0x-hex by
+    // the import pipeline so safe to inline. Use ANY for safety anyway.
+    const aggRows = (await db.execute(sql`
+      SELECT
+        LOWER(whale_address)                                          AS whale_address,
+        count(*)::int                                                 AS trades,
+        count(*) FILTER (WHERE status IN ('PENDING','FILLED','OPEN','EXITING','RESOLVED','FROZEN'))::int AS open_count,
+        count(*) FILTER (WHERE status = 'CLOSED')::int                AS closed_count,
+        count(*) FILTER (WHERE realized_pnl_usd > 0)::int             AS wins,
+        count(*) FILTER (WHERE realized_pnl_usd <= 0 AND status='CLOSED')::int AS losses,
+        COALESCE(SUM(realized_pnl_usd) FILTER (WHERE status='CLOSED'), 0) AS pnl_usd,
+        COALESCE(SUM(entry_cost_usd), 0)                              AS capital_usd,
+        COUNT(DISTINCT condition_id)::int                             AS markets
+      FROM positions
+      WHERE whale_address IS NOT NULL
+        AND LOWER(whale_address) = ANY(${addrList})
+      GROUP BY LOWER(whale_address)
+    `)) as unknown as AggRow[];
+    for (const r of aggRows) aggByAddr.set(r.whale_address, r);
+  }
+
+  const primaryDomainOf = (w: typeof rows[number]): string => {
+    const dom = (w.domainBreakdown ?? {}) as Record<string, number | string>;
+    let best = "";
+    let bestVal = -1;
+    for (const [k, v] of Object.entries(dom)) {
+      const n = Number(v);
+      if (Number.isFinite(n) && n > bestVal) {
+        best = k;
+        bestVal = n;
+      }
+    }
+    return best;
+  };
+
   return {
     total: num("total"),
     counts: {
@@ -756,15 +807,39 @@ async function handleWhalesList(req: http.IncomingMessage): Promise<unknown> {
       MARKET_MAKER: num("market_maker"),
     },
     page: { limit, offset, returned: rows.length },
-    items: rows.map((w) => ({
-      address: w.address,
-      classification: w.classification,
-      confidence: Number(w.confidence ?? 0),
-      smScore: Number(w.smScore ?? 0),
-      trustScore: Number(w.trustScore ?? 0),
-      winRate: Number(w.winRate ?? 0),
-      tracked: w.tracked,
-    })),
+    items: rows.map((w) => {
+      const agg = aggByAddr.get(w.address.toLowerCase());
+      const wins = agg ? Number(agg.wins) : 0;
+      const losses = agg ? Number(agg.losses) : 0;
+      const tradesN = agg ? Number(agg.trades) : Number(w.totalTrades ?? 0);
+      const closedN = agg ? Number(agg.closed_count) : 0;
+      const pnlUsd = agg ? Number(agg.pnl_usd ?? 0) : 0;
+      const capitalUsd = agg ? Number(agg.capital_usd ?? 0) : 0;
+      const markets = agg ? Number(agg.markets) : 0;
+      const openCount = agg ? Number(agg.open_count) : 0;
+      // Conviction rate: % of CLOSED trades that won. Same definition as v1
+      // leaderboard.conviction_rate.
+      const convictionRate = closedN > 0 ? (wins / closedN) * 100 : null;
+      return {
+        address: w.address,
+        classification: w.classification,
+        confidence: Number(w.confidence ?? 0),
+        smScore: Number(w.smScore ?? 0),
+        trustScore: Number(w.trustScore ?? 0),
+        winRate: Number(w.winRate ?? 0),
+        tracked: w.tracked,
+        // Enrichment for v1 dashboard whales table parity
+        pnlUsd,
+        wins,
+        losses,
+        totalTrades: tradesN,
+        totalCapital: capitalUsd,
+        marketsTracked: markets,
+        activeMarkets: openCount,
+        primaryDomain: primaryDomainOf(w),
+        convictionRate,
+      };
+    }),
   };
 }
 
@@ -1348,6 +1423,135 @@ async function handleCalibratorSnapshot(): Promise<unknown> {
   };
 }
 
+async function handleReconciliation(req: http.IncomingMessage): Promise<unknown> {
+  // INV-D3 reconciliation report. Derive from latest decisions per OPEN
+  // position (input_snapshot.position.onChainShares + reconciliationDriftPct).
+  // V1 dashboard expects { phantom: [...], drifted: [...], ok: [...] } —
+  // phantom = open in DB but 0 chain shares; drifted = drift > 0.005.
+  const mode = modeFromQuery(req);
+  const db = getDb();
+  const rows = await db.query.positions.findMany({
+    where:
+      mode == null
+        ? inArray(positions.status, [...ACTIVE_STATUSES])
+        : and(
+            eq(positions.mode, mode),
+            inArray(positions.status, [...ACTIVE_STATUSES]),
+          ),
+    orderBy: desc(positions.id),
+    limit: 200,
+  });
+  if (rows.length === 0) {
+    return { ts: Date.now(), phantom: [], drifted: [], ok: [], mode: mode ?? "all" };
+  }
+  type LiveRow = {
+    position_id: number;
+    chain_shares: string | null;
+    drift_pct: string | null;
+  };
+  const ids = rows.map((p) => Number(p.id));
+  const idList = sql.raw(ids.join(","));
+  const latest = (await db.execute(sql`
+    SELECT DISTINCT ON (position_id)
+      position_id,
+      input_snapshot->'position'->>'onChainShares'           AS chain_shares,
+      input_snapshot->'position'->>'reconciliationDriftPct'  AS drift_pct
+    FROM decisions
+    WHERE position_id IN (${idList})
+    ORDER BY position_id, ts DESC
+  `)) as unknown as LiveRow[];
+  const liveByPos = new Map<number, LiveRow>();
+  for (const r of latest) liveByPos.set(Number(r.position_id), r);
+
+  const phantom: unknown[] = [];
+  const drifted: unknown[] = [];
+  const ok: unknown[] = [];
+  for (const p of rows) {
+    const live = liveByPos.get(Number(p.id));
+    const dbShares = Number(p.shares ?? 0);
+    const chainShares = live?.chain_shares != null ? Number(live.chain_shares) : null;
+    const driftPct = live?.drift_pct != null ? Number(live.drift_pct) : null;
+    const item = {
+      id: Number(p.id),
+      asset_id: p.assetId,
+      trade_id: Number(p.id),
+      condition_id: p.conditionId,
+      side: p.side,
+      mode: p.mode,
+      db_shares: dbShares,
+      chain_shares: chainShares,
+      drift_pct: driftPct,
+      status:
+        chainShares == null
+          ? "unknown"
+          : chainShares === 0 && dbShares > 0
+            ? "phantom"
+            : driftPct == null
+              ? "ok"
+              : driftPct < 0.005
+                ? "ok"
+                : driftPct < 0.05
+                  ? "minor"
+                  : driftPct < 0.1
+                    ? "warn"
+                    : "freeze",
+    };
+    if (item.status === "phantom") phantom.push(item);
+    else if (item.status !== "ok" && item.status !== "unknown") drifted.push(item);
+    else ok.push(item);
+  }
+  return {
+    ts: Date.now(),
+    mode: mode ?? "all",
+    phantom,
+    drifted,
+    ok,
+    counts: { phantom: phantom.length, drifted: drifted.length, ok: ok.length },
+  };
+}
+
+async function handleCalibratorHistory(req: http.IncomingMessage): Promise<unknown> {
+  // History of applied/rolled-back calibrator recommendations. Drives the
+  // "История ENTRY/EXIT changes" tables on the Огляд sub-tab. Only rows
+  // with appliedAt set count — engine emits both apply and rollback into
+  // the same row, so we expose both timestamps verbatim.
+  const url = new URL(req.url ?? "/", "http://x");
+  const phase = url.searchParams.get("phase"); // 'entry' | 'exit' | null
+  const limit = Math.min(200, Math.max(1, Number(url.searchParams.get("limit") ?? 50)));
+  const db = getDb();
+  const all = await db.query.calibratorRecommendations.findMany({
+    orderBy: (c, { desc: d }) => [d(c.createdAt)],
+    limit: limit * 4,
+  });
+  const filtered = all
+    .filter((r) => r.appliedAt != null || r.rolledBackAt != null)
+    .filter((r) => {
+      if (!phase) return true;
+      const isExit = r.filterName.startsWith("EXIT_");
+      return phase === "exit" ? isExit : !isExit;
+    })
+    .slice(0, limit)
+    .map((r) => ({
+      id: r.id,
+      cycleId: r.cycleId,
+      filterName: r.filterName,
+      paramKey: r.paramKey,
+      currentValue: r.currentValue,
+      recommendedValue: r.recommendedValue,
+      direction: r.direction,
+      liftKpi: r.liftKpi,
+      liftEstimateUsd: r.liftEstimateUsd,
+      confidence: r.confidence,
+      sport: r.sport,
+      reason: r.reason,
+      appliedAt: r.appliedAt instanceof Date ? r.appliedAt.getTime() : null,
+      rolledBackAt: r.rolledBackAt instanceof Date ? r.rolledBackAt.getTime() : null,
+      createdAt: r.createdAt instanceof Date ? r.createdAt.getTime() : null,
+      status: r.rolledBackAt != null ? "rolled_back" : r.appliedAt != null ? "applied" : "pending",
+    }));
+  return { phase, count: filtered.length, items: filtered };
+}
+
 async function handleCalibratorLiftMatrix(req: http.IncomingMessage): Promise<unknown> {
   const url = new URL(req.url ?? "/", "http://x");
   const phase = url.searchParams.get("phase") ?? "entry";
@@ -1891,6 +2095,46 @@ async function handleWhaleProfile(addr: string): Promise<unknown> {
   const db = getDb();
   const w = await db.query.whales.findFirst({ where: eq(whales.address, addr.toLowerCase()) });
   if (!w) return { error: "not_found" };
+  // Same per-whale aggregates as /api/whales — drilldown sheet (positions
+  // js loadProfile) reads pnlUsd/wins/losses/markets so it shows non-empty
+  // even before /api/whales paginates this row in.
+  type AggRow = {
+    trades: number;
+    open_count: number;
+    closed_count: number;
+    wins: number;
+    losses: number;
+    pnl_usd: string | null;
+    capital_usd: string | null;
+    markets: number;
+  };
+  const aggRows = (await db.execute(sql`
+    SELECT
+      count(*)::int                                                 AS trades,
+      count(*) FILTER (WHERE status IN ('PENDING','FILLED','OPEN','EXITING','RESOLVED','FROZEN'))::int AS open_count,
+      count(*) FILTER (WHERE status = 'CLOSED')::int                AS closed_count,
+      count(*) FILTER (WHERE realized_pnl_usd > 0)::int             AS wins,
+      count(*) FILTER (WHERE realized_pnl_usd <= 0 AND status='CLOSED')::int AS losses,
+      COALESCE(SUM(realized_pnl_usd) FILTER (WHERE status='CLOSED'), 0) AS pnl_usd,
+      COALESCE(SUM(entry_cost_usd), 0)                              AS capital_usd,
+      COUNT(DISTINCT condition_id)::int                             AS markets
+    FROM positions
+    WHERE LOWER(whale_address) = ${addr.toLowerCase()}
+  `)) as unknown as AggRow[];
+  const agg = aggRows[0] ?? null;
+  const wins = agg ? Number(agg.wins) : 0;
+  const losses = agg ? Number(agg.losses) : 0;
+  const closedN = agg ? Number(agg.closed_count) : 0;
+  const dom = (w.domainBreakdown ?? {}) as Record<string, number | string>;
+  let primaryDomain = "";
+  let bestVal = -1;
+  for (const [k, v] of Object.entries(dom)) {
+    const n = Number(v);
+    if (Number.isFinite(n) && n > bestVal) {
+      primaryDomain = k;
+      bestVal = n;
+    }
+  }
   return {
     address: w.address,
     classification: w.classification,
@@ -1898,13 +2142,22 @@ async function handleWhaleProfile(addr: string): Promise<unknown> {
     tracked: w.tracked,
     smScore: Number(w.smScore ?? 0),
     trustScore: Number(w.trustScore ?? 0),
-    totalTrades: w.totalTrades,
+    totalTrades: agg ? Number(agg.trades) : (w.totalTrades ?? 0),
     winRate: Number(w.winRate ?? 0),
     avgHoldHours: Number(w.avgHoldHours ?? 0),
     directionalRatio: Number(w.directionalRatio ?? 0),
     domainBreakdown: w.domainBreakdown,
     perDomainClassification: w.perDomainClassification,
     lastActivityAt: w.lastActivityAt,
+    // Aggregates (parity with /api/whales item shape)
+    pnlUsd: agg ? Number(agg.pnl_usd ?? 0) : 0,
+    wins,
+    losses,
+    totalCapital: agg ? Number(agg.capital_usd ?? 0) : 0,
+    marketsTracked: agg ? Number(agg.markets) : 0,
+    activeMarkets: agg ? Number(agg.open_count) : 0,
+    primaryDomain,
+    convictionRate: closedN > 0 ? (wins / closedN) * 100 : null,
   };
 }
 
@@ -2137,6 +2390,10 @@ export function createRestServer(): http.Server {
           return send(res, 200, await handleCalibratorSnapshot());
         if (req.url?.startsWith("/api/calibrator/lift_matrix"))
           return send(res, 200, await handleCalibratorLiftMatrix(req));
+        if (req.url?.startsWith("/api/calibrator/history"))
+          return send(res, 200, await handleCalibratorHistory(req));
+        if (req.url?.startsWith("/api/reconciliation"))
+          return send(res, 200, await handleReconciliation(req));
         if (req.url?.startsWith("/api/calibrator/attribution"))
           return send(res, 200, await handleCalibratorAttribution(req));
         if (req.url?.startsWith("/api/calibrator/beliefs"))
