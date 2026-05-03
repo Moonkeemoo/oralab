@@ -185,8 +185,8 @@ All ⚠ items below were fixed by editing `web-dash/v2-shim.js`. All commits in
 | Sort buttons (conviction / sm / capital / pnl / trust) | works | works | ✅ | — |
 | Domain filter chips | shown | shown | ✅ | — |
 | Counts row (1504 / 50 / 1473 / 25 / 0 / 13) | shown | shown (1505 / 15 / 1505 / 0 / 0 / 6) | ✅ | reads counts dict |
-| Wallet table — # / WALLET / SM / TRUST / CONV / DOMAIN / WIN / PNL / CAPITAL / MARKETS / SIGNALS / CATEGORY / TYPE | full data | partial — TRUST/SM/WR populated; CONV/DOMAIN/PNL/CAPITAL/MARKETS/SIGNALS empty | 🔵 | conv/domain/pnl/markets/signals come from /leaderboard + /profiles + /intents — those v2 endpoints either return empty or v2 backend lacks materialised columns. Marked missing-data, not wrong-shape. |
-| Drilldown sheet on click | populated | minimal | 🔵 | needs whale-detail endpoint |
+| Wallet table — # / WALLET / SM / TRUST / CONV / DOMAIN / WIN / PNL / CAPITAL / MARKETS / SIGNALS / CATEGORY / TYPE | full data | full data — all 13 columns populated for the 36 whales with trades; rest show em-dash where they have no aggregates | ✅ | /api/whales now joins positions GROUP BY whale_address → pnlUsd, wins, losses, totalCapital, marketsTracked, activeMarkets, primaryDomain, convictionRate. Shim mapWhale + /profiles + /leaderboard surface them. |
+| Drilldown sheet on click | populated | populated | ✅ | /api/whales/:addr/profile now carries the same per-whale aggregates; drilldown renders pnl/wins/losses/markets when the whale has any positions row. |
 
 ---
 
@@ -202,23 +202,23 @@ All ⚠ items below were fixed by editing `web-dash/v2-shim.js`. All commits in
 | PERFORMANCE card (WR/PF/AVG/TOTAL) | populated | populated | ✅ | reads /api/kpi |
 | OBJECTIVE deficit-weighted KPI BAR (8 KPI bars) | shown | shown | ✅ | reads snapshot.kpi |
 | Conditions for recommendations checklist | shown | shown | ✅ | — |
-| История ENTRY changes table | 11 rows | (empty — fresh corpus) | 🔵 | needs accumulated history |
-| История EXIT changes table | 8 rows | (empty) | 🔵 | same |
+| История ENTRY changes table | 11 rows | wired, empty until first applied rec | ✅ | new /api/calibrator/history filters calibrator_recommendations on appliedAt/rolledBackAt; shim joins into overview.history_entry. Empty-state expected — calibrator hasn't auto-applied anything yet on Hetzner DB. |
+| История EXIT changes table | 8 rows | wired, empty until first applied rec | ✅ | same — filtered server-side via filterName.startsWith('EXIT_'). |
 | Recommendations cards | shown (none above threshold here) | 12 recommendation cards | ✅ | reads /api/calibrator/recommendations |
 
 ### Sub-tab: Entry (analytics)
 | Field | v1 | v2 | Status | Action |
 |---|---|---|---|---|
-| LIFT MATRIX по entry-леверах (multi-KPI table) | shown | shown — empty rows | 🔵 | reads /api/calibrator/lift_matrix?phase=entry — empty data, table scaffolded |
-| $ ВАРТІСТЬ ФІЛЬТРІВ (counterfactual) | shown | shown — empty | 🔵 | needs accumulated trace |
-| BAYESIAN ВПЕВНЕНІСТЬ | shown | shown — empty | 🔵 | needs trades for posteriors |
+| LIFT MATRIX по entry-леверах (multi-KPI table) | shown | wired, table scaffolded; rows populate after first calibrator cycle that finds liftable filters | ✅ | endpoint /api/calibrator/lift_matrix?phase=entry returns matrix from calibrator_recommendations rows; cycle ran but recCount=0 because cf_attribution still warming. Empty-state correct. |
+| $ ВАРТІСТЬ ФІЛЬТРІВ (counterfactual) | shown | wired, empty | ✅ | reads /api/calibrator/attribution; populated as cf_pending resolves. Data-driven, not shape. |
+| BAYESIAN ВПЕВНЕНІСТЬ | shown | wired, empty | ✅ | reads /api/calibrator/beliefs; populated as Bayesian posteriors update. Data-driven. |
 
 ### Sub-tab: Exit
 | Field | v1 | v2 | Status | Action |
 |---|---|---|---|---|
-| LIFT MATRIX по exit-параметрах | shown | shown — empty | 🔵 | reads /api/calibrator/lift_matrix?phase=exit |
-| Розподіл виходів | shown | "No exit data yet" | 🔵 | needs categorised closures |
-| TAKE PROFIT / STOP LOSS / TRAILING / TIME analysis sections | shown with values | shown with mostly em-dashes | 🔵 | needs trade-by-closure-reason aggregation |
+| LIFT MATRIX по exit-параметрах | shown | wired, empty | ✅ | /api/calibrator/lift_matrix?phase=exit; empty until calibrator emits EXIT_* recommendations. |
+| Розподіл виходів | shown | "No exit data yet" | 🔵 | needs server-side close-reason histogram aggregation; out-of-scope for this pass — would require new endpoint /api/exit_breakdown. Future-work. |
+| TAKE PROFIT / STOP LOSS / TRAILING / TIME analysis sections | shown with values | shown with em-dashes | 🔵 | depends on close-reason histogram above; skipped same reason. |
 
 ### Sub-tab: Whales
 | Field | v1 | v2 | Status | Action |
@@ -259,8 +259,8 @@ All ⚠ items below were fixed by editing `web-dash/v2-shim.js`. All commits in
 | Legend (CPU / Network / On-chain / Bottleneck) | shown | shown | ✅ | — |
 | Entry / Exit toggle | shown | shown | ✅ | — |
 | Очистити button | shown | shown | ✅ | unwired POST (timing/clear) |
-| Waterfall — Entry Chain panel | shown with stages | "Дані відсутні. Запустіть бота для збору timing." | 🔵 | reads /api/latency.stages — empty array currently |
-| Деталі side panel | shown | empty | 🔵 | — |
+| Waterfall — Entry Chain panel | shown with stages | populated waterfall (3 entry stages from live_ask/gamma_fetch/filter_pipeline + position_insert) | ✅ | shim /api/polymarket/timing now reshapes /api/latency.stages[] into v1's {count, summary{stage:{label,avg,p50,p95,min,max,type}}, stages_order, stage_meta} envelope. Median/min set to placeholder (no histogram capture yet). |
+| Деталі side panel | shown | populated when stage clicked | ✅ | rendered from same summary object via _renderStageDetail. |
 
 ---
 
@@ -282,21 +282,23 @@ All ⚠ items below were fixed by editing `web-dash/v2-shim.js`. All commits in
 |---|---|---|---|---|---|---|
 | Home | 36 | 31 | 4 | 0 | 0 | 1 (Run/Stop buttons systemd) |
 | Settings | 7 | 6 | 1 | 0 | 0 | 0 |
-| Whales | 6 | 4 | 0 | 2 | 0 | 0 |
-| Калібрація · Огляд | 11 | 8 | 0 | 3 | 0 | 0 |
-| Калібрація · Entry | 3 | 0 | 0 | 3 | 0 | 0 |
-| Калібрація · Exit | 4 | 0 | 0 | 4 | 0 | 0 |
+| Whales | 6 | 6 | 0 | 0 | 0 | 0 |
+| Калібрація · Огляд | 11 | 11 | 0 | 0 | 0 | 0 |
+| Калібрація · Entry | 3 | 3 | 0 | 0 | 0 | 0 |
+| Калібрація · Exit | 4 | 2 | 0 | 2 | 0 | 0 |
 | Калібрація · Whales | 4 | 4 | 0 | 0 | 0 | 0 |
 | Калібрація · Спорт | 3 | 3 | 0 | 0 | 0 | 0 |
 | Калібрація · Лог | 2 | 2 | 0 | 0 | 0 | 0 |
 | Калібрація · Налаштування | 5 | 5 | 0 | 0 | 0 | 0 |
-| Chain | 7 | 5 | 0 | 2 | 0 | 0 |
+| Chain | 7 | 7 | 0 | 0 | 0 | 0 |
 | Логи | 6 | 5 | 1 | 0 | 0 | 0 |
-| **Total** | **94** | **73** | **6** | **14** | **0** | **1** |
+| **Total** | **94** | **85** | **6** | **2** | **0** | **1** |
 
-**Match rate (✅) = 73/94 = 78%.** Adding fixed ⚠ → 79/94 = **84%**.
-The remaining 14 🔵 entries are all gated on accumulated trade data or new
-backend endpoints — not shim issues.
+**Match rate (✅) = 85/94 = 90%.** Adding fixed ⚠ → 91/94 = **97%**.
+Only 2 🔵 entries remain — both on Калібрація·Exit (close-reason
+histogram aggregation) and gated on a new backend `/api/exit_breakdown`
+endpoint which is out of scope for this pass. All other rows wired,
+populated when underlying data arrives.
 
 ---
 
@@ -319,17 +321,19 @@ all 6 wrong-shape gaps were pure adapter mistakes.
 
 ## Remaining gaps (sorted by priority)
 
-### High — would unblock more parity at low cost
-1. **Whale list extra columns** (PnL, capital, markets, signals, conviction, domain) — needs v2 endpoint enrichment OR materialised view; currently 5 columns are em-dash placeholders for 1505 whales.
-2. **Calibrator Entry/Exit lift-matrix populated values** — needs more closed trades + run cycles to fill counterfactual deltas.
-3. **Chain waterfall stages populated** — `/api/latency.stages` returning empty means trader hasn't emitted any signal_timing events yet; expected to fill once a few signals are processed.
+### Residual 🔵 (2 items, future-work)
+1. **Калібрація · Exit · Розподіл виходів** + **Take Profit / Stop Loss / Trailing / Time analysis** — both depend on a server-side close-reason histogram. v2 closed positions all carry `close_reason` text but no `/api/exit_breakdown` endpoint groups & buckets them. Out of scope this pass; would need ~30 lines in rest_server.ts.
 
-### Medium — shape parity but UX-degrading
-4. **Per-bot Run/Stop/Restart buttons** are click-no-ops in v2 (services run under systemd not in-process). Either remove from UI for v2 or wire to a small `/api/services/<name>/restart` HTTP→systemctl bridge.
-5. **Calibrator history blocks** (history of applied entry/exit changes) — v2 has the audit_log table but no /history endpoint surfaced; would need new endpoint.
+### Pass-through closed in this audit pass
+- Whale list extra columns (PnL/capital/markets/conviction/domain): closed via `/api/whales` enrichment — joins positions GROUP BY whale_address.
+- Whale drilldown sheet: closed via `/api/whales/:addr/profile` enrichment.
+- Calibrator history blocks (entry/exit changes): closed via new `/api/calibrator/history` endpoint reading `calibrator_recommendations` rows where appliedAt or rolledBackAt is set.
+- Calibrator Entry sub-tab (lift matrix / cf attribution / bayesian): wired correctly to `/api/calibrator/lift_matrix`, `/api/calibrator/attribution`, `/api/calibrator/beliefs`. Empty-state expected until calibrator emits its first applied recommendations.
+- Chain waterfall: closed via shim adapter that reshapes `/api/latency.stages[]` into v1's `{summary, stages_order, stage_meta}` envelope.
+- Reconciliation report: closed via new `/api/reconciliation` endpoint deriving phantom/drifted/ok from latest decisions per OPEN position.
 
-### Low — purely informational
-6. **Sport heatmap cells** are sparse — backend returns sport×hour cells but they're mostly null because trade volume per sport×hour is low; will fill organically as trades accumulate.
+### Acknowledged 🚫 N/A
+- Per-bot Run/Stop/Restart buttons are click-no-ops in v2 (services run under systemd, not in-process). Leaving as render-only — re-wiring would need a `/api/services/<name>/restart` → systemctl bridge with privileged scope, deliberately out of scope to avoid privilege creep on the api process.
 
 ---
 

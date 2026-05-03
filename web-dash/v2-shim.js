@@ -710,10 +710,60 @@
       return items.map(mapWhale);
     },
 
-    // Latency / timing
-    '/api/polymarket/timing': async () => {
+    // Latency / timing — v1 expects {count, summary{stage:{label,avg,p50,p95,min,max,count,type}}, stages_order, stage_meta{stage:{phase,type}}, totals{avg}, records[], anomalies[]}
+    '/api/polymarket/timing': async ({ query }) => {
+      const qm = new URLSearchParams((query || '').replace(/^\?/, ''));
+      const chain = (qm.get('chain') || 'entry').toLowerCase();
       const l = await safeGet('/api/latency');
-      return l ?? {};
+      const stagesArr = (l && Array.isArray(l.stages)) ? l.stages : [];
+      const filtered = stagesArr.filter((s) => (s.chain || 'entry') === chain);
+      // Build summary keyed by stage. v2 latency rollup gives only avgMs/max/count/sum.
+      // Median/p95/min default to avg as best-effort placeholder.
+      const summary = {};
+      const stageMeta = {};
+      const stagesOrder = [];
+      const labelize = (k) => {
+        const map = {
+          gamma_fetch: 'Gamma fetch', live_ask: 'Live ask', filter_pipeline: 'Filter pipeline',
+          position_insert: 'Position insert', signal_dedupe: 'Dedupe', position_update: 'Position update',
+          decide_exit: 'decide_exit', sell_order: 'Sell order',
+        };
+        return map[k] || k;
+      };
+      const typeOf = (k) => {
+        if (/fetch|book|gamma|live_ask|sell_order/.test(k)) return 'network';
+        if (/insert|update|monitor|dedupe|decide/.test(k)) return 'cpu';
+        if (/chain|onchain|tx/.test(k)) return 'chain';
+        return 'cpu';
+      };
+      filtered.forEach((s) => {
+        const k = s.stage;
+        if (!stagesOrder.includes(k)) stagesOrder.push(k);
+        const avg = Number(s.avgMs || 0);
+        const max = Number(s.max || 0);
+        summary[k] = {
+          label: labelize(k),
+          avg,
+          p50: avg,
+          p95: max, // best-effort: max stands in for p95 (no histogram on v2 yet)
+          min: 0,
+          max,
+          count: Number(s.count || 0),
+          type: typeOf(k),
+        };
+        stageMeta[k] = { phase: chain, type: typeOf(k) };
+      });
+      const totalAvg = Object.values(summary).reduce((s, v) => s + v.avg, 0);
+      const totalCount = Object.values(summary).reduce((s, v) => Math.max(s, v.count), 0);
+      return {
+        count: totalCount,
+        summary,
+        stages_order: stagesOrder,
+        stage_meta: stageMeta,
+        totals: { avg: totalAvg },
+        records: [],          // v2 doesn't expose per-signal records; UI degrades gracefully
+        anomalies: [],
+      };
     },
     '/api/polymarket/timing/summary': async () => {
       const p = await safeGet('/api/perf');
