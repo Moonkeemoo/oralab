@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import { getDb } from "../db/client.js";
 import {
+  calibratorRecommendations,
   decisions,
   fills,
   positions,
@@ -1038,6 +1039,102 @@ async function handleLatency(req: http.IncomingMessage): Promise<unknown> {
   return { windowHours, stages, bottleneck };
 }
 
+// ─── Calibrator (P2c) ───────────────────────────────────────────────────────
+
+async function handleCalibratorStatus(): Promise<unknown> {
+  const db = getDb();
+  // Latest cycle = latest createdAt across all rec rows. We surface its id,
+  // timestamp, and rec count + when the next daemon run would fire.
+  const latest = await db.query.calibratorRecommendations.findMany({
+    orderBy: (c, { desc }) => [desc(c.createdAt)],
+    limit: 1,
+  });
+  const intervalMs = Number(process.env["CAL_INTERVAL_MS"] ?? 3_600_000);
+  const head = latest[0];
+  if (!head) {
+    return {
+      mode: "idle",
+      lastRunAt: null,
+      lastCycleId: null,
+      lastRecCount: 0,
+      intervalMs,
+      nextRunAt: null,
+    };
+  }
+  // Count rows in that cycle (all recs share createdAt within ~1ms of each other,
+  // but cycle_id is the canonical group key).
+  const sameCycle = await db.query.calibratorRecommendations.findMany({
+    where: eq(calibratorRecommendations.cycleId, head.cycleId),
+    columns: { id: true },
+  });
+  return {
+    mode: "scheduled",
+    lastRunAt: head.createdAt.toISOString(),
+    lastCycleId: head.cycleId,
+    lastRecCount: sameCycle.length,
+    intervalMs,
+    nextRunAt: new Date(head.createdAt.getTime() + intervalMs).toISOString(),
+  };
+}
+
+async function handleCalibratorRecommendations(): Promise<unknown> {
+  const db = getDb();
+  // Pull the most recent cycle, then return its rows sorted by lift desc.
+  const latest = await db.query.calibratorRecommendations.findMany({
+    orderBy: (c, { desc }) => [desc(c.createdAt)],
+    limit: 1,
+  });
+  if (!latest[0]) return { cycleId: null, recommendations: [] };
+  const cycleId = latest[0].cycleId;
+  const rows = await db.query.calibratorRecommendations.findMany({
+    where: eq(calibratorRecommendations.cycleId, cycleId),
+    orderBy: (c, { desc }) => [desc(c.liftEstimateUsd)],
+    limit: 20,
+  });
+  return {
+    cycleId,
+    runAt: latest[0].createdAt.toISOString(),
+    recommendations: rows.map((r) => ({
+      id: r.id,
+      filterName: r.filterName,
+      paramKey: r.paramKey,
+      currentValue: r.currentValue,
+      recommendedValue: r.recommendedValue,
+      direction: r.direction,
+      liftEstimateUsd: r.liftEstimateUsd,
+      liftKpi: r.liftKpi,
+      confidence: r.confidence,
+      sampleSize: r.sampleSize,
+      reason: r.reason,
+    })),
+  };
+}
+
+async function handleCalibratorRunPost(userId: number): Promise<unknown> {
+  // Dynamic import — keeps the calibrator module out of the API process's
+  // hot path until someone actually triggers a manual run.
+  const { runCycle } = await import("../calibrator/engine.js");
+  const r = await runCycle();
+  await writeAudit({
+    actor: "mini_app",
+    userId,
+    action: "calibrator_manual_run",
+    target: r.cycleId,
+    payload: { recCount: r.recommendations.length, acceptedCount: r.acceptedCount },
+  });
+  return {
+    cycleId: r.cycleId,
+    recCount: r.recommendations.length,
+    acceptedCount: r.acceptedCount,
+    avgPnlPerTradeUsd: r.avgPnlPerTradeUsd,
+    summary: r.recommendations.slice(0, 5).map((rec) => ({
+      filterName: rec.filterName,
+      direction: rec.direction,
+      liftEstimateUsd: rec.liftEstimateUsd,
+    })),
+  };
+}
+
 function send(res: http.ServerResponse, status: number, body: unknown): void {
   res.statusCode = status;
   res.setHeader("Content-Type", "application/json");
@@ -1399,6 +1496,10 @@ export function createRestServer(): http.Server {
           return send(res, 200, await handleLatency(req));
         if (req.url === "/api/notifications")
           return send(res, 200, await handleNotificationsList(auth.userId ?? 1));
+        if (req.url === "/api/calibrator/status")
+          return send(res, 200, await handleCalibratorStatus());
+        if (req.url === "/api/calibrator/recommendations")
+          return send(res, 200, await handleCalibratorRecommendations());
       }
       if (req.method === "POST") {
         if (req.url === "/api/notifications") {
@@ -1427,6 +1528,9 @@ export function createRestServer(): http.Server {
         const whaleMatch = req.url?.match(/^\/api\/whales\/(0x[0-9a-fA-F]{40})\/track$/);
         if (whaleMatch && whaleMatch[1]) {
           return send(res, 200, await handleWhaleTrackPost(whaleMatch[1], req, auth.userId ?? 0));
+        }
+        if (req.url === "/api/calibrator/run") {
+          return send(res, 200, await handleCalibratorRunPost(auth.userId ?? 0));
         }
       }
       return send(res, 404, { error: "not_found" });
