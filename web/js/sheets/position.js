@@ -14,11 +14,22 @@ export async function openPositionSheet(id) {
     const p = data.position;
     const fills = (data.fills || []).slice().sort((a, b) => a.ts - b.ts);
     const decisions = data.recentDecisions || [];
+    // Current mark from latest decision (top of recentDecisions)
+    const latest = decisions[0] || {};
+    const cur = latest.mark != null ? Number(latest.mark) : null;
+    const fp = Number(p.fillPrice || 0);
+    const sh = Number(p.shares || 0);
+    const livePnlUsd = cur != null && fp > 0 ? (cur - fp) * sh : null;
+    const livePnlPct = cur != null && fp > 0 ? (cur - fp) / fp : null;
+    const sign = livePnlUsd != null && livePnlUsd >= 0 ? "+" : "";
+    const pnlClass = livePnlUsd == null ? "" : livePnlUsd >= 0 ? "good" : "bad";
     sheet.root.innerHTML = `
       <h3>Position #${p.id} <span class="pos-status ${p.status}">${p.status}</span></h3>
       <div class="kv"><span class="k">side</span><span class="v">${p.side}</span></div>
       <div class="kv"><span class="k">shares</span><span class="v">${(p.shares || 0).toFixed(4)}</span></div>
       <div class="kv"><span class="k">fill price</span><span class="v">${(p.fillPrice || 0).toFixed(3)}</span></div>
+      <div class="kv"><span class="k">current price</span><span class="v">${cur != null ? cur.toFixed(3) : "—"}${latest.markSource ? ` <span class="muted">(${escapeHtml(latest.markSource)}, ${Math.round((latest.markFreshnessMs || 0))}ms)</span>` : ""}</span></div>
+      <div class="kv"><span class="k">live PnL</span><span class="v ${pnlClass}">${livePnlUsd == null ? "—" : `${sign}$${livePnlUsd.toFixed(2)} (${sign}${(livePnlPct * 100).toFixed(1)}%)`}</span></div>
       <div class="kv"><span class="k">peak price</span><span class="v">${(p.peakPrice || 0).toFixed(3)}</span></div>
       <div class="kv"><span class="k">sweep count</span><span class="v">${p.sweepCount}</span></div>
       <div class="kv"><span class="k">entry cost</span><span class="v">$${(p.entryCostUsd || 0).toFixed(2)}</span></div>

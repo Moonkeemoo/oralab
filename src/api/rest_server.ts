@@ -370,6 +370,9 @@ async function handlePositionTimeline(id: number): Promise<unknown> {
         durationMs: d.durationMs,
         markSource: snap["markSource"] ?? null,
         markFreshnessMs: typeof markTs === "number" ? Number(d.ts) - markTs : null,
+        mark: snap["mark"] != null ? Number(snap["mark"]) : null,
+        bid: snap["bid"] != null ? Number(snap["bid"]) : null,
+        ask: snap["ask"] != null ? Number(snap["ask"]) : null,
       };
     }),
   };

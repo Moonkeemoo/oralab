@@ -82,7 +82,17 @@ async function loadPositions() {
   const list = await fetchJson("/api/positions");
   const body = document.getElementById("positions-body");
   if (list.length === 0) { body.innerHTML = '<span class="muted">no active positions</span>'; return; }
-  body.innerHTML = list.map((p) => `
+  body.innerHTML = list.map((p) => {
+    const cur = p.currentPrice;
+    const pnl = p.currentPnlUsd;
+    const pnlPct = p.currentPnlPct;
+    const pnlClass = pnl == null ? "" : pnl >= 0 ? "pnl-up" : "pnl-down";
+    const sign = pnl != null && pnl >= 0 ? "+" : "";
+    const pnlStr = pnl == null
+      ? '<span class="muted">no mark yet</span>'
+      : `${sign}$${pnl.toFixed(2)} (${sign}${(pnlPct * 100).toFixed(1)}%)`;
+    const ageStr = p.markAgeMs == null ? "" : `${(p.markAgeMs / 1000).toFixed(1)}s ago`;
+    return `
     <div class="pos" data-id="${p.id}" role="button">
       <div class="pos-head">
         <span class="pos-id">#${p.id} ▶</span>
@@ -91,11 +101,17 @@ async function loadPositions() {
       <div class="pos-row">
         <span><b>${(p.shares || 0).toFixed(3)}</b> sh</span>
         <span>fill <b>${(p.fillPrice || 0).toFixed(3)}</b></span>
-        <span>peak <b>${(p.peakPrice || 0).toFixed(3)}</b></span>
-        <span>sweep <b>${p.sweepCount || 0}</b></span>
+        <span>now <b>${cur != null ? cur.toFixed(3) : "—"}</b></span>
+        <span class="${pnlClass}">${pnlStr}</span>
       </div>
-    </div>
-  `).join("");
+      <div class="pos-row muted-sm">
+        <span>peak ${(p.peakPrice || 0).toFixed(3)}</span>
+        <span>sweep ${p.sweepCount || 0}</span>
+        <span>${p.lastIntentAction || "—"}</span>
+        <span>${ageStr}</span>
+      </div>
+    </div>`;
+  }).join("");
   body.querySelectorAll(".pos").forEach((el) => {
     el.addEventListener("click", () => openPositionSheet(Number(el.getAttribute("data-id"))));
   });
