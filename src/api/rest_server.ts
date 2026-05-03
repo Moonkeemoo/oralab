@@ -1088,6 +1088,7 @@ async function handleLatency(req: http.IncomingMessage): Promise<unknown> {
 
 async function handleCalibratorStatus(): Promise<unknown> {
   const db = getDb();
+  const { loadSettings } = await import("../calibrator/settings.js");
   // Latest cycle = latest createdAt across all rec rows. We surface its id,
   // timestamp, and rec count + when the next daemon run would fire.
   const latest = await db.query.calibratorRecommendations.findMany({
@@ -1095,30 +1096,38 @@ async function handleCalibratorStatus(): Promise<unknown> {
     limit: 1,
   });
   const intervalMs = Number(process.env["CAL_INTERVAL_MS"] ?? 3_600_000);
+  const settings = await loadSettings();
   const head = latest[0];
   if (!head) {
     return {
-      mode: "idle",
+      mode: settings.MODE,
+      configuredMode: settings.MODE,
       lastRunAt: null,
       lastCycleId: null,
       lastRecCount: 0,
       intervalMs,
       nextRunAt: null,
+      lastCycleSummary: null,
     };
   }
-  // Count rows in that cycle (all recs share createdAt within ~1ms of each other,
-  // but cycle_id is the canonical group key).
   const sameCycle = await db.query.calibratorRecommendations.findMany({
     where: eq(calibratorRecommendations.cycleId, head.cycleId),
-    columns: { id: true },
+    columns: { id: true, appliedAt: true, rolledBackAt: true, sport: true },
   });
   return {
-    mode: "scheduled",
+    mode: settings.MODE,
+    configuredMode: settings.MODE,
     lastRunAt: head.createdAt.toISOString(),
     lastCycleId: head.cycleId,
     lastRecCount: sameCycle.length,
     intervalMs,
     nextRunAt: new Date(head.createdAt.getTime() + intervalMs).toISOString(),
+    lastCycleSummary: {
+      recCount: sameCycle.length,
+      appliedCount: sameCycle.filter((r) => !!r.appliedAt && !r.rolledBackAt).length,
+      rolledBackCount: sameCycle.filter((r) => !!r.rolledBackAt).length,
+      perSportCount: sameCycle.filter((r) => !!r.sport).length,
+    },
   };
 }
 
@@ -1153,8 +1162,361 @@ async function handleCalibratorRecommendations(): Promise<unknown> {
       reason: r.reason,
       liftMatrix: r.liftMatrix ?? null,
       aims: r.aims ?? null,
+      sport: r.sport ?? null,
+      appliedAt: r.appliedAt?.toISOString() ?? null,
+      rolledBackAt: r.rolledBackAt?.toISOString() ?? null,
     })),
   };
+}
+
+// ─── Phase D: snapshot / lift_matrix / attribution / beliefs / trace ──────
+
+async function handleCalibratorSnapshot(): Promise<unknown> {
+  const { computeKpiSnapshot } = await import("../calibrator/thermostat.js");
+  const { computeExitKpiSnapshot } = await import("../calibrator/exit_thermostat.js");
+  const { computeDeficits, computeWeights } = await import("../calibrator/multi_kpi.js");
+  const { loadSettings, importanceMap } = await import("../calibrator/settings.js");
+  const { checklistConditions } = await import("../calibrator/engine.js");
+
+  const settings = await loadSettings();
+  const db = getDb();
+  const sinceMs = Date.now() - 24 * 60 * 60 * 1000;
+  const mode = currentMode();
+
+  const closed = await db
+    .select({
+      pnl: positions.realizedPnlUsd,
+      fillTs: positions.fillTs,
+      lastChange: positions.lastStateChangeTs,
+      entryPrice: positions.fillPrice,
+      peakPrice: positions.peakPrice,
+      closeReason: positions.closeReason,
+    })
+    .from(positions)
+    .where(
+      and(
+        eq(positions.status, "CLOSED"),
+        eq(positions.mode, mode),
+        gte(positions.lastStateChangeTs, sinceMs),
+      ),
+    );
+
+  const sigCounts = (await db.execute(sql`
+    SELECT
+      count(*)::int AS total,
+      count(*) FILTER (WHERE accepted = true)::int AS accepted
+    FROM signals
+    WHERE processed_at >= ${new Date(sinceMs).toISOString()}::timestamptz
+  `)) as unknown as Array<{ total: number; accepted: number }>;
+  const total = Number(sigCounts[0]?.total ?? 0);
+  const accepted = Number(sigCounts[0]?.accepted ?? 0);
+
+  const kpi = computeKpiSnapshot({
+    closedTrades: closed.map((c) => ({
+      pnlAmount: Number(c.pnl ?? 0),
+      ts: Math.floor((Number(c.fillTs ?? c.lastChange)) / 1000),
+    })),
+    totalSignals: total,
+    acceptedSignals: accepted,
+    halfLifeSec: settings.DECAY_HALF_LIFE_SEC,
+    minWeight: settings.DECAY_MIN_WEIGHT,
+  });
+  const exitKpi = computeExitKpiSnapshot({
+    closedTrades: closed
+      .filter((c) => !!c.closeReason)
+      .map((c) => ({
+        entryPrice: Number(c.entryPrice),
+        exitPrice: Number(c.entryPrice),
+        peakPrice: Number(c.peakPrice),
+        closeReason: String(c.closeReason),
+        ts: Math.floor(Number(c.fillTs ?? c.lastChange) / 1000),
+      })),
+    halfLifeSec: settings.DECAY_HALF_LIFE_SEC,
+    minWeight: settings.DECAY_MIN_WEIGHT,
+  });
+  const deficits = computeDeficits(kpi, exitKpi);
+  const weights = computeWeights(deficits, importanceMap(settings));
+
+  // Top score for checklist — pull from latest cycle's recs.
+  const lastRec = await db.query.calibratorRecommendations.findFirst({
+    orderBy: (c, { desc }) => [desc(c.createdAt)],
+  });
+  const topScore = lastRec ? Number(lastRec.liftEstimateUsd ?? 0) : 0;
+  const checklist = checklistConditions({
+    mode: settings.MODE,
+    closedTrades: closed.length,
+    topScore,
+    daemonAlive: !!lastRec,
+    settings,
+  });
+
+  return {
+    mode: settings.MODE,
+    kpi,
+    exitKpi,
+    deficits,
+    weights,
+    closedTrades: closed.length,
+    totalSignals: total,
+    acceptedSignals: accepted,
+    checklist,
+  };
+}
+
+async function handleCalibratorLiftMatrix(req: http.IncomingMessage): Promise<unknown> {
+  const url = new URL(req.url ?? "/", "http://x");
+  const phase = url.searchParams.get("phase") ?? "entry";
+  const sport = url.searchParams.get("sport");
+  const db = getDb();
+  // Last cycle's recs filtered by sport / phase. liftMatrix jsonb is the
+  // per-rec entry; engine writes one row per lever.
+  const lastRec = await db.query.calibratorRecommendations.findFirst({
+    orderBy: (c, { desc }) => [desc(c.createdAt)],
+  });
+  if (!lastRec) return { cycleId: null, matrix: [] };
+  const rows = await db.query.calibratorRecommendations.findMany({
+    where: eq(calibratorRecommendations.cycleId, lastRec.cycleId),
+  });
+  const matrix = rows
+    .filter((r) => (sport ? r.sport === sport : true))
+    .filter((r) => {
+      const isExit = r.filterName.startsWith("EXIT_");
+      return phase === "exit" ? isExit : !isExit;
+    })
+    .map((r) => ({
+      filterName: r.filterName,
+      sport: r.sport,
+      direction: r.direction,
+      currentValue: r.currentValue,
+      recommendedValue: r.recommendedValue,
+      lift: r.liftMatrix ?? {},
+      aims: r.aims ?? [],
+    }));
+  return { cycleId: lastRec.cycleId, phase, sport, matrix };
+}
+
+async function handleCalibratorAttribution(req: http.IncomingMessage): Promise<unknown> {
+  const url = new URL(req.url ?? "/", "http://x");
+  const windowHours = Number(url.searchParams.get("windowHours") ?? 24);
+  const sport = url.searchParams.get("sport");
+  const { getAttribution } = await import("../calibrator/counterfactual.js");
+  const attribution = await getAttribution(windowHours, sport);
+  return { windowHours, sport, attribution };
+}
+
+async function handleCalibratorBeliefs(req: http.IncomingMessage): Promise<unknown> {
+  const url = new URL(req.url ?? "/", "http://x");
+  const sport = url.searchParams.get("sport");
+  const { loadBeliefs } = await import("../calibrator/bayesian.js");
+  const map = await loadBeliefs(sport);
+  return {
+    sport,
+    beliefs: Array.from(map.values()).sort((a, b) => b.confidence - a.confidence),
+  };
+}
+
+async function handleCalibratorTrace(req: http.IncomingMessage): Promise<unknown> {
+  const url = new URL(req.url ?? "/", "http://x");
+  const since = url.searchParams.get("since");
+  const limit = Number(url.searchParams.get("limit") ?? 100);
+  const eventType = url.searchParams.get("eventType");
+  const traceMod = await import("../calibrator/trace.js");
+  const opts: Parameters<typeof traceMod.getTrace>[0] = { limit };
+  if (since) opts.since = Number(since);
+  if (eventType) {
+    opts.eventTypes = [eventType as Parameters<typeof traceMod.logTrace>[1]];
+  }
+  const rows = await traceMod.getTrace(opts);
+  return { count: rows.length, rows };
+}
+
+async function handleCalibratorSport(req: http.IncomingMessage): Promise<unknown> {
+  const url = new URL(req.url ?? "/", "http://x");
+  const windowHours = Number(url.searchParams.get("windowHours") ?? 24);
+  const mode = currentMode();
+  const sinceMs = Date.now() - windowHours * 60 * 60 * 1000;
+  const db = getDb();
+  type Row = {
+    sport: string;
+    trades: number;
+    wins: number;
+    losses: number;
+    net_pnl: string;
+    win_rate: string;
+    tp_pct: string;
+    sl_pct: string;
+    avg_dur_sec: number | null;
+    avg_stake_usd: string;
+  };
+  const rows = (await db.execute(sql`
+    SELECT
+      sport,
+      count(*)::int AS trades,
+      count(*) FILTER (WHERE realized_pnl_usd > 0)::int AS wins,
+      count(*) FILTER (WHERE realized_pnl_usd < 0)::int AS losses,
+      sum(realized_pnl_usd)::numeric(10,2) AS net_pnl,
+      (count(*) FILTER (WHERE realized_pnl_usd > 0)::float / GREATEST(count(*),1))::numeric(4,2) AS win_rate,
+      (count(*) FILTER (WHERE close_reason ~* '^tp')::float / GREATEST(count(*),1))::numeric(4,2) AS tp_pct,
+      (count(*) FILTER (WHERE close_reason ~* '^sl')::float / GREATEST(count(*),1))::numeric(4,2) AS sl_pct,
+      avg((last_state_change_ts - fill_ts) / 1000)::int AS avg_dur_sec,
+      avg(entry_cost_usd)::numeric(10,2) AS avg_stake_usd
+    FROM positions
+    WHERE status = 'CLOSED' AND mode = ${mode}
+      AND last_state_change_ts >= ${sinceMs}
+      AND sport IS NOT NULL
+    GROUP BY sport
+    ORDER BY net_pnl DESC NULLS LAST
+  `)) as unknown as Row[];
+  return {
+    windowHours,
+    mode,
+    sports: rows.map((r) => ({
+      sport: r.sport,
+      trades: r.trades,
+      wins: r.wins,
+      losses: r.losses,
+      netPnl: Number(r.net_pnl ?? 0),
+      winRate: Number(r.win_rate ?? 0),
+      tpPct: Number(r.tp_pct ?? 0),
+      slPct: Number(r.sl_pct ?? 0),
+      avgDurSec: r.avg_dur_sec ?? null,
+      avgStakeUsd: Number(r.avg_stake_usd ?? 0),
+    })),
+  };
+}
+
+async function handleCalibratorSportHeatmap(req: http.IncomingMessage): Promise<unknown> {
+  const url = new URL(req.url ?? "/", "http://x");
+  const days = Math.max(1, Number(url.searchParams.get("days") ?? 7));
+  const metric = url.searchParams.get("metric") ?? "pnl";
+  const mode = currentMode();
+  const sinceMs = Date.now() - days * 86_400_000;
+  const db = getDb();
+  type Row = {
+    sport: string;
+    hour_utc: number;
+    trades: number;
+    pnl_usd: string;
+    win_rate: string;
+  };
+  const rows = (await db.execute(sql`
+    SELECT
+      sport,
+      EXTRACT(hour FROM to_timestamp(fill_ts/1000) AT TIME ZONE 'UTC')::int AS hour_utc,
+      count(*)::int AS trades,
+      sum(realized_pnl_usd)::numeric(10,2) AS pnl_usd,
+      (count(*) FILTER (WHERE realized_pnl_usd > 0)::float / GREATEST(count(*),1))::numeric(4,2) AS win_rate
+    FROM positions
+    WHERE status='CLOSED' AND mode = ${mode}
+      AND last_state_change_ts >= ${sinceMs}
+      AND sport IS NOT NULL
+      AND fill_ts IS NOT NULL
+    GROUP BY sport, hour_utc
+    ORDER BY sport, hour_utc
+  `)) as unknown as Row[];
+
+  const sportsSet = new Set<string>();
+  const cells: Record<string, number> = {};
+  for (const r of rows) {
+    sportsSet.add(r.sport);
+    const v =
+      metric === "wr"
+        ? Number(r.win_rate ?? 0)
+        : metric === "count"
+          ? Number(r.trades ?? 0)
+          : Number(r.pnl_usd ?? 0);
+    cells[`${r.sport}_${r.hour_utc}`] = v;
+  }
+  return {
+    days,
+    metric,
+    sports: Array.from(sportsSet).sort(),
+    hours: Array.from({ length: 24 }, (_, i) => i),
+    cells,
+  };
+}
+
+async function handleCalibratorSettingsGet(): Promise<unknown> {
+  const { loadSettings, DEFAULTS } = await import("../calibrator/settings.js");
+  const current = await loadSettings();
+  return { current, defaults: DEFAULTS };
+}
+
+async function handleCalibratorSettingsPost(
+  req: http.IncomingMessage,
+  userId: number,
+): Promise<unknown> {
+  const raw = await readBody(req);
+  const body = JSON.parse(raw || "{}") as { key?: string; value?: unknown };
+  const { setSetting } = await import("../calibrator/settings.js");
+  if (!body.key) return { ok: false, error: "missing_key" };
+  try {
+    await setSetting(
+      body.key as Parameters<typeof setSetting>[0],
+      body.value as Parameters<typeof setSetting>[1],
+    );
+    await writeAudit({
+      actor: "mini_app",
+      userId,
+      action: "calibrator_setting_update",
+      target: body.key,
+      payload: { value: body.value },
+    });
+    return { ok: true, key: body.key, value: body.value };
+  } catch (err) {
+    return { ok: false, error: (err as Error).message };
+  }
+}
+
+async function handleCalibratorModePost(
+  req: http.IncomingMessage,
+  userId: number,
+): Promise<unknown> {
+  const raw = await readBody(req);
+  const body = JSON.parse(raw || "{}") as { mode?: string };
+  if (body.mode !== "manual" && body.mode !== "watch" && body.mode !== "auto") {
+    return { ok: false, error: "mode must be manual|watch|auto" };
+  }
+  const { setSetting } = await import("../calibrator/settings.js");
+  await setSetting("MODE", body.mode);
+  await writeAudit({
+    actor: "mini_app",
+    userId,
+    action: "calibrator_mode_change",
+    target: body.mode,
+    payload: {},
+  });
+  return { ok: true, mode: body.mode };
+}
+
+async function handleCalibratorApplyPost(recId: number, userId: number): Promise<unknown> {
+  const { applyRecommendationById } = await import("../calibrator/engine.js");
+  const ok = await applyRecommendationById(recId, userId);
+  return { ok, recId };
+}
+
+async function handleCalibratorRollbackPost(recId: number, userId: number): Promise<unknown> {
+  const { rollbackRecommendation } = await import("../calibrator/engine.js");
+  const ok = await rollbackRecommendation(recId, userId);
+  return { ok, recId };
+}
+
+async function handleCalibratorDismissPost(recId: number, userId: number): Promise<unknown> {
+  const db = getDb();
+  // Mark as rolled_back without actually changing config — semantic = "do not
+  // apply". Simpler than a dedicated dismissed_at column.
+  await db
+    .update(calibratorRecommendations)
+    .set({ rolledBackAt: new Date() })
+    .where(eq(calibratorRecommendations.id, recId));
+  await writeAudit({
+    actor: "mini_app",
+    userId,
+    action: "calibrator_dismiss",
+    target: `rec:${recId}`,
+    payload: {},
+  });
+  return { ok: true, recId };
 }
 
 async function handleCalibratorRunPost(userId: number): Promise<unknown> {
@@ -1553,6 +1915,22 @@ export function createRestServer(): http.Server {
           return send(res, 200, await handleCalibratorStatus());
         if (req.url === "/api/calibrator/recommendations")
           return send(res, 200, await handleCalibratorRecommendations());
+        if (req.url === "/api/calibrator/snapshot")
+          return send(res, 200, await handleCalibratorSnapshot());
+        if (req.url?.startsWith("/api/calibrator/lift_matrix"))
+          return send(res, 200, await handleCalibratorLiftMatrix(req));
+        if (req.url?.startsWith("/api/calibrator/attribution"))
+          return send(res, 200, await handleCalibratorAttribution(req));
+        if (req.url?.startsWith("/api/calibrator/beliefs"))
+          return send(res, 200, await handleCalibratorBeliefs(req));
+        if (req.url?.startsWith("/api/calibrator/trace"))
+          return send(res, 200, await handleCalibratorTrace(req));
+        if (req.url?.startsWith("/api/calibrator/sport/heatmap"))
+          return send(res, 200, await handleCalibratorSportHeatmap(req));
+        if (req.url?.startsWith("/api/calibrator/sport"))
+          return send(res, 200, await handleCalibratorSport(req));
+        if (req.url === "/api/calibrator/settings")
+          return send(res, 200, await handleCalibratorSettingsGet());
       }
       if (req.method === "POST") {
         if (req.url === "/api/notifications") {
@@ -1584,6 +1962,24 @@ export function createRestServer(): http.Server {
         }
         if (req.url === "/api/calibrator/run") {
           return send(res, 200, await handleCalibratorRunPost(auth.userId ?? 0));
+        }
+        if (req.url === "/api/calibrator/settings") {
+          return send(res, 200, await handleCalibratorSettingsPost(req, auth.userId ?? 0));
+        }
+        if (req.url === "/api/calibrator/mode") {
+          return send(res, 200, await handleCalibratorModePost(req, auth.userId ?? 0));
+        }
+        const applyMatch = req.url?.match(/^\/api\/calibrator\/apply\/(\d+)$/);
+        if (applyMatch && applyMatch[1]) {
+          return send(res, 200, await handleCalibratorApplyPost(Number(applyMatch[1]), auth.userId ?? 0));
+        }
+        const dismissMatch = req.url?.match(/^\/api\/calibrator\/dismiss\/(\d+)$/);
+        if (dismissMatch && dismissMatch[1]) {
+          return send(res, 200, await handleCalibratorDismissPost(Number(dismissMatch[1]), auth.userId ?? 0));
+        }
+        const rollbackMatch = req.url?.match(/^\/api\/calibrator\/rollback\/(\d+)$/);
+        if (rollbackMatch && rollbackMatch[1]) {
+          return send(res, 200, await handleCalibratorRollbackPost(Number(rollbackMatch[1]), auth.userId ?? 0));
         }
       }
       return send(res, 404, { error: "not_found" });
