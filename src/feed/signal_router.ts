@@ -5,7 +5,7 @@ import { getBookTop } from "../api/book.js";
 import type { DataActivity } from "../api/data.js";
 import { type GammaMarket, getMarketByTokenId } from "../api/gamma.js";
 import { getDb } from "../db/client.js";
-import { positions, signals, strategies } from "../db/schema.js";
+import { orders, positions, signals, strategies } from "../db/schema.js";
 import { canAffordEntry } from "../execute/budget.js";
 import { placeBuy } from "../execute/order_manager.js";
 import { recordOrder } from "../execute/order_recorder.js";
@@ -416,6 +416,18 @@ async function routeInner(
   }
 
   const positionId = Number(posRow?.id ?? 0);
+
+  // Backlink the order row inserted earlier to this position.
+  // recordOrder() was called BEFORE the INSERT (so the audit trail is
+  // preserved even if the INSERT loses the unique-constraint race), but
+  // its position_id is null — DryFillSimulator's INNER JOIN on
+  // orders.position_id = positions.id then never matches and PENDING
+  // positions stay frozen. Backlink keyed on client_order_id (unique).
+  await db
+    .update(orders)
+    .set({ positionId })
+    .where(eq(orders.clientOrderId, buy.clientOrderId));
+
   logger.info(
     {
       positionId,
