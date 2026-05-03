@@ -138,37 +138,165 @@
     };
   }
 
+  // v1 trade objects are richly nested (entry/exit/shares/sizing/initiator/status/result).
+  // The v1 trades.js renderer reads `t.status === 'open'`, `t.result === 'won'/'lost'/'flat'`,
+  // `t.mode === 'live'/'dry'`, `t.shares.bought`, `t.shares.limit`, `t.entry.fill_price`,
+  // `t.entry.timestamp`, `t.exit.price`, `t.exit.gain_pct`, `t.exit.closure_reason`,
+  // `t.exit.last_price_update_ts`, `t.exit.mark_source`, `t.sizing.cost_usdc`,
+  // `t.duration_human`, `t.market_end_ts`, etc.
+  // We synthesize this nested shape from v2's flat row.
+  function _durHuman(seconds) {
+    if (!seconds || seconds <= 0) return '—';
+    const m = Math.round(seconds / 60);
+    if (m < 60) return m + 'm';
+    return Math.floor(m / 60) + 'h ' + (m % 60) + 'm';
+  }
+  function _v1Mode(m) {
+    return (m || 'DRY').toLowerCase() === 'live' ? 'live' : 'dry';
+  }
+  function _v1Result(closedTrade) {
+    const pnl = closedTrade.pnlUsd != null ? closedTrade.pnlUsd : 0;
+    if (pnl > 0) return 'won';
+    if (pnl < 0) return 'lost';
+    return 'flat';
+  }
+  // Map an OPEN position (from /api/positions) → v1 trade row (status:'open').
+  function mapPositionAsTrade(p) {
+    const fillSec = p.fillTs ? Math.floor(p.fillTs / 1000) : 0;
+    const nowSec = Math.floor(Date.now() / 1000);
+    const durSec = fillSec ? Math.max(0, nowSec - fillSec) : (p.durationMs ? Math.floor(p.durationMs / 1000) : 0);
+    const cost = p.entryCostUsd || 0;
+    const pnl = p.currentPnlUsd != null ? p.currentPnlUsd : 0;
+    const gainPct = p.currentPnlPct != null ? (p.currentPnlPct * 100) : 0;
+    const lastPxTs = p.markAgeMs != null ? (Date.now() - p.markAgeMs) : null;
+    return {
+      trade_id: String(p.id),
+      asset_id: p.assetId,
+      condition_id: p.conditionId,
+      market: p.marketTitle || p.outcomeName || p.assetId,
+      market_end_ts: null,                      // v2 doesn't expose; UI tolerates null
+      event_slug: null,                          // can be derived later
+      side: (p.side === 'YES' || p.side === 'yes') ? 'Yes' : (p.side === 'NO' ? 'No' : p.side),
+      mode: _v1Mode(p.mode),
+      status: 'open',
+      result: 'open',
+      pnl,
+      pnl_status: '',
+      duration_seconds: durSec,
+      duration_human: _durHuman(durSec),
+      resolution_ts: null,
+      resolved_at: null,
+      entry: {
+        fill_price: p.fillPrice,
+        market_price: p.fillPrice,
+        source: 'copy',
+        timestamp: p.fillTs ? p.fillTs / 1000 : null,
+        whale_price: p.fillPrice,
+      },
+      exit: {
+        price: p.currentPrice != null ? p.currentPrice : null,
+        gain_pct: gainPct,
+        pnl_usd: pnl,
+        last_price_update_ts: lastPxTs ? lastPxTs / 1000 : null,
+        mark_source: p.markSource === 'rest_book' ? 'ws_book' : (p.markSource || 'unknown'),
+        mark_quality: p.markAgeMs != null && p.markAgeMs < 10000 ? 'executable' : 'cached',
+        mark_freshness: '',
+        reason: '',
+        timestamp: null,
+        closure_reason: null,
+        exit_verified: null,
+      },
+      shares: {
+        bought: p.shares != null ? p.shares : 0,
+        limit: 10.0,
+        overshoot: 0,
+        overshoot_pct: 0.0,
+        within_budget: true,
+      },
+      sizing: {
+        budget_max: cost,
+        cost_usdc: cost,
+        kelly_fraction: null,
+      },
+      initiator: {
+        wallet: p.whaleAddress || null,
+        wallet_short: p.whaleAddress ? (p.whaleAddress.slice(0, 6) + '…' + p.whaleAddress.slice(-4)) : '—',
+        classification: 'NOISE',
+        sm_score: 0,
+        trust_score: 0,
+        whale_size_usd: 0,
+      },
+      convergence: { count: 0, wallets: [] },
+      issues: [],
+      recent_events: [],
+    };
+  }
+  // Map a CLOSED v2 trade (from /api/history) → v1 trade row (status:'closed').
   function mapTrade(t) {
-    // v1 keys: trade_id, condition_id, market, side, entry/entry_price,
-    //         exit/exit_price, pnl, pnl_status, duration, date, trading_mode, open_ts.
     const pnl = t.pnlUsd != null ? t.pnlUsd : 0;
-    const isWin = pnl > 0 || t.outcome === 'win';
-    const durMin = t.durationMs ? Math.round(t.durationMs / 60000) : 0;
-    const durStr = durMin >= 60
-      ? Math.floor(durMin / 60) + 'h ' + (durMin % 60) + 'm'
-      : durMin + 'm';
+    const cost = (t.fillPrice && t.shares) ? (t.fillPrice * t.shares) : 0;
     const closeMs = t.closeTs || 0;
+    const fillMs  = t.fillTs  || 0;
+    const durSec = (closeMs && fillMs) ? Math.floor((closeMs - fillMs) / 1000) : (t.durationMs ? Math.floor(t.durationMs / 1000) : 0);
+    const gainPct = (t.exitPrice && t.fillPrice) ? ((t.exitPrice - t.fillPrice) / t.fillPrice * 100) : 0;
     return {
       trade_id: String(t.id),
+      asset_id: t.assetId,
       condition_id: t.conditionId || null,
       market: t.marketTitle || t.outcomeName || t.assetId,
-      side: t.side,
-      entry: t.fillPrice,
-      entry_price: t.fillPrice,
-      exit: t.exitPrice,
-      exit_price: t.exitPrice,
+      market_end_ts: null,
+      event_slug: null,
+      side: (t.side === 'YES' || t.side === 'yes') ? 'Yes' : (t.side === 'NO' ? 'No' : t.side),
+      mode: _v1Mode(t.mode),
+      status: 'closed',
+      result: _v1Result(t),
       pnl,
-      pnl_amount: pnl,
-      pnl_status: isWin ? 'win' : 'loss',
-      duration: durStr,
-      date: closeMs ? new Date(closeMs).toISOString() : null,
-      open_ts: t.fillTs ? Math.floor(t.fillTs / 1000) : 0,
-      close_ts: closeMs ? Math.floor(closeMs / 1000) : 0,
-      trading_mode: (t.mode || 'DRY').toLowerCase() === 'live' ? 'live' : 'dry_run',
-      result: t.result,
-      close_reason: t.closeReason,
-      close_reason_label: t.closeReasonLabel,
-      shares: t.shares,
+      pnl_status: pnl >= 0 ? 'win' : 'loss',
+      duration_seconds: durSec,
+      duration_human: _durHuman(durSec),
+      resolution_ts: closeMs ? closeMs / 1000 : null,
+      resolved_at: closeMs ? new Date(closeMs).toISOString() : null,
+      entry: {
+        fill_price: t.fillPrice,
+        market_price: t.fillPrice,
+        source: 'copy',
+        timestamp: fillMs ? fillMs / 1000 : null,
+        whale_price: t.fillPrice,
+      },
+      exit: {
+        price: t.exitPrice,
+        gain_pct: gainPct,
+        pnl_usd: pnl,
+        closure_reason: t.closeReason || null,
+        reason: t.closeReasonLabel || t.closeReason || '',
+        mark_quality: 'cached',
+        mark_source: 'history',
+        timestamp: closeMs ? closeMs / 1000 : null,
+        exit_verified: true,
+      },
+      shares: {
+        bought: t.shares != null ? t.shares : 0,
+        limit: 10.0,
+        overshoot: 0,
+        overshoot_pct: 0.0,
+        within_budget: true,
+      },
+      sizing: {
+        budget_max: cost,
+        cost_usdc: cost,
+        kelly_fraction: null,
+      },
+      initiator: {
+        wallet: null,
+        wallet_short: '—',
+        classification: 'NOISE',
+        sm_score: 0,
+        trust_score: 0,
+        whale_size_usd: 0,
+      },
+      convergence: { count: 0, wallets: [] },
+      issues: [],
+      recent_events: [],
     };
   }
 
@@ -284,24 +412,9 @@
       return list.map(mapPosition);
     },
 
-    // /history — v1 expects {trades:[{date, mode, side,...}], summary:{total, win_rate, net_pnl}}
+    // /history — v1 expects {trades:[…], summary:{…}}
     '/api/polymarket/history': async () => {
-      const h = await safeGet('/api/history');
-      const trades = (h && Array.isArray(h.trades)) ? h.trades : [];
-      const agg = (h && h.aggregates) || {};
-      const mapped = trades.map(mapTrade);
-      const wins = mapped.filter(t => t.pnl > 0).length;
-      const total = mapped.length;
-      return {
-        trades: mapped,
-        summary: {
-          total,
-          win_rate: total ? Math.round((wins / total) * 100) : 0,
-          net_pnl: agg.netPnlUsd != null ? agg.netPnlUsd : mapped.reduce((s, t) => s + (t.pnl || 0), 0),
-          wins,
-          losses: total - wins,
-        },
-      };
+      return await buildTradesEnvelope();
     },
 
     // /state — v1 consolidated read; reassemble from v2 calls.
@@ -327,9 +440,7 @@
       const inPositions = pos.reduce((s, p) => s + (p.entryCostUsd || 0), 0);
       const totalBudget = balance ? balance.totalBudgetUsd : 0;
       const built = await safeBuildPortfolio(kpiVal);
-      const mappedTrades = histTrades.map(mapTrade);
-      const wins = mappedTrades.filter(t => t.pnl > 0).length;
-      const total = mappedTrades.length;
+      const tradesEnvelope = await buildTradesEnvelope();
       return {
         portfolio: Object.assign({}, built, {
           totals: {
@@ -355,16 +466,8 @@
             : [],
         }),
         positions: pos.map(mapPosition),
-        history: {
-          trades: mappedTrades,
-          summary: {
-            total,
-            win_rate: total ? Math.round((wins / total) * 100) : 0,
-            net_pnl: histAgg.netPnlUsd != null ? histAgg.netPnlUsd : mappedTrades.reduce((s, t) => s + (t.pnl || 0), 0),
-            wins,
-            losses: total - wins,
-          },
-        },
+        history: tradesEnvelope,
+        trades: tradesEnvelope,
         settings: settings.status === 'fulfilled' ? settings.value : {},
       };
     },
@@ -480,11 +583,9 @@
       return p ?? {};
     },
 
-    // Trades — alias for /history (v1 expected an array)
+    // Trades — v1 expects {trades:[…open + closed…], summary:{…}}
     '/api/polymarket/trades': async () => {
-      const h = await safeGet('/api/history');
-      const trades = (h && Array.isArray(h.trades)) ? h.trades : [];
-      return trades.map(mapTrade);
+      return await buildTradesEnvelope();
     },
 
     // Kill-switch (POST/GET both routed) — both hyphen and underscore variants
@@ -961,6 +1062,41 @@
   // Helpers used by adapters
   async function safeGet(path) {
     try { return await v2Get(path); } catch (_e) { return null; }
+  }
+
+  // Combine v2 /api/positions (OPEN) + /api/history (CLOSED) → v1 envelope.
+  // v1 trades.js expects: { trades:[{status:'open'|'closed',…}], summary:{wins,losses,open,total,win_rate,net_pnl,avg_duration_seconds} }
+  async function buildTradesEnvelope() {
+    const [posRes, histRes] = await Promise.allSettled([
+      v2Get('/api/positions'),
+      v2Get('/api/history'),
+    ]);
+    const positions = posRes.status === 'fulfilled' && Array.isArray(posRes.value) ? posRes.value : [];
+    const hist = histRes.status === 'fulfilled' ? histRes.value : { trades: [], aggregates: {} };
+    const histTrades = (hist && Array.isArray(hist.trades)) ? hist.trades : [];
+    const agg = (hist && hist.aggregates) || {};
+    const openTrades   = positions.map(mapPositionAsTrade);
+    const closedTrades = histTrades.map(mapTrade);
+    const allTrades = openTrades.concat(closedTrades);
+    const wins = closedTrades.filter(t => t.result === 'won').length;
+    const losses = closedTrades.filter(t => t.result === 'lost').length;
+    const totalClosed = closedTrades.length;
+    const wr = totalClosed ? Math.round(wins * 1000 / totalClosed) / 10 : 0;
+    const avgDur = totalClosed
+      ? Math.round(closedTrades.reduce((s, t) => s + (t.duration_seconds || 0), 0) / totalClosed)
+      : 0;
+    return {
+      trades: allTrades,
+      summary: {
+        total: allTrades.length,
+        wins,
+        losses,
+        open: openTrades.length,
+        win_rate: wr,
+        net_pnl: agg.netPnlUsd != null ? agg.netPnlUsd : closedTrades.reduce((s, t) => s + (t.pnl || 0), 0),
+        avg_duration_seconds: avgDur,
+      },
+    };
   }
   async function safeBuildPortfolio(kpi) {
     const bal = await safeGet('/api/balance');
