@@ -252,6 +252,9 @@ export const positions = pgTable(
     // Both null for non-sports markets or when classification fails.
     league: varchar("league", { length: 32 }),
     sport: varchar("sport", { length: 32 }),
+    // Cached whale that originated this position. Lets the calibrator's
+    // Whales sub-tab + per-whale PnL aggregation skip the signals JOIN.
+    whaleAddress: varchar("whale_address", { length: 64 }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -260,6 +263,7 @@ export const positions = pgTable(
     index("idx_positions_condition_asset").on(t.conditionId, t.assetId),
     index("idx_positions_mode_status").on(t.mode, t.status),
     index("idx_positions_sport_lastchange").on(t.sport, t.lastStateChangeTs.desc()),
+    index("idx_positions_whale").on(t.whaleAddress),
     uniqueIndex("uq_positions_open_per_asset")
       .on(t.userId, t.assetId)
       .where(sql`status IN ('PENDING','FILLED','OPEN','EXITING','RESOLVED','FROZEN')`),

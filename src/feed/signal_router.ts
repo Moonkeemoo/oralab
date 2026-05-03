@@ -92,6 +92,22 @@ function isUniqueConstraintError(err: unknown, constraintName?: string): boolean
 const LEAGUE_CACHE_TTL_MS = 60_000;
 const LEAGUE_CACHE = new Map<string, { league: string | null; ts: number }>();
 
+/**
+ * Lightweight title-based league derivation. Polymarket sports market slugs
+ * follow `{league}-{teams}-{date}-...` (mlb-nym-laa-2026-05-02, cs2-faze-furia-...,
+ * epl-mun-liv-...). Used as fallback when gamma has no gameId AND for backfill.
+ * Limited to short alphanumeric prefixes; rejects garbage like "will-tariff..." → null.
+ */
+export function deriveLeagueFromTitle(title: string | undefined | null): string | null {
+  if (!title) return null;
+  const m = title.toLowerCase().match(/^([a-z0-9]{2,12})-/);
+  if (!m) return null;
+  const lg = m[1] ?? "";
+  // Filter common noise prefixes ("will-X-happen", "what-...", "who-...")
+  if (["will", "what", "who", "is", "are"].includes(lg)) return null;
+  return lg;
+}
+
 export async function deriveLeagueFromGameId(gameId: string): Promise<string | null> {
   const cached = LEAGUE_CACHE.get(gameId);
   const now = Date.now();
@@ -248,7 +264,7 @@ export async function routeWhaleBuy(whaleAddress: string, activity: DataActivity
       entryMutexWaitMs.record(performance.now() - enqueuedAt);
       return routeInner(signal, cfg, match.strategyId);
     });
-    await persistSignal(signal, outcome.accepted, outcome.rejectReason, outcome.sport ?? null);
+    await persistSignal(signal, outcome.accepted, outcome.rejectReason, outcome.sport ?? classifySport(deriveLeagueFromTitle(signal.payload["title"] as string)));
     entryRouteOutcome.add(1, {
       outcome: outcome.accepted ? "accepted" : (outcome.rejectReason ?? "unknown"),
     });
@@ -444,8 +460,9 @@ async function routeInner(
           entryCostUsd: filledShares * priceCeiling,
           trailArmed: false,
           sweepCount: 0,
-          league,
-          sport,
+          league: league ?? deriveLeagueFromTitle(signal.payload["title"] as string | undefined),
+          sport: sport ?? classifySport(deriveLeagueFromTitle(signal.payload["title"] as string | undefined)),
+          whaleAddress: (signal.payload["whaleAddress"] as string | undefined)?.toLowerCase() ?? null,
         })
         .returning({ id: positions.id }),
     );
