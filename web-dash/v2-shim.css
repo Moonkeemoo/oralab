@@ -1,0 +1,104 @@
+/* v2-shim — visual badge for endpoints not yet wired in v2 backend */
+
+.v2-unwired-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  border: 1px dashed rgba(245, 158, 11, 0.45);
+  cursor: help;
+  vertical-align: middle;
+  white-space: nowrap;
+  font-family: 'Geist Mono', ui-monospace, monospace;
+}
+.v2-unwired-badge::before {
+  content: "⚠";
+  font-size: 11px;
+  line-height: 1;
+}
+.v2-unwired-badge[data-endpoint]:hover::after {
+  content: attr(data-endpoint);
+  position: absolute;
+  margin-top: 18px;
+  margin-left: -4px;
+  padding: 4px 8px;
+  background: #1a1a1a;
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-radius: 4px;
+  font-size: 10px;
+  white-space: nowrap;
+  z-index: 10000;
+  pointer-events: none;
+}
+
+/* Banner that aggregates all unwired endpoints encountered on the current
+   page load. Mounted once by v2-shim.js into <body>. */
+#v2-unwired-banner {
+  position: fixed;
+  bottom: 8px;
+  right: 8px;
+  z-index: 9999;
+  max-width: 380px;
+  max-height: 60vh;
+  overflow-y: auto;
+  background: rgba(20, 20, 20, 0.96);
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-family: 'Geist Mono', ui-monospace, monospace;
+  font-size: 11px;
+  color: #f59e0b;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
+}
+#v2-unwired-banner .v2-banner-title {
+  font-weight: 700;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 10px;
+}
+#v2-unwired-banner .v2-banner-close {
+  background: none;
+  border: none;
+  color: #f59e0b;
+  cursor: pointer;
+  padding: 0 4px;
+  font-size: 14px;
+  line-height: 1;
+}
+#v2-unwired-banner ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+#v2-unwired-banner li {
+  padding: 2px 0;
+  border-bottom: 1px solid rgba(245, 158, 11, 0.12);
+  word-break: break-all;
+  color: #d1d5db;
+}
+#v2-unwired-banner li:last-child { border-bottom: none; }
+#v2-unwired-banner li .count {
+  color: #f59e0b;
+  margin-right: 6px;
+  font-weight: 600;
+}
+
+/* For inline injection: when shim replaces a numeric/text node with a badge,
+   keep the badge inline-sized so layout doesn't break. */
+.v2-unwired-cell {
+  display: inline-block;
+  min-width: 0;
+}
