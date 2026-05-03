@@ -615,3 +615,365 @@ table.filters tr { border-bottom: 1px solid rgba(255,255,255,0.04); }
 .calib-stable     { color: var(--ok); border: 1px solid rgba(63,185,80,0.4); }
 .calib-exploring  { color: var(--text); border: 1px dashed var(--border); }
 .calib-low-data   { color: var(--text-muted); opacity: 0.6; }
+
+
+/* ─── Calibrator v2 — 7 sub-tab shell ───────────────────────────────── */
+
+.cal-shell { padding: 10px 12px; }
+.cal-status-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.cal-mode-row { display: flex; gap: 4px; }
+.cal-mode-pill {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.cal-mode-pill.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+.cal-run-btn { padding: 4px 12px; font-size: 12px; }
+.cal-cycle-meta { font-size: 11px; flex: 1 0 100%; margin-top: 4px; }
+
+.cal-tabbar {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  padding: 8px 4px;
+  margin-bottom: 8px;
+  scrollbar-width: none;
+}
+.cal-tabbar::-webkit-scrollbar { display: none; }
+.cal-sub-tab {
+  flex: 0 0 auto;
+  padding: 6px 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.cal-sub-tab.active {
+  background: var(--accent);
+  color: var(--accent-text);
+  border-color: var(--accent);
+}
+
+/* Status cards row (Огляд + Exit analysis) */
+.cal-status-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+@media (min-width: 480px) {
+  .cal-status-row { grid-template-columns: repeat(3, 1fr); }
+}
+.cal-status-card {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-left-width: 3px;
+  border-radius: var(--radius);
+  padding: 12px;
+}
+.cal-accent-blue   { border-left-color: var(--accent); }
+.cal-accent-orange { border-left-color: var(--warn); }
+.cal-accent-green  { border-left-color: var(--ok); }
+.cal-accent-red    { border-left-color: var(--bad); }
+.cal-accent-purple { border-left-color: #a371f7; }
+.cal-accent-teal   { border-left-color: #39c5bb; }
+.cal-accent-cyan   { border-left-color: #56d4dd; }
+
+.cal-status-card-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+.cal-status-card-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  padding: 3px 0;
+  gap: 8px;
+}
+.cal-status-card-val { font-weight: 600; }
+
+/* Objective bar */
+.cal-objective-row {
+  display: grid;
+  grid-template-columns: 80px 60px 1fr 60px;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 0;
+  font-size: 12px;
+}
+.cal-objective-label { font-weight: 600; }
+.cal-objective-val { text-align: right; font-variant-numeric: tabular-nums; }
+.cal-objective-bar {
+  height: 6px;
+  background: var(--bg);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.cal-objective-bar-fill { height: 100%; }
+.cal-bar-ok   { background: var(--ok); }
+.cal-bar-warn { background: var(--warn); }
+.cal-bar-bad  { background: var(--bad); }
+.cal-objective-w { font-size: 11px; text-align: right; }
+
+/* Checklist */
+.cal-checklist-item {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 0;
+  font-size: 13px;
+}
+.cal-checklist-item.ok  .cal-checklist-icon { color: var(--ok); }
+.cal-checklist-item.bad .cal-checklist-icon { color: var(--bad); }
+.cal-checklist-icon { font-weight: 700; }
+
+/* Tables */
+.cal-table-wrap {
+  overflow-x: auto;
+  margin: 0 -4px;
+}
+.cal-lift-table,
+.cal-attr-table,
+.cal-beliefs-table,
+.cal-distrib-table,
+.cal-params-table,
+.cal-whales-table,
+.cal-sport-table,
+.cal-trace-table,
+.cal-history-table,
+.cal-heatmap {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.cal-lift-table th,
+.cal-attr-table th,
+.cal-beliefs-table th,
+.cal-distrib-table th,
+.cal-params-table th,
+.cal-whales-table th,
+.cal-sport-table th,
+.cal-trace-table th,
+.cal-history-table th,
+.cal-heatmap th {
+  text-align: left;
+  font-weight: 600;
+  padding: 6px 6px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.cal-lift-table td,
+.cal-attr-table td,
+.cal-beliefs-table td,
+.cal-distrib-table td,
+.cal-params-table td,
+.cal-whales-table td,
+.cal-sport-table td,
+.cal-trace-table td,
+.cal-history-table td,
+.cal-heatmap td {
+  padding: 6px 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.cal-row-dim { opacity: 0.5; }
+.cal-row-strong { background: rgba(63,185,80,0.05); }
+.cal-lift-cell.delta-pos { color: var(--ok); font-variant-numeric: tabular-nums; }
+.cal-lift-cell.delta-neg { color: var(--bad); font-variant-numeric: tabular-nums; }
+
+/* Sport / trust badges */
+.cal-sport-badge,
+.cal-trust-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-muted);
+  display: inline-block;
+}
+.cal-sport-nhl, .cal-sport-nba, .cal-sport-mlb,
+.cal-sport-soccer, .cal-sport-tennis, .cal-sport-esports,
+.cal-sport-other {}
+.cal-sport-nhl     { background: rgba(47,129,247,0.15);  color: var(--accent); border-color: var(--accent); }
+.cal-sport-nba     { background: rgba(210,153,34,0.15);  color: var(--warn);   border-color: var(--warn); }
+.cal-sport-mlb     { background: rgba(248,81,73,0.15);   color: var(--bad);    border-color: var(--bad); }
+.cal-sport-soccer  { background: rgba(63,185,80,0.15);   color: var(--ok);     border-color: var(--ok); }
+.cal-sport-tennis  { background: rgba(210,200,34,0.18);  color: #d2c822;       border-color: #d2c822; }
+.cal-sport-esports { background: rgba(163,113,247,0.15); color: #a371f7;       border-color: #a371f7; }
+
+.cal-trust-informed    { color: var(--ok);     border-color: var(--ok);     background: rgba(63,185,80,0.12); }
+.cal-trust-sniper      { color: var(--accent); border-color: var(--accent); background: rgba(47,129,247,0.12); }
+.cal-trust-accumulator { color: #a371f7;       border-color: #a371f7;       background: rgba(163,113,247,0.12); }
+.cal-trust-copycat     { color: var(--warn);   border-color: var(--warn);   background: rgba(210,153,34,0.12); }
+.cal-trust-noise       { color: var(--text-muted); }
+
+/* Confidence bar */
+.cal-confidence-bar {
+  display: inline-block;
+  width: 80px;
+  height: 6px;
+  background: var(--bg);
+  border-radius: 3px;
+  overflow: hidden;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+.cal-confidence-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--bad), var(--warn), var(--ok));
+}
+.cal-status {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+}
+.cal-status-stable    { color: var(--ok);   background: rgba(63,185,80,0.15);  border-color: var(--ok); }
+.cal-status-exploring { color: var(--warn); background: rgba(210,153,34,0.15); border-color: var(--warn); }
+.cal-status-uncertain { color: var(--text-muted); }
+
+/* Distribution bars (Exit closure) */
+.cal-distrib-bar { width: 80px; height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+.cal-distrib-fill { height: 100%; background: var(--accent); }
+
+/* Knob direction badges */
+.cal-knob-dir {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+.cal-dir-widen   { color: var(--accent); border: 1px solid var(--accent); }
+.cal-dir-narrow  { color: var(--warn);   border: 1px solid var(--warn); }
+.cal-dir-relax   { color: var(--ok);     border: 1px solid var(--ok); }
+.cal-dir-tighten { color: var(--warn);   border: 1px solid var(--warn); }
+
+/* Filter chips */
+.cal-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.cal-chip {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-muted);
+  font-size: 11px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+.cal-chip.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+
+/* Performance bar (whales/sport) */
+.cal-perf-bar { width: 80px; height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+.cal-perf-fill { height: 100%; }
+.cal-perf-pos { background: linear-gradient(90deg, rgba(63,185,80,0.4), var(--ok)); }
+.cal-perf-neg { background: linear-gradient(90deg, rgba(248,81,73,0.4), var(--bad)); }
+
+/* Heatmap */
+.cal-heat-toggles { display: flex; gap: 6px; margin-bottom: 8px; }
+.cal-heatmap th, .cal-heatmap td {
+  text-align: center;
+  font-size: 10px;
+  padding: 4px 4px;
+  min-width: 36px;
+}
+.cal-heat-cell { font-variant-numeric: tabular-nums; }
+.cal-heat-empty   { color: var(--text-muted); opacity: 0.4; }
+.cal-heat-zero    { background: rgba(255,255,255,0.02); }
+.cal-heat-pos-1   { background: rgba(63,185,80,0.15);  color: var(--ok); }
+.cal-heat-pos-2   { background: rgba(63,185,80,0.30);  color: var(--ok); }
+.cal-heat-pos-3   { background: rgba(63,185,80,0.55);  color: #fff; font-weight: 600; }
+.cal-heat-neg-1   { background: rgba(248,81,73,0.15);  color: var(--bad); }
+.cal-heat-neg-2   { background: rgba(248,81,73,0.30);  color: var(--bad); }
+.cal-heat-neg-3   { background: rgba(248,81,73,0.55);  color: #fff; font-weight: 600; }
+
+/* Trace event badges */
+.cal-evt-badge {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+}
+.cal-evt-gray   { color: var(--text-muted); }
+.cal-evt-green  { color: var(--ok);     background: rgba(63,185,80,0.15);  border-color: var(--ok); }
+.cal-evt-red    { color: var(--bad);    background: rgba(248,81,73,0.15);  border-color: var(--bad); }
+.cal-evt-blue   { color: var(--accent); background: rgba(47,129,247,0.15); border-color: var(--accent); }
+.cal-evt-purple { color: #a371f7;       background: rgba(163,113,247,0.15); border-color: #a371f7; }
+.cal-evt-new    { font-size: 9px; opacity: 0.7; }
+.cal-trace-payload {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px;
+  font-size: 11px;
+  white-space: pre-wrap;
+  max-height: 240px;
+  overflow: auto;
+}
+
+/* Settings */
+.cal-settings-section { padding: 14px; }
+.cal-settings-row {
+  display: grid;
+  grid-template-columns: 1fr 100px;
+  gap: 8px 12px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.cal-settings-row:last-child { border-bottom: none; }
+.cal-settings-title { font-size: 12px; font-weight: 600; }
+.cal-settings-key { font-size: 10px; }
+.cal-settings-default { grid-column: 1 / -1; font-size: 10px; }
+.cal-input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  color: var(--text);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.cal-settings-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin: 12px 0;
+}
