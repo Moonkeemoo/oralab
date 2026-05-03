@@ -70,6 +70,24 @@ function currentMode(): "DRY" | "LIVE" {
   return (process.env["DRY_RUN"] ?? "true").toLowerCase() === "true" ? "DRY" : "LIVE";
 }
 
+/**
+ * Resolve the mode filter for an aggregate endpoint based on `?mode=` query.
+ *   - `?mode=LIVE` → only LIVE rows
+ *   - `?mode=DRY`  → only DRY rows
+ *   - `?mode=all`  → no filter (combined view)
+ *   - missing     → fall back to env-driven currentMode()
+ *
+ * Returning `null` signals "no filter" to the caller.
+ */
+function modeFromQuery(req: http.IncomingMessage): "DRY" | "LIVE" | null {
+  const url = new URL(req.url ?? "/", "http://x");
+  const m = (url.searchParams.get("mode") ?? "").toUpperCase();
+  if (m === "LIVE") return "LIVE";
+  if (m === "DRY") return "DRY";
+  if (m === "ALL") return null;
+  return currentMode();
+}
+
 interface InitDataValidation {
   ok: boolean;
   userId?: number;
@@ -123,35 +141,45 @@ function authenticate(req: http.IncomingMessage): InitDataValidation {
   return validateInitData(initData, token);
 }
 
-async function handleStatus(): Promise<unknown> {
+async function handleStatus(_req: http.IncomingMessage): Promise<unknown> {
   const db = getDb();
   const mode = currentMode();
+  // Status is mode-agnostic — surface counts for BOTH modes so the UI can
+  // show the LIVE-archive badge even when env mode is DRY.
   const active = await db.query.positions.findMany({
-    where: and(
-      eq(positions.mode, mode),
-      inArray(positions.status, [...ACTIVE_STATUSES]),
-    ),
-    columns: { id: true, status: true },
+    where: inArray(positions.status, [...ACTIVE_STATUSES]),
+    columns: { id: true, status: true, mode: true },
   });
+  const activeForEnvMode = active.filter((p) => p.mode === mode);
   const ks = await isRuntimeKillSwitchActive();
+  const activeByMode: Record<"DRY" | "LIVE", number> = { DRY: 0, LIVE: 0 };
+  for (const p of active) {
+    if (p.mode === "DRY" || p.mode === "LIVE") activeByMode[p.mode] += 1;
+  }
   return {
     mode,
     killSwitch: ks,
-    activePositions: active.length,
-    byStatus: active.reduce<Record<string, number>>((acc, p) => {
+    // Backwards compat — legacy callers expect activePositions for currentMode().
+    activePositions: activeForEnvMode.length,
+    active: activeByMode,
+    byStatus: activeForEnvMode.reduce<Record<string, number>>((acc, p) => {
       acc[p.status] = (acc[p.status] ?? 0) + 1;
       return acc;
     }, {}),
   };
 }
 
-async function handlePositions(): Promise<unknown> {
+async function handlePositions(req: http.IncomingMessage): Promise<unknown> {
   const db = getDb();
+  const mode = modeFromQuery(req);
   const rows = await db.query.positions.findMany({
-    where: and(
-      eq(positions.mode, currentMode()),
-      inArray(positions.status, [...ACTIVE_STATUSES]),
-    ),
+    where:
+      mode == null
+        ? inArray(positions.status, [...ACTIVE_STATUSES])
+        : and(
+            eq(positions.mode, mode),
+            inArray(positions.status, [...ACTIVE_STATUSES]),
+          ),
     orderBy: desc(positions.id),
     limit: 50,
   });
@@ -297,13 +325,16 @@ async function handlePnl(req: http.IncomingMessage): Promise<unknown> {
   const windowHours = Math.max(1, Math.min(24 * 30, Number(url.searchParams.get("windowHours") ?? 24)));
   const nowMs = Date.now();
   const sinceMs = nowMs - windowHours * 60 * 60 * 1000;
-  const mode = currentMode();
+  const mode = modeFromQuery(req);
   const db = getDb();
 
   // For TODAY/WEEK/ALL summaries we need the full closed corpus, not just the
   // window slice. Pull all CLOSED positions for current mode in one shot.
   const allClosed = await db.query.positions.findMany({
-    where: and(eq(positions.mode, mode), eq(positions.status, "CLOSED")),
+    where:
+      mode == null
+        ? eq(positions.status, "CLOSED")
+        : and(eq(positions.mode, mode), eq(positions.status, "CLOSED")),
   });
 
   // Per-position PnL is sum(SELL fills) − entryCostUsd. Aggregate fills in one
@@ -544,13 +575,17 @@ async function handleHistory(req: http.IncomingMessage): Promise<unknown> {
   const url = new URL(req.url ?? "/", "http://x");
   const windowHours = Math.max(1, Math.min(24 * 30, Number(url.searchParams.get("windowHours") ?? 24)));
   const sinceMs = Date.now() - windowHours * 60 * 60 * 1000;
+  const mode = modeFromQuery(req);
   const db = getDb();
   const rows = await db.query.positions.findMany({
-    where: and(
-      eq(positions.mode, currentMode()),
-      eq(positions.status, "CLOSED"),
-      gte(positions.lastStateChangeTs, sinceMs),
-    ),
+    where:
+      mode == null
+        ? and(eq(positions.status, "CLOSED"), gte(positions.lastStateChangeTs, sinceMs))
+        : and(
+            eq(positions.mode, mode),
+            eq(positions.status, "CLOSED"),
+            gte(positions.lastStateChangeTs, sinceMs),
+          ),
     orderBy: desc(positions.id),
     limit: 200,
   });
@@ -788,7 +823,7 @@ async function handleKpi(req: http.IncomingMessage): Promise<unknown> {
   const url = new URL(req.url ?? "/", "http://x");
   const windowHours = Math.max(1, Math.min(24 * 30, Number(url.searchParams.get("windowHours") ?? 24)));
   const sinceMs = Date.now() - windowHours * 60 * 60 * 1000;
-  const mode = currentMode();
+  const mode = modeFromQuery(req);
   const db = getDb();
   const sigRows = await db.query.signals.findMany({
     where: gte(signals.processedAt, new Date(sinceMs)),
@@ -813,11 +848,14 @@ async function handleKpi(req: http.IncomingMessage): Promise<unknown> {
   }
 
   const closed = await db.query.positions.findMany({
-    where: and(
-      eq(positions.mode, mode),
-      eq(positions.status, "CLOSED"),
-      gte(positions.lastStateChangeTs, sinceMs),
-    ),
+    where:
+      mode == null
+        ? and(eq(positions.status, "CLOSED"), gte(positions.lastStateChangeTs, sinceMs))
+        : and(
+            eq(positions.mode, mode),
+            eq(positions.status, "CLOSED"),
+            gte(positions.lastStateChangeTs, sinceMs),
+          ),
   });
   let wins = 0;
   let totalEntry = 0;
@@ -879,17 +917,22 @@ async function handleKpi(req: http.IncomingMessage): Promise<unknown> {
 
   // Exposure: how much of total budget is locked up in OPEN positions right now.
   const active = await db.query.positions.findMany({
-    where: and(
-      eq(positions.mode, mode),
-      inArray(positions.status, [...ACTIVE_STATUSES]),
-    ),
+    where:
+      mode == null
+        ? inArray(positions.status, [...ACTIVE_STATUSES])
+        : and(
+            eq(positions.mode, mode),
+            inArray(positions.status, [...ACTIVE_STATUSES]),
+          ),
     columns: { entryCostUsd: true },
   });
   const exposureUsd = active.reduce((s, p) => s + Number(p.entryCostUsd ?? 0), 0);
   const openPositionCount = active.length;
 
   let totalBudgetUsd = 0;
-  if (mode === "DRY") {
+  // Strategy budgets approximate the DRY ceiling. When mode is "all" we still
+  // use the strategy budget pool (LIVE has its own balance call).
+  if (mode === "DRY" || mode == null) {
     const strats = await db.query.strategies.findMany({ columns: { params: true, enabled: true } });
     totalBudgetUsd = strats
       .filter((s) => s.enabled)
@@ -951,15 +994,36 @@ async function handleKpi(req: http.IncomingMessage): Promise<unknown> {
   };
 }
 
-async function handleBalance(): Promise<unknown> {
-  const mode = currentMode();
+async function handleBalance(req: http.IncomingMessage): Promise<unknown> {
+  const queriedMode = modeFromQuery(req);
   const db = getDb();
+  // For "all" view, prefer LIVE balance source if any LIVE positions exist,
+  // else DRY simulated. Aggregates (allocatedUsd / phantoms / untracked) are
+  // computed across BOTH modes when queriedMode is null.
+  let effectiveMode: "DRY" | "LIVE";
+  if (queriedMode != null) {
+    effectiveMode = queriedMode;
+  } else {
+    const anyLive = await db.query.positions.findFirst({
+      where: and(
+        eq(positions.mode, "LIVE"),
+        inArray(positions.status, [...ACTIVE_STATUSES]),
+      ),
+      columns: { id: true },
+    });
+    effectiveMode = anyLive ? "LIVE" : "DRY";
+  }
+  const mode = effectiveMode;
+
   // Sum active position entry costs
   const active = await db.query.positions.findMany({
-    where: and(
-      eq(positions.mode, mode),
-      inArray(positions.status, [...ACTIVE_STATUSES]),
-    ),
+    where:
+      queriedMode == null
+        ? inArray(positions.status, [...ACTIVE_STATUSES])
+        : and(
+            eq(positions.mode, queriedMode),
+            inArray(positions.status, [...ACTIVE_STATUSES]),
+          ),
     columns: { entryCostUsd: true },
   });
   const allocatedUsd = active.reduce((s, p) => s + Number(p.entryCostUsd ?? 0), 0);
@@ -968,18 +1032,23 @@ async function handleBalance(): Promise<unknown> {
   // be 0 in DRY since the simulator IS source of truth. UI surfaces a count
   // pill so operators can spot freezes without scanning logs.
   const phantoms = await db.query.positions.findMany({
-    where: and(eq(positions.mode, mode), eq(positions.status, "FROZEN")),
+    where:
+      queriedMode == null
+        ? eq(positions.status, "FROZEN")
+        : and(eq(positions.mode, queriedMode), eq(positions.status, "FROZEN")),
     columns: { id: true },
   });
   const phantomCount = phantoms.length;
 
   // Untracked = positions whose strategyId is no longer enabled. Cheap proxy
   // for "we hold this but the strategy that opened it is off".
+  const modeFilterSql =
+    queriedMode == null ? sql`TRUE` : sql`p.mode = ${queriedMode}`;
   const untrackedRows = (await db.execute(sql`
     SELECT COUNT(*)::int AS n
     FROM positions p
     LEFT JOIN strategies s ON s.id = p.strategy_id
-    WHERE p.mode = ${mode}
+    WHERE ${modeFilterSql}
       AND p.status IN ('PENDING','FILLED','OPEN','EXITING','RESOLVED','FROZEN')
       AND (s.id IS NULL OR s.enabled = false)
   `)) as unknown as { n: number }[];
@@ -1334,7 +1403,7 @@ async function handleCalibratorTrace(req: http.IncomingMessage): Promise<unknown
 async function handleCalibratorSport(req: http.IncomingMessage): Promise<unknown> {
   const url = new URL(req.url ?? "/", "http://x");
   const windowHours = Number(url.searchParams.get("windowHours") ?? 24);
-  const mode = currentMode();
+  const mode = modeFromQuery(req);
   const sinceMs = Date.now() - windowHours * 60 * 60 * 1000;
   const db = getDb();
   type Row = {
@@ -1362,7 +1431,8 @@ async function handleCalibratorSport(req: http.IncomingMessage): Promise<unknown
       avg((last_state_change_ts - fill_ts) / 1000)::int AS avg_dur_sec,
       avg(entry_cost_usd)::numeric(10,2) AS avg_stake_usd
     FROM positions
-    WHERE status = 'CLOSED' AND mode = ${mode}
+    WHERE status = 'CLOSED'
+      AND ${mode == null ? sql`TRUE` : sql`mode = ${mode}`}
       AND last_state_change_ts >= ${sinceMs}
       AND sport IS NOT NULL
     GROUP BY sport
@@ -1390,7 +1460,7 @@ async function handleCalibratorSportHeatmap(req: http.IncomingMessage): Promise<
   const url = new URL(req.url ?? "/", "http://x");
   const days = Math.max(1, Number(url.searchParams.get("days") ?? 7));
   const metric = url.searchParams.get("metric") ?? "pnl";
-  const mode = currentMode();
+  const mode = modeFromQuery(req);
   const sinceMs = Date.now() - days * 86_400_000;
   const db = getDb();
   type Row = {
@@ -1408,7 +1478,8 @@ async function handleCalibratorSportHeatmap(req: http.IncomingMessage): Promise<
       sum(realized_pnl_usd)::numeric(10,2) AS pnl_usd,
       (count(*) FILTER (WHERE realized_pnl_usd > 0)::float / GREATEST(count(*),1))::numeric(4,2) AS win_rate
     FROM positions
-    WHERE status='CLOSED' AND mode = ${mode}
+    WHERE status='CLOSED'
+      AND ${mode == null ? sql`TRUE` : sql`mode = ${mode}`}
       AND last_state_change_ts >= ${sinceMs}
       AND sport IS NOT NULL
       AND fill_ts IS NOT NULL
@@ -2003,9 +2074,11 @@ export function createRestServer(): http.Server {
 
     try {
       if (req.method === "GET") {
-        if (req.url === "/api/status") return send(res, 200, await handleStatus());
-        if (req.url === "/api/balance") return send(res, 200, await handleBalance());
-        if (req.url === "/api/positions") return send(res, 200, await handlePositions());
+        if (req.url?.startsWith("/api/status")) return send(res, 200, await handleStatus(req));
+        if (req.url?.startsWith("/api/balance")) return send(res, 200, await handleBalance(req));
+        if (req.url?.startsWith("/api/positions") && !/\/api\/positions\/\d+/.test(req.url)) {
+          return send(res, 200, await handlePositions(req));
+        }
         if (req.url?.startsWith("/api/pnl")) return send(res, 200, await handlePnl(req));
         const posIdMatch = req.url?.match(/^\/api\/positions\/(\d+)(?:\/(timeline))?$/);
         if (posIdMatch && posIdMatch[1]) {
