@@ -1167,17 +1167,23 @@ async function handleCalibratorRunPost(userId: number): Promise<unknown> {
     userId,
     action: "calibrator_manual_run",
     target: r.cycleId,
-    payload: { recCount: r.recommendations.length, acceptedCount: r.acceptedCount },
+    payload: {
+      recCount: r.recommendations.length,
+      mode: r.mode,
+      appliedCount: r.appliedCount,
+    },
   });
   return {
     cycleId: r.cycleId,
+    mode: r.mode,
     recCount: r.recommendations.length,
-    acceptedCount: r.acceptedCount,
-    avgPnlPerTradeUsd: r.avgPnlPerTradeUsd,
+    appliedCount: r.appliedCount,
+    conditionsMet: r.conditionsMet,
     summary: r.recommendations.slice(0, 5).map((rec) => ({
       filterName: rec.filterName,
       direction: rec.direction,
       liftEstimateUsd: rec.liftEstimateUsd,
+      sport: rec.sport,
     })),
   };
 }

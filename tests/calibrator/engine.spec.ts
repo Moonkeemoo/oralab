@@ -1,141 +1,120 @@
 import { describe, expect, it } from "vitest";
 import {
-  classifyConfidence,
-  computeRecommendation,
-  extractTunable,
-  sortByScore,
+  checklistConditions,
+  classifyConfidenceTier,
+  countTradesBySport,
 } from "../../src/calibrator/engine.js";
+import { DEFAULTS } from "../../src/calibrator/settings.js";
 
+/**
+ * Pure-helper coverage for the refactored engine. The full runCycle path
+ * (counterfactual → bayesian → multi_kpi → rank → persist → apply) is
+ * integration-tested via Phase D curl smoke against the live DB; doing it
+ * cleanly in vitest would require a much heavier fixture harness than the
+ * Phase A pure tests already supply.
+ *
+ * Replaces the v1 MVP engine.spec.ts (computeRecommendation/extractTunable/
+ * sortByScore) — those helpers were folded into the multi_kpi.ts ranker.
+ */
 describe("calibrator/engine — pure helpers", () => {
-  describe("extractTunable", () => {
-    it("picks `min` when present", () => {
-      expect(extractTunable({ min: 0.5, max: 0.9 })).toEqual({ paramKey: "min", value: 0.5 });
+  describe("classifyConfidenceTier", () => {
+    it("returns stable above BAYES_STABLE_THRESHOLD", () => {
+      expect(classifyConfidenceTier(DEFAULTS.BAYES_STABLE_THRESHOLD)).toBe("stable");
+      expect(classifyConfidenceTier(0.95)).toBe("stable");
     });
+    it("returns exploring above BAYES_UNCERTAIN_THRESHOLD but below stable", () => {
+      expect(classifyConfidenceTier(0.5)).toBe("exploring");
+      expect(classifyConfidenceTier(0.69)).toBe("exploring");
+    });
+    it("returns low_data below BAYES_UNCERTAIN_THRESHOLD", () => {
+      expect(classifyConfidenceTier(0.1)).toBe("low_data");
+      expect(classifyConfidenceTier(0)).toBe("low_data");
+    });
+  });
 
-    it("falls back to thresholdProbe when min absent", () => {
-      expect(extractTunable({ thresholdProbe: 0.7 })).toEqual({
-        paramKey: "thresholdProbe",
-        value: 0.7,
+  describe("countTradesBySport", () => {
+    it("counts per sport and bucket null separately", () => {
+      const m = countTradesBySport([
+        { sport: "NHL" },
+        { sport: "NHL" },
+        { sport: "NBA" },
+        { sport: null },
+      ]);
+      expect(m.get("NHL")).toBe(2);
+      expect(m.get("NBA")).toBe(1);
+      expect(m.get(null)).toBe(1);
+    });
+    it("returns empty map for empty input", () => {
+      expect(countTradesBySport([]).size).toBe(0);
+    });
+  });
+
+  describe("checklistConditions", () => {
+    const baseSettings = { ...DEFAULTS };
+    it("manual mode never passes", () => {
+      const r = checklistConditions({
+        mode: "manual",
+        closedTrades: 100,
+        topScore: 1,
+        daemonAlive: true,
+        settings: baseSettings,
       });
+      expect(r.ok).toBe(false);
+      expect(r.reasons).toContain("mode=manual");
     });
-
-    it("returns 0 when no numeric tunable found", () => {
-      expect(extractTunable({ enabled: true })).toEqual({ paramKey: "min", value: 0 });
+    it("watch mode with sufficient data passes", () => {
+      const r = checklistConditions({
+        mode: "watch",
+        closedTrades: baseSettings.CAL_MIN_TRADES + 10,
+        topScore: baseSettings.MIN_LIFT_THRESHOLD + 0.01,
+        daemonAlive: true,
+        settings: baseSettings,
+      });
+      expect(r.ok).toBe(true);
+      expect(r.reasons).toEqual([]);
     });
-
-    it("ignores non-finite values", () => {
-      expect(extractTunable({ min: Number.NaN, max: 5 })).toEqual({ paramKey: "max", value: 5 });
+    it("trades < CAL_MIN_TRADES fails with reason", () => {
+      const r = checklistConditions({
+        mode: "watch",
+        closedTrades: 1,
+        topScore: 1,
+        daemonAlive: true,
+        settings: baseSettings,
+      });
+      expect(r.ok).toBe(false);
+      expect(r.reasons.some((x) => x.startsWith("trades<"))).toBe(true);
     });
-  });
-
-  describe("classifyConfidence", () => {
-    it("returns stable above 50 samples", () => {
-      expect(classifyConfidence(51)).toBe("stable");
-      expect(classifyConfidence(1000)).toBe("stable");
+    it("topScore < MIN_LIFT_THRESHOLD fails with reason", () => {
+      const r = checklistConditions({
+        mode: "watch",
+        closedTrades: 100,
+        topScore: 0.001,
+        daemonAlive: true,
+        settings: baseSettings,
+      });
+      expect(r.ok).toBe(false);
+      expect(r.reasons.some((x) => x.startsWith("top_score<"))).toBe(true);
     });
-    it("returns exploring 11-50", () => {
-      expect(classifyConfidence(11)).toBe("exploring");
-      expect(classifyConfidence(50)).toBe("exploring");
+    it("daemon dead fails with reason", () => {
+      const r = checklistConditions({
+        mode: "watch",
+        closedTrades: 100,
+        topScore: 1,
+        daemonAlive: false,
+        settings: baseSettings,
+      });
+      expect(r.ok).toBe(false);
+      expect(r.reasons).toContain("daemon_dead");
     });
-    it("returns low_data <=10", () => {
-      expect(classifyConfidence(0)).toBe("low_data");
-      expect(classifyConfidence(10)).toBe("low_data");
-    });
-  });
-
-  describe("computeRecommendation", () => {
-    const params = { min: 1.0 };
-
-    it("returns null when no signal at all", () => {
-      const r = computeRecommendation("trust_gate", params, new Map(), 0, 0);
-      expect(r).toBeNull();
-    });
-
-    it("recommends RELAX with positive avg pnl + many rejects", () => {
-      const rejects = new Map([["trust_gate", 200]]);
-      const r = computeRecommendation("trust_gate", params, rejects, 1.5, 20);
-      expect(r).not.toBeNull();
-      expect(r?.direction).toBe("relax");
-      expect(r?.recommendedValue).toBeCloseTo(0.9, 5);
-      // 1.5 * (200 * 0.1) = 30
-      expect(r?.liftEstimateUsd).toBeCloseTo(30, 5);
-      expect(r?.confidence).toBe("exploring");
-      expect(r?.paramKey).toBe("min");
-      expect(r?.currentValue).toBe(1.0);
-    });
-
-    it("recommends TIGHTEN with negative avg pnl + accepts > 5", () => {
-      const rejects = new Map<string, number>();
-      const r = computeRecommendation("sm_score", params, rejects, -2, 10);
-      expect(r).not.toBeNull();
-      expect(r?.direction).toBe("tighten");
-      expect(r?.recommendedValue).toBeCloseTo(1.15, 5);
-      // |-2| * (10 * 0.2) = 4
-      expect(r?.liftEstimateUsd).toBeCloseTo(4, 5);
-    });
-
-    it("returns HOLD when avgPnl positive but rejects below threshold", () => {
-      const rejects = new Map([["trust_gate", 50]]);
-      const r = computeRecommendation("trust_gate", params, rejects, 1.5, 10);
-      expect(r?.direction).toBe("hold");
-      expect(r?.liftEstimateUsd).toBe(0);
-      expect(r?.recommendedValue).toBe(1.0); // unchanged
-    });
-
-    it("returns HOLD when avgPnl zero", () => {
-      const rejects = new Map([["trust_gate", 200]]);
-      const r = computeRecommendation("trust_gate", params, rejects, 0, 10);
-      expect(r?.direction).toBe("hold");
-    });
-
-    it("returns HOLD when avgPnl negative but too few accepts", () => {
-      const r = computeRecommendation("sm_score", params, new Map(), -2, 3);
-      // No rejects, no accepts? acceptedCount=3 > 0 so we proceed, but
-      // 3 < TIGHTEN_MIN_ACCEPTS=5 → hold.
-      // However the null short-circuit fires only when both myRejects==0 AND
-      // acceptedCount==0. With acceptedCount=3 and rejects=0, we fall through
-      // to HOLD branch.
-      expect(r?.direction).toBe("hold");
-    });
-
-    it("confidence reflects sample size", () => {
-      const rejects = new Map([["trust_gate", 200]]);
-      const stable = computeRecommendation("trust_gate", params, rejects, 1.5, 100);
-      expect(stable?.confidence).toBe("stable");
-      const lowData = computeRecommendation("trust_gate", params, rejects, 1.5, 5);
-      expect(lowData?.confidence).toBe("low_data");
-    });
-  });
-
-  describe("sortByScore", () => {
-    it("sorts by liftEstimateUsd descending", () => {
-      const recs = [
-        { liftEstimateUsd: 5, filterName: "a" },
-        { liftEstimateUsd: 20, filterName: "b" },
-        { liftEstimateUsd: 10, filterName: "c" },
-      ];
-      const sorted = sortByScore(recs);
-      expect(sorted.map((r) => r.filterName)).toEqual(["b", "c", "a"]);
-    });
-
-    it("breaks ties by filterName ascending", () => {
-      const recs = [
-        { liftEstimateUsd: 5, filterName: "zebra" },
-        { liftEstimateUsd: 5, filterName: "apple" },
-        { liftEstimateUsd: 5, filterName: "mango" },
-      ];
-      const sorted = sortByScore(recs);
-      expect(sorted.map((r) => r.filterName)).toEqual(["apple", "mango", "zebra"]);
-    });
-
-    it("does not mutate input", () => {
-      const recs = [
-        { liftEstimateUsd: 1, filterName: "a" },
-        { liftEstimateUsd: 99, filterName: "b" },
-      ];
-      const before = recs.slice();
-      sortByScore(recs);
-      expect(recs).toEqual(before);
+    it("auto mode passes when all 4 conditions met", () => {
+      const r = checklistConditions({
+        mode: "auto",
+        closedTrades: 50,
+        topScore: 0.5,
+        daemonAlive: true,
+        settings: baseSettings,
+      });
+      expect(r.ok).toBe(true);
     });
   });
 });

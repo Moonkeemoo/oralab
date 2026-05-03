@@ -561,6 +561,13 @@ export const calibratorRecommendations = pgTable(
     // pre-multi-KPI rows to keep the migration backward-compatible.
     liftMatrix: jsonb("lift_matrix"),
     aims: jsonb("aims"),
+    // Phase B+C extensions: per-sport recs carry sport=NHL etc.; aims now
+    // a typed array of KPI names; lift_matrix carries the full per-KPI
+    // breakdown the engine produced; applied/rolled_back stamp the apply
+    // path so the UI can show status pills + Лог tab can join cleanly.
+    sport: varchar("sport", { length: 32 }),
+    appliedAt: timestamp("applied_at", { withTimezone: true }),
+    rolledBackAt: timestamp("rolled_back_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

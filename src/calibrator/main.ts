@@ -23,9 +23,10 @@ async function tick(): Promise<void> {
     logger.info(
       {
         cycleId: r.cycleId,
+        mode: r.mode,
         recCount: r.recommendations.length,
-        acceptedCount: r.acceptedCount,
-        avgPnlPerTradeUsd: r.avgPnlPerTradeUsd,
+        appliedCount: r.appliedCount,
+        conditionsMet: r.conditionsMet,
       },
       "calibrator cycle done",
     );
@@ -44,9 +45,10 @@ async function main(): Promise<void> {
       logger.info(
         {
           cycleId: r.cycleId,
+          mode: r.mode,
           recCount: r.recommendations.length,
-          acceptedCount: r.acceptedCount,
-          avgPnlPerTradeUsd: r.avgPnlPerTradeUsd,
+          appliedCount: r.appliedCount,
+          conditionsMet: r.conditionsMet,
         },
         "one-shot complete",
       );
