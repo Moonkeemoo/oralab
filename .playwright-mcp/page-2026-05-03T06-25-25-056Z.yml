@@ -1,0 +1,27 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e460]: DRY
+    - generic [ref=e461]: 🟩 KILL OFF
+    - generic [ref=e462]: $-233.77 24h
+    - generic [ref=e463]: 5 active
+    - generic [ref=e464]: $25.64 free
+    - 'generic "connections: ok" [ref=e465]'
+    - generic [ref=e466]: WR 4% · PF 0.0 · DD -$239.17
+  - main [ref=e3]:
+    - generic [ref=e469]: loading…
+    - navigation [ref=e470]:
+      - button "Огляд" [ref=e471] [cursor=pointer]
+      - button "Entry" [ref=e472] [cursor=pointer]
+      - button "Exit" [ref=e473] [cursor=pointer]
+      - button "Whales" [ref=e474] [cursor=pointer]
+      - button "Спорт" [ref=e475] [cursor=pointer]
+      - button "Лог" [ref=e476] [cursor=pointer]
+      - button "Налаштування" [ref=e477] [cursor=pointer]
+    - generic [ref=e479]: loading Огляд…
+  - navigation [ref=e26]:
+    - button "📊 Live" [ref=e27] [cursor=pointer]
+    - button "📜 History" [ref=e28] [cursor=pointer]
+    - button "⚙ Strategy" [ref=e29] [cursor=pointer]
+    - button "🐋 Whales" [ref=e30] [cursor=pointer]
+    - button "⚙ Calib" [ref=e31] [cursor=pointer]
+    - button "☰ More" [ref=e32] [cursor=pointer]

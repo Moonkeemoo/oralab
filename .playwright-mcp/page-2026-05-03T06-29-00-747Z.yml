@@ -1,0 +1,10 @@
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - generic [ref=e4]: loading…
+  - navigation [ref=e5]:
+    - button "📊 Live" [ref=e6] [cursor=pointer]
+    - button "📜 History" [ref=e7] [cursor=pointer]
+    - button "⚙ Strategy" [ref=e8] [cursor=pointer]
+    - button "🐋 Whales" [ref=e9] [cursor=pointer]
+    - button "⚙ Calib" [ref=e10] [cursor=pointer]
+    - button "☰ More" [ref=e11] [cursor=pointer]

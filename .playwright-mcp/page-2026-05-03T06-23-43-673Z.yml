@@ -1,0 +1,26 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]: "cockpit error: unauthorized"
+  - main [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e7]: "balance: unauthorized"
+      - generic [ref=e9]: "pnl: unauthorized"
+      - generic [ref=e11]: "entry: unauthorized"
+      - generic [ref=e13]: "exit: unauthorized"
+      - generic [ref=e15]: "perf: unauthorized"
+      - generic [ref=e17]: "tech: unauthorized"
+    - generic [ref=e18]:
+      - generic [ref=e19]: Active positions
+      - generic [ref=e21]: "positions: unauthorized"
+    - button "Closed positions ▸" [ref=e23] [cursor=pointer]:
+      - text: Closed positions
+      - generic [ref=e24]: ▸
+    - generic [ref=e25]:
+      - button "Pause" [ref=e26] [cursor=pointer]
+      - button "Resume" [ref=e27] [cursor=pointer]
+  - navigation [ref=e28]:
+    - button "📊 Live" [ref=e29] [cursor=pointer]
+    - button "📜 History" [ref=e30] [cursor=pointer]
+    - button "⚙ Strategy" [ref=e31] [cursor=pointer]
+    - button "🐋 Whales" [ref=e32] [cursor=pointer]
+    - button "⚙ Calib" [ref=e33] [cursor=pointer]
+    - button "☰ More" [ref=e34] [cursor=pointer]

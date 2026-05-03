@@ -1,0 +1,42 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e494]: DRY
+    - generic [ref=e495]: 🟩 KILL OFF
+    - generic [ref=e496]: $-233.77 24h
+    - generic [ref=e497]: 5 active
+    - generic [ref=e498]: $25.64 free
+    - 'generic "connections: ok" [ref=e499]'
+    - generic [ref=e500]: WR 4% · PF 0.0 · DD -$239.17
+  - main [ref=e3]:
+    - generic [ref=e5]:
+      - generic [ref=e501]:
+        - button "manual" [ref=e502] [cursor=pointer]
+        - button "watch" [ref=e503] [cursor=pointer]
+        - button "auto" [ref=e504] [cursor=pointer]
+      - button "Запустити ⟳" [ref=e505] [cursor=pointer]
+      - generic [ref=e506]: "Цикл: 37m ago · наст. 23м · 13 recs"
+    - navigation [ref=e7]:
+      - button "Огляд" [ref=e8] [cursor=pointer]
+      - button "Entry" [ref=e9] [cursor=pointer]
+      - button "Exit" [ref=e10] [cursor=pointer]
+      - button "Whales" [active] [ref=e11] [cursor=pointer]
+      - button "Спорт" [ref=e12] [cursor=pointer]
+      - button "Лог" [ref=e13] [cursor=pointer]
+      - button "Налаштування" [ref=e14] [cursor=pointer]
+    - generic [ref=e507]:
+      - generic [ref=e508]: WHALES — PnL по класам довіри
+      - generic [ref=e509]:
+        - button "all 0" [ref=e510] [cursor=pointer]
+        - button "informed 0" [ref=e511] [cursor=pointer]
+        - button "sniper 0" [ref=e512] [cursor=pointer]
+        - button "accumulator 0" [ref=e513] [cursor=pointer]
+        - button "copycat 0" [ref=e514] [cursor=pointer]
+        - button "noise 0" [ref=e515] [cursor=pointer]
+      - generic [ref=e516]: no whale-tagged positions in window.
+  - navigation [ref=e17]:
+    - button "📊 Live" [ref=e18] [cursor=pointer]
+    - button "📜 History" [ref=e19] [cursor=pointer]
+    - button "⚙ Strategy" [ref=e20] [cursor=pointer]
+    - button "🐋 Whales" [ref=e21] [cursor=pointer]
+    - button "⚙ Calib" [ref=e22] [cursor=pointer]
+    - button "☰ More" [ref=e23] [cursor=pointer]

@@ -1,0 +1,18 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e1033]: DRY
+    - generic [ref=e1034]: 🟩 KILL OFF
+    - generic [ref=e1035]: $-233.77 24h
+    - generic [ref=e1036]: 5 active
+    - generic [ref=e1037]: $25.64 free
+    - 'generic "connections: ok" [ref=e1038]'
+    - generic [ref=e1039]: WR 4% · PF 0.0 · DD -$239.17
+  - main [ref=e3]:
+    - generic [ref=e1040]: loading…
+  - navigation [ref=e5]:
+    - button "📊 Live" [ref=e6] [cursor=pointer]
+    - button "📜 History" [ref=e7] [cursor=pointer]
+    - button "⚙ Strategy" [ref=e8] [cursor=pointer]
+    - button "🐋 Whales" [ref=e9] [cursor=pointer]
+    - button "⚙ Calib" [ref=e10] [cursor=pointer]
+    - button "☰ More" [ref=e11] [cursor=pointer]

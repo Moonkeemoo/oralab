@@ -1,0 +1,158 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e355]: DRY
+    - generic [ref=e356]: 🟩 KILL OFF
+    - generic [ref=e357]: $-233.77 24h
+    - generic [ref=e358]: 5 active
+    - generic [ref=e359]: $25.64 free
+    - 'generic "connections: ok" [ref=e360]'
+    - generic [ref=e361]: WR 4% · PF 0.0 · DD -$239.17
+  - main [ref=e3]:
+    - generic [ref=e5]:
+      - generic [ref=e362]:
+        - button "manual" [ref=e363] [cursor=pointer]
+        - button "watch" [ref=e364] [cursor=pointer]
+        - button "auto" [ref=e365] [cursor=pointer]
+      - button "Запустити ⟳" [ref=e366] [cursor=pointer]
+      - generic [ref=e367]: "Цикл: 37m ago · наст. 23м · 13 recs"
+    - navigation [ref=e7]:
+      - button "Огляд" [ref=e8] [cursor=pointer]
+      - button "Entry" [ref=e9] [cursor=pointer]
+      - button "Exit" [active] [ref=e10] [cursor=pointer]
+      - button "Whales" [ref=e11] [cursor=pointer]
+      - button "Спорт" [ref=e12] [cursor=pointer]
+      - button "Лог" [ref=e13] [cursor=pointer]
+      - button "Налаштування" [ref=e14] [cursor=pointer]
+    - generic [ref=e15]:
+      - generic [ref=e368]:
+        - generic [ref=e369]: LIFT MATRIX — EXIT
+        - generic [ref=e370]: no exit-side recommendations.
+      - generic [ref=e371]:
+        - generic [ref=e372]: РОЗПОДІЛ ВИХОДІВ (7d)
+        - generic [ref=e373]: no closed positions in window.
+      - generic [ref=e374]:
+        - generic [ref=e375]: АНАЛІЗ ПАРАМЕТРІВ
+        - generic [ref=e376]:
+          - generic [ref=e377]:
+            - generic [ref=e378]: TAKE PROFIT
+            - generic [ref=e379]:
+              - generic [ref=e380]: тригер
+              - generic [ref=e381]: "0"
+            - generic [ref=e382]:
+              - generic [ref=e383]: avg pnl
+              - generic [ref=e384]: +$0.00
+            - generic [ref=e385]:
+              - generic [ref=e386]: sum pnl
+              - generic [ref=e387]: +$0.00
+            - generic [ref=e388]:
+              - generic [ref=e389]: wins
+              - generic [ref=e390]: 0/0
+          - generic [ref=e391]:
+            - generic [ref=e392]: STOP LOSS
+            - generic [ref=e393]:
+              - generic [ref=e394]: тригер
+              - generic [ref=e395]: "0"
+            - generic [ref=e396]:
+              - generic [ref=e397]: avg pnl
+              - generic [ref=e398]: +$0.00
+            - generic [ref=e399]:
+              - generic [ref=e400]: sum pnl
+              - generic [ref=e401]: +$0.00
+            - generic [ref=e402]:
+              - generic [ref=e403]: wins
+              - generic [ref=e404]: 0/0
+          - generic [ref=e405]:
+            - generic [ref=e406]: TRAILING STOP
+            - generic [ref=e407]:
+              - generic [ref=e408]: тригер
+              - generic [ref=e409]: "0"
+            - generic [ref=e410]:
+              - generic [ref=e411]: avg pnl
+              - generic [ref=e412]: +$0.00
+            - generic [ref=e413]:
+              - generic [ref=e414]: sum pnl
+              - generic [ref=e415]: +$0.00
+            - generic [ref=e416]:
+              - generic [ref=e417]: wins
+              - generic [ref=e418]: 0/0
+          - generic [ref=e419]:
+            - generic [ref=e420]: TIME / DURATION
+            - generic [ref=e421]:
+              - generic [ref=e422]: тригер
+              - generic [ref=e423]: "0"
+            - generic [ref=e424]:
+              - generic [ref=e425]: avg pnl
+              - generic [ref=e426]: +$0.00
+            - generic [ref=e427]:
+              - generic [ref=e428]: sum pnl
+              - generic [ref=e429]: +$0.00
+            - generic [ref=e430]:
+              - generic [ref=e431]: wins
+              - generic [ref=e432]: 0/0
+      - generic [ref=e433]:
+        - generic [ref=e434]: ПОТОЧНІ ПАРАМЕТРИ
+        - table [ref=e436]:
+          - rowgroup [ref=e437]:
+            - row "Param Current Default" [ref=e438]:
+              - columnheader "Param" [ref=e439]
+              - columnheader "Current" [ref=e440]
+              - columnheader "Default" [ref=e441]
+              - columnheader [ref=e442]
+          - rowgroup [ref=e443]:
+            - row "takeProfit 0.2 0.2 ✓" [ref=e444]:
+              - cell "takeProfit" [ref=e445]
+              - cell "0.2" [ref=e446]
+              - cell "0.2" [ref=e447]
+              - cell "✓" [ref=e448]
+            - row "stopLoss -0.15 -0.15 ✓" [ref=e449]:
+              - cell "stopLoss" [ref=e450]
+              - cell "-0.15" [ref=e451]
+              - cell "-0.15" [ref=e452]
+              - cell "✓" [ref=e453]
+            - row "stopLossEmergency -0.17 -0.17 ✓" [ref=e454]:
+              - cell "stopLossEmergency" [ref=e455]
+              - cell "-0.17" [ref=e456]
+              - cell "-0.17" [ref=e457]
+              - cell "✓" [ref=e458]
+            - row "trailActivate 0.15 0.15 ✓" [ref=e459]:
+              - cell "trailActivate" [ref=e460]
+              - cell "0.15" [ref=e461]
+              - cell "0.15" [ref=e462]
+              - cell "✓" [ref=e463]
+            - row "trailStop 0.05 -0.05 ·" [ref=e464]:
+              - cell "trailStop" [ref=e465]
+              - cell "0.05" [ref=e466]
+              - cell "-0.05" [ref=e467]
+              - cell "·" [ref=e468]
+            - row "ceilingTpPrice 0.97 0.97 ✓" [ref=e469]:
+              - cell "ceilingTpPrice" [ref=e470]
+              - cell "0.97" [ref=e471]
+              - cell "0.97" [ref=e472]
+              - cell "✓" [ref=e473]
+            - row "minSlAgeSec — 300 —" [ref=e474]:
+              - cell "minSlAgeSec" [ref=e475]
+              - cell "—" [ref=e476]
+              - cell "300" [ref=e477]
+              - cell "—" [ref=e478]
+            - row "drawdownMin — -0.15 —" [ref=e479]:
+              - cell "drawdownMin" [ref=e480]
+              - cell "—" [ref=e481]
+              - cell "-0.15" [ref=e482]
+              - cell "—" [ref=e483]
+            - row "drawdownReduce — 0.5 —" [ref=e484]:
+              - cell "drawdownReduce" [ref=e485]
+              - cell "—" [ref=e486]
+              - cell "0.5" [ref=e487]
+              - cell "—" [ref=e488]
+            - row "timeExitSec — — —" [ref=e489]:
+              - cell "timeExitSec" [ref=e490]
+              - cell "—" [ref=e491]
+              - cell "—" [ref=e492]
+              - cell "—" [ref=e493]
+  - navigation [ref=e17]:
+    - button "📊 Live" [ref=e18] [cursor=pointer]
+    - button "📜 History" [ref=e19] [cursor=pointer]
+    - button "⚙ Strategy" [ref=e20] [cursor=pointer]
+    - button "🐋 Whales" [ref=e21] [cursor=pointer]
+    - button "⚙ Calib" [ref=e22] [cursor=pointer]
+    - button "☰ More" [ref=e23] [cursor=pointer]
