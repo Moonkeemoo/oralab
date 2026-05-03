@@ -110,6 +110,13 @@ async function loadPositions() {
         <span>${p.lastIntentAction || "—"}</span>
         <span>${ageStr}</span>
       </div>
+      ${p.driftStatus && p.driftStatus !== "ok" ? `
+      <div class="pos-row drift-${p.driftStatus}">
+        <span>⚠ chain drift</span>
+        <span>db ${(p.shares || 0).toFixed(3)} vs chain ${p.chainShares != null ? p.chainShares.toFixed(3) : "—"}</span>
+        <span>${p.driftPct != null ? (p.driftPct * 100).toFixed(2) + "%" : ""}</span>
+        <span>${p.driftStatus}</span>
+      </div>` : ""}
     </div>`;
   }).join("");
   body.querySelectorAll(".pos").forEach((el) => {

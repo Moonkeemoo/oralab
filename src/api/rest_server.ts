@@ -161,6 +161,8 @@ async function handlePositions(): Promise<unknown> {
     mark_ts: string | null;
     intent_action: string | null;
     intent_reason: string | null;
+    chain_shares: string | null;
+    drift_pct: string | null;
   };
   // postgres-js returns array directly. Use IN(...) with comma list to
   // sidestep ANY($1) array-binding quirks across postgres-js versions.
@@ -168,13 +170,15 @@ async function handlePositions(): Promise<unknown> {
   const latest = (await db.execute(sql`
     SELECT DISTINCT ON (position_id)
       position_id,
-      input_snapshot->>'mark'        AS mark,
-      input_snapshot->>'bid'         AS bid,
-      input_snapshot->>'ask'         AS ask,
-      input_snapshot->>'markSource'  AS mark_source,
-      input_snapshot->>'markTs'      AS mark_ts,
-      output_intent->>'action'       AS intent_action,
-      output_intent->>'reason'       AS intent_reason
+      input_snapshot->>'mark'                                AS mark,
+      input_snapshot->>'bid'                                 AS bid,
+      input_snapshot->>'ask'                                 AS ask,
+      input_snapshot->>'markSource'                          AS mark_source,
+      input_snapshot->>'markTs'                              AS mark_ts,
+      output_intent->>'action'                               AS intent_action,
+      output_intent->>'reason'                               AS intent_reason,
+      input_snapshot->'position'->>'onChainShares'           AS chain_shares,
+      input_snapshot->'position'->>'reconciliationDriftPct'  AS drift_pct
     FROM decisions
     WHERE position_id IN (${idList})
     ORDER BY position_id, ts DESC
@@ -189,6 +193,12 @@ async function handlePositions(): Promise<unknown> {
     const mark = live?.mark != null ? Number(live.mark) : null;
     const pnlUsd = mark != null && fillPrice > 0 ? (mark - fillPrice) * shares : null;
     const pnlPct = mark != null && fillPrice > 0 ? (mark - fillPrice) / fillPrice : null;
+    // INV-D3: on-chain shares are surfaced from the latest decision's
+    // input_snapshot. In DRY mode reconciler is skipped → chainShares==shares
+    // always (DryFillSimulator IS the source of truth). In LIVE: drift > 0
+    // means DB and chain disagree, > 0.05 reconciler tries sync, > 0.10 freeze.
+    const chainShares = live?.chain_shares != null ? Number(live.chain_shares) : null;
+    const driftPct = live?.drift_pct != null ? Number(live.drift_pct) : null;
     return {
       id: p.id,
       status: p.status,
@@ -201,6 +211,7 @@ async function handlePositions(): Promise<unknown> {
       sweepCount: p.sweepCount,
       fillTs: Number(p.fillTs ?? 0),
       entryCostUsd: Number(p.entryCostUsd ?? 0),
+      mode: p.mode,
       // Live (from latest decide_exit snapshot)
       currentPrice: mark,
       currentBid: live?.bid != null ? Number(live.bid) : null,
@@ -212,6 +223,19 @@ async function handlePositions(): Promise<unknown> {
       currentPnlPct: pnlPct,
       lastIntentAction: live?.intent_action ?? null,
       lastIntentReason: live?.intent_reason ?? null,
+      // INV-D3 on-chain truth — match between DB and chain
+      chainShares,
+      driftPct,
+      driftStatus:
+        driftPct == null
+          ? null
+          : driftPct < 0.005
+            ? "ok"
+            : driftPct < 0.05
+              ? "minor"
+              : driftPct < 0.1
+                ? "warn"
+                : "freeze",
     };
   });
 }
