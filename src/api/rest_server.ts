@@ -357,7 +357,12 @@ async function handlePnl(req: http.IncomingMessage): Promise<unknown> {
       const id = Number(p.id);
       const exit = sellSumByPos.get(id) ?? 0;
       const entry = Number(p.entryCostUsd ?? 0);
-      pnlByPos.set(id, exit - entry);
+      // Prefer chain-derived (sum SELL fills − entry). If no SELL row exists
+      // (eg v1 archive imports that only carry positions, not fills), fall
+      // back to the position's stored realized_pnl_usd. Never silently zero.
+      const realized = p.realizedPnlUsd != null ? Number(p.realizedPnlUsd) : null;
+      const pnl = exit > 0 ? exit - entry : realized != null ? realized : -entry;
+      pnlByPos.set(id, pnl);
     }
   }
 
@@ -605,7 +610,12 @@ async function handleHistory(req: http.IncomingMessage): Promise<unknown> {
       const exitPrice =
         sellShares > 0 ? exitUsd / sellShares : Number(p.peakPrice ?? 0) || null;
       const entryUsd = Number(p.entryCostUsd ?? 0);
-      const pnl = exitUsd - entryUsd;
+      // Same fallback ladder as handlePnl: SELL fills > realized_pnl_usd > -entry.
+      // v1 archive imports lack fills rows but carry realized_pnl_usd directly.
+      const realized = p.realizedPnlUsd != null ? Number(p.realizedPnlUsd) : null;
+      const pnl =
+        exitUsd > 0 ? exitUsd - entryUsd : realized != null ? realized : -entryUsd;
+      const effectiveExitUsd = exitUsd > 0 ? exitUsd : entryUsd + pnl;
       const market = markets.get(p.assetId) ?? null;
       const reason = renderExitReason(p.closeReason);
       const fillTs = Number(p.fillTs ?? 0);
@@ -626,7 +636,7 @@ async function handleHistory(req: http.IncomingMessage): Promise<unknown> {
         fillTs,
         durationMs: fillTs > 0 && closeTs > 0 ? Math.max(0, closeTs - fillTs) : null,
         entryUsd,
-        exitUsd,
+        exitUsd: effectiveExitUsd,
         pnlUsd: pnl,
         pnlPct: entryUsd > 0 ? pnl / entryUsd : 0,
         outcome: pnl >= 0 ? "win" : "loss",
@@ -875,9 +885,14 @@ async function handleKpi(req: http.IncomingMessage): Promise<unknown> {
     const sells = await db.query.fills.findMany({
       where: and(eq(fills.positionId, Number(p.id)), eq(fills.side, "SELL")),
     });
-    const exitUsd = sells.reduce((s, f) => s + Number(f.shares ?? 0) * Number(f.price ?? 0), 0);
+    const sellExitUsd = sells.reduce((s, f) => s + Number(f.shares ?? 0) * Number(f.price ?? 0), 0);
     const entryUsd = Number(p.entryCostUsd ?? 0);
-    const pnl = exitUsd - entryUsd;
+    // Same fallback ladder: SELL fills > realized_pnl_usd > -entry. Imported
+    // archives carry only positions, no fills.
+    const realized = p.realizedPnlUsd != null ? Number(p.realizedPnlUsd) : null;
+    const pnl =
+      sellExitUsd > 0 ? sellExitUsd - entryUsd : realized != null ? realized : -entryUsd;
+    const exitUsd = sellExitUsd > 0 ? sellExitUsd : entryUsd + pnl;
     totalEntry += entryUsd;
     totalExit += exitUsd;
     if (pnl >= 0) {
