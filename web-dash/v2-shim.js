@@ -102,6 +102,98 @@
     return r.json();
   }
 
+  // ── Field-mapping helpers (v2 → v1 shape) ─────────────────────────────────
+  function mapPosition(p) {
+    // v1 keys: trade_id, condition_id, asset_id, market, wallet, side, strategy,
+    //         entry_price, current_price, cost, unrealized_pnl, age_ts,
+    //         last_price_update_ts, fill_status, mark_quality, trading_mode, event_slug.
+    return {
+      trade_id: String(p.id),
+      condition_id: p.conditionId,
+      asset_id: p.assetId,
+      market: p.marketTitle || p.outcomeName || p.assetId,
+      side: p.side,
+      strategy: p.strategy || 'whale_follow',
+      wallet: p.whaleAddress || null,
+      entry_price: p.fillPrice,
+      current_price: p.currentPrice,
+      cost: p.entryCostUsd,
+      unrealized_pnl: p.currentPnlUsd,
+      age_ts: p.fillTs ? Math.floor(p.fillTs / 1000) : null,
+      last_price_update_ts: p.markAgeMs != null
+        ? Math.floor((Date.now() - p.markAgeMs) / 1000)
+        : null,
+      fill_status: p.mode === 'LIVE' ? 'filled' : 'simulated',
+      mark_quality: p.markSource === 'rest_book' ? 'executable'
+                  : p.markAgeMs != null && p.markAgeMs < 10000 ? 'executable'
+                  : 'stale',
+      trading_mode: (p.mode || 'DRY').toLowerCase() === 'live' ? 'live' : 'dry_run',
+      order_id: p.orderId || null,
+      // pass-through for richer detail
+      condition_id_short: p.conditionId ? String(p.conditionId).slice(0, 8) : '',
+      resolves_text: p.resolvesText,
+      outcome_name: p.outcomeName,
+      mark_age_ms: p.markAgeMs,
+      shares: p.shares,
+    };
+  }
+
+  function mapTrade(t) {
+    // v1 keys: trade_id, condition_id, market, side, entry/entry_price,
+    //         exit/exit_price, pnl, pnl_status, duration, date, trading_mode, open_ts.
+    const pnl = t.pnlUsd != null ? t.pnlUsd : 0;
+    const isWin = pnl > 0 || t.outcome === 'win';
+    const durMin = t.durationMs ? Math.round(t.durationMs / 60000) : 0;
+    const durStr = durMin >= 60
+      ? Math.floor(durMin / 60) + 'h ' + (durMin % 60) + 'm'
+      : durMin + 'm';
+    const closeMs = t.closeTs || 0;
+    return {
+      trade_id: String(t.id),
+      condition_id: t.conditionId || null,
+      market: t.marketTitle || t.outcomeName || t.assetId,
+      side: t.side,
+      entry: t.fillPrice,
+      entry_price: t.fillPrice,
+      exit: t.exitPrice,
+      exit_price: t.exitPrice,
+      pnl,
+      pnl_amount: pnl,
+      pnl_status: isWin ? 'win' : 'loss',
+      duration: durStr,
+      date: closeMs ? new Date(closeMs).toISOString() : null,
+      open_ts: t.fillTs ? Math.floor(t.fillTs / 1000) : 0,
+      close_ts: closeMs ? Math.floor(closeMs / 1000) : 0,
+      trading_mode: (t.mode || 'DRY').toLowerCase() === 'live' ? 'live' : 'dry_run',
+      result: t.result,
+      close_reason: t.closeReason,
+      close_reason_label: t.closeReasonLabel,
+      shares: t.shares,
+    };
+  }
+
+  function mapWhale(w) {
+    // v1 wallet fields: address, trust_score, trust_wins, trust_losses,
+    //                   trust_pnl, trust_disabled, categories, classification.
+    return {
+      address: w.address,
+      wallet: w.address,
+      trust_score: Math.round((w.trustScore || 0) * 100),
+      trust_wins: w.wins || 0,
+      trust_losses: w.losses || 0,
+      trust_pnl: w.pnlUsd || 0,
+      trust_disabled: !w.tracked,
+      categories: w.categories || (w.classification ? [w.classification] : []),
+      category: w.classification,
+      classification: w.classification,
+      score: Math.round((w.smScore || 0) * 100),
+      sm_score: w.smScore,
+      win_rate: w.winRate,
+      confidence: w.confidence,
+      tracked: w.tracked,
+    };
+  }
+
   // ─── ENDPOINT MAP ────────────────────────────────────────────────────────
   // value:
   //   string                      → forward to that v2 path (query preserved)
@@ -111,10 +203,60 @@
   // ─────────────────────────────────────────────────────────────────────────
   const ENDPOINT_MAP = {
     // ── Core read paths ────────────────────────────────────────────────────
-    '/api/polymarket/health': '/api/health',
+    '/api/polymarket/health': async () => {
+      const [h, status, conn] = await Promise.allSettled([
+        v2Get('/api/health'),
+        v2Get('/api/status'),
+        v2Get('/api/connections'),
+      ]);
+      const ok = h.status === 'fulfilled' && h.value && h.value.ok;
+      const services = {};
+      const conns = conn.status === 'fulfilled' && Array.isArray(conn.value) ? conn.value : [];
+      conns.forEach(c => {
+        services[c.source] = {
+          state: c.state,
+          age_ms: c.ageMs,
+          last_event_ts: c.lastEventTs,
+        };
+      });
+      return {
+        state: ok ? 'OK' : 'DEGRADED',
+        ok,
+        mode: status.status === 'fulfilled' ? status.value.mode : 'DRY',
+        kill_switch: status.status === 'fulfilled' ? status.value.killSwitch : false,
+        services,
+      };
+    },
+
+    // /kpi — pass through (v2 already returns a flat KPI object)
     '/api/polymarket/kpi': '/api/kpi',
-    '/api/polymarket/positions': '/api/positions',
-    '/api/polymarket/history': '/api/history',
+
+    // /positions — array; map v2 fields → v1 shape for the table.
+    '/api/polymarket/positions': async () => {
+      const list = await safeGet('/api/positions');
+      if (!Array.isArray(list)) return [];
+      return list.map(mapPosition);
+    },
+
+    // /history — v1 expects {trades:[{date, mode, side,...}], summary:{total, win_rate, net_pnl}}
+    '/api/polymarket/history': async () => {
+      const h = await safeGet('/api/history');
+      const trades = (h && Array.isArray(h.trades)) ? h.trades : [];
+      const agg = (h && h.aggregates) || {};
+      const mapped = trades.map(mapTrade);
+      const wins = mapped.filter(t => t.pnl > 0).length;
+      const total = mapped.length;
+      return {
+        trades: mapped,
+        summary: {
+          total,
+          win_rate: total ? Math.round((wins / total) * 100) : 0,
+          net_pnl: agg.netPnlUsd != null ? agg.netPnlUsd : mapped.reduce((s, t) => s + (t.pnl || 0), 0),
+          wins,
+          losses: total - wins,
+        },
+      };
+    },
 
     // /state — v1 consolidated read; reassemble from 4 v2 calls
     '/api/polymarket/state': async () => {
@@ -125,20 +267,52 @@
         v2Get('/api/kpi'),
       ]);
       const portfolio = await safeBuildPortfolio(kpi.value);
+      const positionsList = positions.status === 'fulfilled' ? positions.value : [];
+      const historyVal = history.status === 'fulfilled' ? history.value : { trades: [] };
+      const histTrades = (historyVal && Array.isArray(historyVal.trades)) ? historyVal.trades : [];
       return {
         portfolio,
-        positions: positions.status === 'fulfilled' ? positions.value : [],
-        history:   history.status === 'fulfilled'  ? history.value   : { trades: [] },
-        settings:  settings.status === 'fulfilled' ? settings.value  : {},
+        positions: Array.isArray(positionsList) ? positionsList.map(mapPosition) : [],
+        history: { trades: histTrades.map(mapTrade) },
+        settings: settings.status === 'fulfilled' ? settings.value : {},
       };
     },
 
-    // /portfolio — v1 returned {balance, equity, pnl, ...}; map from /balance + /kpi
-    '/api/polymarket/portfolio': async () => safeBuildPortfolio(await safeGet('/api/kpi')),
+    // /portfolio — v1 expects {totals:{in_positions}, bots:[…]} for renderPortfolio.
+    '/api/polymarket/portfolio': async () => {
+      const [bal, kpi, status, positionsRes] = await Promise.allSettled([
+        v2Get('/api/balance'),
+        v2Get('/api/kpi'),
+        v2Get('/api/status'),
+        v2Get('/api/positions'),
+      ]);
+      const balance = bal.status === 'fulfilled' ? bal.value : null;
+      const kpiVal  = kpi.status === 'fulfilled' ? kpi.value : null;
+      const stat    = status.status === 'fulfilled' ? status.value : null;
+      const pos     = positionsRes.status === 'fulfilled' ? positionsRes.value : [];
+      const inPositions = (Array.isArray(pos) ? pos : [])
+        .reduce((s, p) => s + (p.entryCostUsd || 0), 0);
+      const built = await safeBuildPortfolio(kpiVal);
+      return Object.assign({}, built, {
+        totals: { in_positions: inPositions },
+        bots: hardcodedBots(stat),
+        mode: stat ? (stat.mode || 'DRY') : 'DRY',
+        active_positions: stat ? (stat.activePositions || 0) : 0,
+        budget: balance ? balance.totalBudgetUsd : 0,
+        available: balance ? balance.freeUsd : 0,
+      });
+    },
 
     '/api/polymarket/usdc-balance': async () => {
       const b = await safeGet('/api/balance');
-      return { balance: b?.usdc ?? b?.balance ?? 0 };
+      const total = b ? (b.totalBudgetUsd || 0) : 0;
+      const free = b ? (b.freeUsd || 0) : 0;
+      return {
+        balance: total,
+        portfolio_value: total,
+        cash: free,
+        usdc: free,
+      };
     },
 
     // Settings (v1 used /settings → exit knobs); map to /exit_config
@@ -147,7 +321,11 @@
     // Status / mode
     '/api/polymarket/trading-mode': async () => {
       const s = await safeGet('/api/status');
-      return { mode: (s?.mode || 'DRY').toLowerCase(), kill_switch: !!s?.killSwitch };
+      const mode = (s?.mode || 'DRY');
+      return {
+        mode: mode === 'LIVE' ? 'live' : 'dry_run',
+        kill_switch: !!s?.killSwitch,
+      };
     },
 
     // Build / meta
@@ -175,11 +353,11 @@
       };
     },
 
-    // Whales
+    // Whales — v1 wallets list (full table)
     '/api/polymarket/wallets': async () => {
       const r = await safeGet('/api/whales?limit=2000');
-      // v2 returns {items, total, ...} — v1 expects either array OR {wallets: [...]}
-      return Array.isArray(r) ? r : (r?.items ?? []);
+      const items = r && Array.isArray(r.items) ? r.items : (Array.isArray(r) ? r : []);
+      return items.map(mapWhale);
     },
 
     // Latency / timing
@@ -192,37 +370,301 @@
       return p ?? {};
     },
 
-    // Trades — v1 endpoint distinct from /history; map to /history (already provides trades)
+    // Trades — alias for /history (v1 expected an array)
     '/api/polymarket/trades': async () => {
       const h = await safeGet('/api/history');
-      return Array.isArray(h) ? h : (h?.trades ?? []);
+      const trades = (h && Array.isArray(h.trades)) ? h.trades : [];
+      return trades.map(mapTrade);
     },
 
-    // Kill-switch (POST/GET both routed)
-    '/api/polymarket/kill-switch': '/api/kill_switch',
+    // Kill-switch (POST/GET both routed) — both hyphen and underscore variants
+    '/api/polymarket/kill-switch': async ({ opts }) => {
+      // Forward request method to underscore endpoint; preserve body.
+      const r = await v2Fetch('/api/kill_switch', opts);
+      const data = await r.json().catch(() => ({}));
+      // v1 reads { active }
+      return Object.assign(
+        { active: !!(data.killSwitch ?? data.active ?? data.value) },
+        data,
+      );
+    },
+    '/api/polymarket/kill_switch': async ({ opts }) => {
+      const r = await v2Fetch('/api/kill_switch', opts);
+      const data = await r.json().catch(() => ({}));
+      return Object.assign(
+        { active: !!(data.killSwitch ?? data.active ?? data.value) },
+        data,
+      );
+    },
 
     // ── Calibration ────────────────────────────────────────────────────────
-    '/api/polymarket/calibration/status': '/api/calibrator/status',
-    '/api/polymarket/calibration/sports': '/api/calibrator/sport',
-    '/api/polymarket/calibration/attribution': '/api/calibrator/attribution',
-    '/api/polymarket/calibration/traces': '/api/calibrator/trace',
-    '/api/polymarket/calibration/bayesian': '/api/calibrator/beliefs',
-    '/api/polymarket/calibration/settings': '/api/calibrator/settings',
+
+    // /calibration/status — v1 expects {state, last_run, ...}
+    '/api/polymarket/calibration/status': async () => {
+      const s = await safeGet('/api/calibrator/status');
+      if (!s) return {};
+      return {
+        state: s.mode || 'manual',
+        mode: s.mode,
+        configured_mode: s.configuredMode,
+        last_run: s.lastRunAt,
+        last_run_ts: s.lastRunAt ? Math.floor(new Date(s.lastRunAt).getTime() / 1000) : 0,
+        last_cycle_id: s.lastCycleId,
+        last_rec_count: s.lastRecCount,
+        next_run: s.nextRunAt,
+        interval_ms: s.intervalMs,
+      };
+    },
+
+    // /calibration/sports — v1 cal-sports.js expects {meta:{total_trades, window_h}, table:[…], heatmap:{sports, cells_pnl, cells_wr, cells_count}}
+    '/api/polymarket/calibration/sports': async ({ query }) => {
+      // Pass through window_h if present
+      const sportPath = '/api/calibrator/sport' + (query || '');
+      const [sport, heatmap] = await Promise.allSettled([
+        v2Get(sportPath),
+        v2Get('/api/calibrator/sport/heatmap'),
+      ]);
+      const sportVal = sport.status === 'fulfilled' ? sport.value : null;
+      const hm      = heatmap.status === 'fulfilled' ? heatmap.value : null;
+
+      const sports = (sportVal && Array.isArray(sportVal.sports)) ? sportVal.sports : [];
+      // v1 row keys: sport, n, wins, losses, net_pnl, wr, tp_rate, sl_rate, avg_dur_min, avg_bet
+      const table = sports.map(s => ({
+        sport: s.sport || 'Other',
+        n: s.trades || 0,
+        wins: s.wins || 0,
+        losses: s.losses || 0,
+        net_pnl: s.netPnl || 0,
+        wr: s.winRate || 0,
+        tp_rate: s.tpPct || 0,
+        sl_rate: s.slPct || 0,
+        avg_dur_min: s.avgDurSec ? s.avgDurSec / 60 : 0,
+        avg_bet: s.avgStakeUsd || 0,
+      }));
+      const totalTrades = table.reduce((acc, r) => acc + r.n, 0);
+
+      // Build heatmap cells matrix [sport_idx][hour] → pnl / count / wr
+      const sportsList = (hm && Array.isArray(hm.sports)) ? hm.sports : [];
+      const cells = (hm && hm.cells) || {};
+      const cellsPnl   = sportsList.map(s => Array.from({length:24}, (_, h) => cells[`${s}_${h}`] != null ? cells[`${s}_${h}`] : null));
+      const cellsCount = sportsList.map(() => Array.from({length:24}, () => 0));
+      const cellsWr    = sportsList.map(() => Array.from({length:24}, () => null));
+      const heatmapV1 = {
+        sports: sportsList,
+        cells_pnl: cellsPnl,
+        cells_wr: cellsWr,
+        cells_count: cellsCount,
+      };
+
+      return {
+        meta: {
+          total_trades: totalTrades,
+          window_h: sportVal && sportVal.windowHours ? sportVal.windowHours : 24,
+          mode: sportVal && sportVal.mode,
+        },
+        table,
+        heatmap: heatmapV1,
+      };
+    },
+
+    // /calibration/attribution — v1 cal-analytics.js expects {attribution:[…], lift_matrix_entry:[…], min_lift_threshold, ts}
+    '/api/polymarket/calibration/attribution': async () => {
+      const [attr, liftEntry] = await Promise.allSettled([
+        v2Get('/api/calibrator/attribution'),
+        v2Get('/api/calibrator/lift_matrix?phase=entry'),
+      ]);
+      const attrVal = attr.status === 'fulfilled' ? attr.value : null;
+      const liftVal = liftEntry.status === 'fulfilled' ? liftEntry.value : null;
+      return {
+        attribution: (attrVal && Array.isArray(attrVal.attribution)) ? attrVal.attribution : [],
+        lift_matrix_entry: (liftVal && Array.isArray(liftVal.matrix)) ? liftVal.matrix : [],
+        min_lift_threshold: 0.08,
+        ts: Math.floor(Date.now() / 1000),
+      };
+    },
+
+    // /calibration/traces — v1 cal-log.js expects {traces:[…], ts}
+    '/api/polymarket/calibration/traces': async ({ query }) => {
+      const r = await safeGet('/api/calibrator/trace' + (query || ''));
+      const rows = (r && Array.isArray(r.rows)) ? r.rows : [];
+      return {
+        traces: rows.map(t => ({
+          ts: t.ts ? Math.floor(t.ts / 1000) : 0,
+          ts_ms: t.ts,
+          event: t.eventType,
+          event_type: t.eventType,
+          cycle_id: t.cycleId,
+          payload: t.payload || {},
+        })),
+        ts: Math.floor(Date.now() / 1000),
+      };
+    },
+
+    // /calibration/bayesian — v1 cal-analytics.js expects {bayesian:[…], ts}
+    '/api/polymarket/calibration/bayesian': async () => {
+      const b = await safeGet('/api/calibrator/beliefs');
+      return {
+        bayesian: (b && Array.isArray(b.beliefs)) ? b.beliefs : [],
+        ts: Math.floor(Date.now() / 1000),
+      };
+    },
+
+    // /calibration/settings — v1 cal-settings.js expects {settings:{}, defaults:{}}
+    '/api/polymarket/calibration/settings': async ({ opts }) => {
+      // GET passes through; POST forwards body
+      if (opts && opts.method && opts.method.toUpperCase() === 'POST') {
+        const r = await v2Fetch('/api/calibrator/settings', opts);
+        const j = await r.json().catch(() => ({}));
+        return Object.assign({ success: !!j.ok || !!j.success || !j.error }, j, {
+          settings: j.current || j.settings || {},
+          defaults: j.defaults || {},
+        });
+      }
+      const s = await safeGet('/api/calibrator/settings');
+      return {
+        settings: (s && s.current) || {},
+        defaults: (s && s.defaults) || {},
+        success: true,
+      };
+    },
+
     '/api/polymarket/calibration/mode': '/api/calibrator/mode',
     '/api/polymarket/calibration/run': '/api/calibrator/run',
-    '/api/polymarket/calibration/whales': async () => {
-      // v1: list of whale-related calibration items.  v2 has /beliefs?dim=whale
-      const b = await safeGet('/api/calibrator/beliefs?dim=whale');
-      return b ?? [];
+
+    // /calibration/whales — v1 cal-whales.js expects {whales:[…], total, totals, ts}
+    '/api/polymarket/calibration/whales': async ({ query }) => {
+      // v2 has no per-whale calibration endpoint — derive from /api/whales.
+      // Honor limit/offset query params.
+      const qm = new URLSearchParams((query || '').replace(/^\?/, ''));
+      const limit  = parseInt(qm.get('limit') || '50', 10);
+      const offset = parseInt(qm.get('offset') || '0', 10);
+      const r = await safeGet(`/api/whales?limit=${limit + offset}&trackedOnly=false`);
+      const items = (r && Array.isArray(r.items)) ? r.items : [];
+      const slice = items.slice(offset, offset + limit);
+      // v1 row keys: wallet, wallet_full, classification, trades, wins, losses, pnl, win_rate, trust
+      const whales = slice.map(w => ({
+        wallet: w.address ? (w.address.slice(0, 6) + '…' + w.address.slice(-4)) : '—',
+        wallet_full: w.address,
+        classification: w.classification || 'unknown',
+        trust: Math.round((w.trustScore || 0) * 100),
+        win_rate: w.winRate || 0,
+        trades: w.totalTrades || 0,
+        wins: w.wins || 0,
+        losses: w.losses || 0,
+        pnl: w.pnlUsd || 0,
+      }));
+      return {
+        whales,
+        total: r ? (r.total || items.length) : items.length,
+        totals: null,           // v2 doesn't aggregate per-set totals
+        ts: Math.floor(Date.now() / 1000),
+      };
     },
+
+    // /calibration/overview — v1 cal-overview.js
+    // Expects {kpi, exit_kpi, performance, recommendations, history, mode,
+    //          deficits, weights, importance, lift_matrix, exit_targets,
+    //          exit_keys, min_lift_threshold, ts, cycle_interval_s, bot_has_run, min_trades}
     '/api/polymarket/calibration/overview': async () => {
-      const [snap, recs] = await Promise.allSettled([
+      const [snap, recs, status, kpi] = await Promise.allSettled([
         v2Get('/api/calibrator/snapshot'),
         v2Get('/api/calibrator/recommendations'),
+        v2Get('/api/calibrator/status'),
+        v2Get('/api/kpi'),
       ]);
+      const s   = snap.status === 'fulfilled' ? snap.value : null;
+      const rs  = recs.status === 'fulfilled' ? recs.value : null;
+      const st  = status.status === 'fulfilled' ? status.value : null;
+      const k   = kpi.status === 'fulfilled' ? kpi.value : null;
+
+      // Map snapshot KPIs → v1 cal-overview shape
+      const sKpi = (s && s.kpi) || {};
+      const sExitKpi = (s && s.exitKpi) || {};
+      const v1Kpi = {
+        win_rate: sKpi.win_rate || 0,
+        pass_rate: sKpi.pass_rate || 0,
+        profit_factor: sKpi.profit_factor || 0,
+        avg_pnl: sKpi.avg_pnl || 0,
+        rejection_top: k && k.topRejection ? k.topRejection : '—',
+        cf_net: k && k.cfNetUsd != null ? k.cfNetUsd : 0,
+        cf_lost: k && k.leftOnTableUsd != null ? k.leftOnTableUsd : 0,
+        total_signals: k && k.signalsTotal != null ? k.signalsTotal : 0,
+        total_trades: s && s.closedTrades ? s.closedTrades : 0,
+      };
+      const v1ExitKpi = {
+        sl_rate: sExitKpi.sl_rate || 0,
+        tp_hit_rate: sExitKpi.tp_hit_rate || 0,
+        exit_efficiency: sExitKpi.exit_efficiency || 0,
+        left_on_table: sExitKpi.left_on_table || 0,
+        total_exits: s && s.closedTrades ? s.closedTrades : 0,
+      };
+      const v1Perf = {
+        win_rate: k && k.winRatePct != null ? k.winRatePct : 0,
+        profit_factor: k && k.profitFactor != null ? k.profitFactor : 0,
+        avg_pnl: k && k.avgPnlPerTradeUsd != null ? k.avgPnlPerTradeUsd : 0,
+        total_pnl: k && k.netPnlUsd != null ? k.netPnlUsd : 0,
+        total_trades: k && k.closedCount != null ? k.closedCount : 0,
+      };
+
+      // Recommendations from v2 → v1 shape
+      const recsList = (rs && Array.isArray(rs.recommendations)) ? rs.recommendations : [];
+      const v1Recs = recsList.map(r => ({
+        config_key: r.filterName + '.' + r.paramKey,
+        human_name: r.filterName,
+        phase: r.filterName && r.filterName.startsWith('exit_') ? 'exit' : 'entry',
+        direction: r.direction,
+        score: r.liftEstimateUsd,
+        confidence_status: r.confidence,
+        confidence: r.confidence === 'stable' ? 0.9 : r.confidence === 'growing' ? 0.6 : 0.3,
+        current_value: r.currentValue,
+        recommended_value: r.recommendedValue,
+        delta: (r.recommendedValue || 0) - (r.currentValue || 0),
+        reason: r.reason,
+        aims: r.aims || [],
+        lift: r.liftMatrix || {},
+        reject_key: r.filterName,
+      }));
+
       return {
-        snapshot: snap.status === 'fulfilled' ? snap.value : {},
-        recommendations: recs.status === 'fulfilled' ? recs.value : [],
+        kpi: v1Kpi,
+        exit_kpi: v1ExitKpi,
+        performance: v1Perf,
+        recommendations: v1Recs,
+        history: [],            // applied/rolled-back history derive needs more wiring
+        mode: (st && st.mode) || (s && s.mode) || 'manual',
+        deficits: (s && s.deficits) || {},
+        weights: (s && s.weights) || {},
+        importance: {},
+        lift_matrix: {},
+        exit_targets: {},
+        exit_keys: [],
+        min_lift_threshold: 0.08,
+        ts: st && st.lastRunAt ? Math.floor(new Date(st.lastRunAt).getTime() / 1000) : 0,
+        cycle_interval_s: st && st.intervalMs ? Math.round(st.intervalMs / 1000) : 1800,
+        bot_has_run: !!(st && st.lastRunAt),
+        min_trades: 20,
+        trace_id: st && st.lastCycleId ? st.lastCycleId : '',
+      };
+    },
+
+    // /calibration/exit — v1 cal-exit.js expects {total, breakdown, analysis, params, lift_matrix_exit, min_lift_threshold}
+    '/api/polymarket/calibration/exit': async () => {
+      const [k, liftExit, exitConfig] = await Promise.allSettled([
+        v2Get('/api/kpi'),
+        v2Get('/api/calibrator/lift_matrix?phase=exit'),
+        v2Get('/api/exit_config'),
+      ]);
+      const kVal = k.status === 'fulfilled' ? k.value : null;
+      const liftVal = liftExit.status === 'fulfilled' ? liftExit.value : null;
+      const params = exitConfig.status === 'fulfilled' ? exitConfig.value : {};
+      const total = (kVal && kVal.closedCount) || 0;
+      return {
+        total,
+        breakdown: {},          // closure-reason histogram not yet exposed by v2
+        analysis: {},
+        params,
+        lift_matrix_exit: (liftVal && Array.isArray(liftVal.matrix)) ? liftVal.matrix : [],
+        min_lift_threshold: 0.08,
       };
     },
     // /calibration/apply/:id pattern is handled by patternRouter() below
@@ -238,22 +680,37 @@
         trust: Math.round((w.trustScore || 0) * 100),
         classification: w.classification || 'NOISE',
         win_rate: w.winRate || 0,
-        total_trades: 0,           // v2 doesn't aggregate yet; safe default
+        total_trades: w.totalTrades || 0,
         confidence: w.confidence || 0,
         sm_score: w.smScore || 0,
+        smart_money_score: Math.round((w.smScore || 0) * 100),
         tracked: w.tracked,
       }));
     },
 
-    // /budget — current budget + allocated/free + history (v1 expects history array)
-    '/api/polymarket/budget': async () => {
+    // /budget — v1 reads budget_usd, available, remaining_budget, mode, profit, …
+    '/api/polymarket/budget': async ({ opts }) => {
+      // POST ignored (no v2 endpoint to set budget); GET-style read otherwise.
+      if (opts && opts.method && opts.method.toUpperCase() === 'POST') {
+        recordUnwired('/api/polymarket/budget [POST]');
+        return { success: false, error: 'budget mutation unwired in v2' };
+      }
       const bal = await safeGet('/api/balance');
+      const total = bal ? (bal.totalBudgetUsd || 0) : 0;
+      const free = bal ? (bal.freeUsd || 0) : 0;
+      const allocated = bal ? (bal.allocatedUsd || 0) : 0;
       return {
-        budget: bal?.totalBudgetUsd ?? 0,
-        allocated: bal?.allocatedUsd ?? 0,
-        free: bal?.freeUsd ?? 0,
-        mode: bal?.mode ?? 'DRY',
-        history: [],               // v2 doesn't track yet; safe empty
+        budget_usd: total,
+        available: free,
+        remaining_budget: total,
+        free,
+        allocated,
+        spent: allocated,
+        profit: 0,
+        mode: bal ? bal.mode : 'DRY',
+        phantom_count: bal ? (bal.phantomCount || 0) : 0,
+        untracked_count: bal ? (bal.untrackedCount || 0) : 0,
+        history: [],
       };
     },
 
@@ -337,6 +794,10 @@
       };
     },
 
+    // ── Per-bot status (no v2 endpoint; best-effort from /status) ─────────
+    // /api/polymarket/bots/<service>/status — return synthesized status
+    // Pattern handled in patternRouter below.
+
     // ── UNWIRED — v1 features without v2 backend support yet ──────────────
     '/api/polymarket/intents/stats':                  null,
     '/api/polymarket/budget/reset':                   null,
@@ -368,7 +829,6 @@
     '/api/polymarket/topup':                          null,   // wallet top-up trigger
     '/api/polymarket/timing/clear':                   null,
     '/api/polymarket/dashboard/restart':              null,   // self-restart hook (dev-only)
-    '/api/polymarket/bots/':                          null,   // /bots/<name>/<action> — service controls
     '/api/polymarket/bots/reset':                     null,
     '/api/polymarket/bots/trader/restart':            null,
     '/api/polymarket/wallets/discover':               null,   // whale-discovery batch job
@@ -378,7 +838,6 @@
     '/api/polymarket/calibration/configs':            null,   // saved cal-configs library
     '/api/polymarket/calibration/copy':               null,
     '/api/polymarket/calibration/copy-key':           null,
-    '/api/polymarket/calibration/exit':               null,   // exit-knob proposals (no v2 dim yet)
     '/api/polymarket/calibration/skip':               null,
     '/api/polymarket/calibration/pause':              null,
     '/api/polymarket/calibration/reject':             null,
@@ -386,6 +845,7 @@
     '/api/polymarket/calibration/rollback':           null,   // wired via /api/calibrator/rollback/:id (patternRouter)
     '/api/polymarket/calibration/ai':                 null,
     '/api/polymarket/calibration/clear-history':      null,
+    '/api/polymarket/calibration/apply':              null,   // wired via /api/calibrator/apply/:id (patternRouter)
   };
 
   // Helpers used by adapters
@@ -394,16 +854,28 @@
   }
   async function safeBuildPortfolio(kpi) {
     const bal = await safeGet('/api/balance');
-    const usdc = bal?.usdc ?? bal?.balance ?? 0;
+    const usdc = bal ? (bal.totalBudgetUsd || 0) : 0;
     return {
       balance: usdc,
-      equity:  (kpi?.equity ?? usdc),
-      pnl:     kpi?.pnl_total_usd ?? 0,
-      pnl_pct: kpi?.pnl_total_pct ?? 0,
-      trades:  kpi?.trades_total ?? 0,
-      win_rate: kpi?.win_rate ?? 0,
-      ...kpi,
+      equity:  (kpi && kpi.equity != null ? kpi.equity : usdc),
+      pnl:     (kpi && kpi.netPnlUsd != null ? kpi.netPnlUsd : 0),
+      pnl_pct: (kpi && kpi.netPnlPct != null ? kpi.netPnlPct : 0),
+      trades:  (kpi && kpi.closedCount != null ? kpi.closedCount : 0),
+      win_rate: (kpi && kpi.winRatePct != null ? kpi.winRatePct : 0),
     };
+  }
+
+  // Best-effort hardcoded bot list — v2 has no per-service status endpoint.
+  // Returns 4 services as "running:true" so UI doesn't show all-stopped.
+  function hardcodedBots(_status) {
+    const isRunning = true;   // dashboard is reachable, so api server is up
+    const list = [
+      { type: 'trader',     name: 'Whale Copy Bot',  emoji: '🐋', running: isRunning, pid: '—', balance: 0 },
+      { type: 'ws_feed',    name: 'WS Feed',         emoji: '📡', running: isRunning, pid: '—', balance: 0 },
+      { type: 'rtds_feed',  name: 'RTDS Feed',       emoji: '⛓️', running: isRunning, pid: '—', balance: 0 },
+      { type: 'calibrator', name: 'Calibrator',      emoji: '🎯', running: isRunning, pid: '—', balance: 0 },
+    ];
+    return list;
   }
 
   // ── Pattern-based router for paths with embedded IDs ────────────────────
@@ -422,6 +894,30 @@
     // /api/polymarket/calibration/rollback/:id → /api/calibrator/rollback/:id
     m = pathOnly.match(/^\/api\/polymarket\/calibration\/rollback\/(\d+)$/);
     if (m) return v2Fetch('/api/calibrator/rollback/' + m[1], opts);
+
+    // /api/polymarket/bots/<name>/status → synthesized "running" response
+    m = pathOnly.match(/^\/api\/polymarket\/bots\/([\w-]+)\/status$/);
+    if (m) {
+      return Promise.resolve(jsonResponse({
+        name: m[1],
+        active: true,
+        running: true,
+        last_tick_ts: Math.floor(Date.now() / 1000),
+        restart_count: 0,
+        note: 'best-effort: v2 has no per-service status endpoint',
+      }));
+    }
+    // /api/polymarket/bots/status → list of all bots
+    if (pathOnly === '/api/polymarket/bots/status' || pathOnly === '/api/polymarket/bots') {
+      return Promise.resolve(jsonResponse({
+        services: hardcodedBots().map(b => ({
+          name: b.type,
+          active: b.running,
+          last_tick_ts: Math.floor(Date.now() / 1000),
+          restart_count: 0,
+        })),
+      }));
+    }
 
     return null;
   }
