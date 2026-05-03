@@ -296,7 +296,11 @@
       duration_seconds: durSec,
       duration_human: _durHuman(durSec),
       resolution_ts: closeMs ? closeMs / 1000 : null,
-      resolved_at: closeMs ? new Date(closeMs).toISOString() : null,
+      // v1 utils.fmtResolution does `now - resolved`, expecting Unix seconds.
+      // ISO strings produced NaN — keep both keys: resolved_at (seconds) +
+      // resolved_at_iso (string) so any consumer that wanted ISO can read it.
+      resolved_at: closeMs ? Math.floor(closeMs / 1000) : null,
+      resolved_at_iso: closeMs ? new Date(closeMs).toISOString() : null,
       entry: {
         fill_price: t.fillPrice,
         market_price: t.fillPrice,
