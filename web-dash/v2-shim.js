@@ -25,6 +25,47 @@
   const DEV_TOKEN = 'secretdev';   // matches DEV_AUTH_TOKEN in v2 .env
   const origFetch = window.fetch.bind(window);
 
+  // ── Viewing-mode toggle (separate from trading mode) ────────────────────
+  // Persisted in localStorage. Injected as ?mode= on every aggregate v2 call so
+  // the dashboard can switch between fresh DRY data and the imported v1 LIVE
+  // archive without touching DRY_RUN on the box.
+  const VIEW_MODE_KEY = 'v2-view-mode';
+  function getViewMode() {
+    try { return localStorage.getItem(VIEW_MODE_KEY) || 'DRY'; }
+    catch (_e) { return 'DRY'; }
+  }
+  function setViewMode(m) {
+    const norm = String(m || 'DRY').toUpperCase();
+    const value = norm === 'LIVE' ? 'LIVE' : norm === 'ALL' ? 'all' : 'DRY';
+    try { localStorage.setItem(VIEW_MODE_KEY, value); } catch (_e) {}
+    // Hard reload — caches and in-memory state across the v1 verstka rely on
+    // initial-fetch results, so toggling mid-flight produces inconsistent UI.
+    location.reload();
+  }
+  window.__v2GetViewMode = getViewMode;
+  window.__v2SetViewMode = setViewMode;
+
+  // Endpoints whose response is mode-scoped on the backend. We append (or
+  // merge) ?mode= for these — leaving non-aggregate paths untouched.
+  const MODE_SCOPED_PREFIXES = [
+    '/api/positions',
+    '/api/pnl',
+    '/api/kpi',
+    '/api/history',
+    '/api/balance',
+    '/api/status',
+    '/api/calibrator/sport',
+  ];
+  function withModeQuery(path) {
+    if (!MODE_SCOPED_PREFIXES.some((p) => path === p || path.startsWith(p + '?') || path.startsWith(p + '/'))) {
+      return path;
+    }
+    // Already has ?mode= → leave as-is (caller is explicit).
+    if (/[?&]mode=/.test(path)) return path;
+    const sep = path.includes('?') ? '&' : '?';
+    return `${path}${sep}mode=${encodeURIComponent(getViewMode())}`;
+  }
+
   // Track every unwired hit for the running banner
   const UNWIRED_SEEN = new Map();   // path -> count
   let bannerEl = null;
@@ -93,7 +134,7 @@
 
   function v2Fetch(path, opts = {}) {
     const merged = Object.assign({}, opts, { headers: v2Headers(opts) });
-    return origFetch(path, merged);
+    return origFetch(withModeQuery(path), merged);
   }
 
   async function v2Get(path) {
@@ -531,12 +572,26 @@
     // Settings (v1 used /settings → exit knobs); map to /exit_config
     '/api/polymarket/settings': '/api/exit_config',
 
-    // Status / mode
-    '/api/polymarket/trading-mode': async () => {
+    // Status / mode — also routes the v1 MODE-panel toggle (POST {mode}) to
+    // our viewing-mode override. We intentionally do NOT flip DRY_RUN on the
+    // backend; this is a read-only filter so operators can see the LIVE
+    // archive while the trader stays DRY.
+    '/api/polymarket/trading-mode': async ({ opts }) => {
+      if (opts && opts.method === 'POST') {
+        let body = {};
+        try { body = JSON.parse(opts.body || '{}'); } catch (_e) {}
+        const requested = String(body.mode || '').toLowerCase();
+        const next = requested === 'live' ? 'LIVE' : requested === 'all' ? 'all' : 'DRY';
+        setViewMode(next);   // triggers location.reload()
+        return { ok: true, mode: requested };
+      }
+      const view = getViewMode();
       const s = await safeGet('/api/status');
-      const mode = (s?.mode || 'DRY');
       return {
-        mode: mode === 'LIVE' ? 'live' : 'dry_run',
+        // surfaces the *viewing* mode (what the dashboard is showing). The
+        // env-driven trader mode lives in s.mode → expose under `runtime_mode`.
+        mode: view === 'LIVE' ? 'live' : view === 'all' ? 'all' : 'dry_run',
+        runtime_mode: (s?.mode || 'DRY').toLowerCase() === 'live' ? 'live' : 'dry_run',
         kill_switch: !!s?.killSwitch,
       };
     },
@@ -1118,7 +1173,29 @@
     '/api/polymarket/diagnostic/groups':              null,   // diagnostic groupings
     '/api/polymarket/lifecycle':                      null,   // position lifecycle dashboard
     '/api/polymarket/lifecycle/events':               null,
-    '/api/polymarket/live-marks':                     null,   // mark refresh dashboard
+    // live-marks: v1 expects { '<asset_id>': {price, ts, source}, ... }. v2
+    // /api/positions already carries currentPrice + markSource + markAgeMs per
+    // position, so synthesize from that single fetch.
+    '/api/polymarket/live-marks': async () => {
+      const list = await safeGet('/api/positions');
+      const out = {};
+      if (!Array.isArray(list)) return out;
+      const now = Date.now();
+      for (const p of list) {
+        if (!p || !p.assetId || p.currentPrice == null) continue;
+        const ageMs = (typeof p.markAgeMs === 'number' && p.markAgeMs >= 0) ? p.markAgeMs : 0;
+        out[p.assetId] = {
+          price: p.currentPrice,
+          bid: p.currentBid != null ? p.currentBid : null,
+          ask: p.currentAsk != null ? p.currentAsk : null,
+          ts: Math.floor((now - ageMs) / 1000),
+          ts_ms: now - ageMs,
+          source: p.markSource || 'rest_book',
+          quality: ageMs < 10000 ? 'executable' : 'stale',
+        };
+      }
+      return out;
+    },
     '/api/polymarket/poke-mark':                      null,   // manual mark refresh
     '/api/polymarket/logs/clear':                     null,
     '/api/polymarket/trade-decisions':                null,   // explainable trade-decision log
