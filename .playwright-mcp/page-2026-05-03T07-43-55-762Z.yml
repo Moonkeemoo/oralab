@@ -1,0 +1,179 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - button "🇺🇦" [ref=e4] [cursor=pointer]
+      - generic [ref=e5]:
+        - generic [ref=e6]: OraLab
+        - generic [ref=e7]: Ora et Labora
+    - generic [ref=e8]:
+      - generic [ref=e9]:
+        - generic [ref=e10]: MODE
+        - generic [ref=e11]:
+          - button "DRY" [ref=e12] [cursor=pointer]: DRY
+          - button "LIVE" [ref=e14] [cursor=pointer]: LIVE
+        - generic [ref=e16]:
+          - generic [ref=e17]: Оновлено 10:43
+          - 'generic "Heartbeat: — · Data: —" [ref=e212]':
+            - generic [ref=e214]: Бот офлайн
+      - generic [ref=e18]:
+        - generic [ref=e19]: BOTS
+        - generic [ref=e21]:
+          - button "▶ All" [ref=e22] [cursor=pointer]
+          - button "⏹ All" [ref=e23] [cursor=pointer]
+      - generic [ref=e24]:
+        - generic [ref=e25]: HEALTH
+        - generic [ref=e27]: DOWN
+        - generic [ref=e29]:
+          - generic [ref=e32]: offline
+          - generic [ref=e35]: —
+          - generic [ref=e38]: stopped
+          - generic [ref=e41]: —
+          - generic [ref=e44]: disconnected
+          - generic [ref=e46]: 0 events · 0 whales
+      - generic [ref=e47]:
+        - generic [ref=e48]: MONITOR
+        - 'generic "Watchdog daemon PID: — Last tick: —" [ref=e216] [cursor=pointer]':
+          - generic [ref=e51]: WD ✓ —
+        - generic [ref=e52]: + майбутні перевірки
+      - generic [ref=e53]:
+        - generic [ref=e54]: CONTROL
+        - generic [ref=e55]:
+          - button "🔄 Оновити" [ref=e56] [cursor=pointer]
+          - button "♻️ Перезапуск" [ref=e57] [cursor=pointer]
+          - button "KILL" [ref=e217] [cursor=pointer]
+          - button "❌ Скидання" [ref=e59] [cursor=pointer]
+    - generic [ref=e60]:
+      - generic [ref=e61]:
+        - generic [ref=e62]:
+          - text: Balance
+          - button "↑ Поповнити" [ref=e63] [cursor=pointer]
+        - generic [ref=e64]: $0.00 of $0.00
+        - generic [ref=e65]:
+          - generic [ref=e66]: Позиції $0.00
+          - generic [ref=e68]: Вільно $0.00
+      - generic [ref=e71]:
+        - generic [ref=e72]: Profit & Loss
+        - generic [ref=e73]: +$0.00
+        - generic [ref=e74]:
+          - generic [ref=e75] [cursor=pointer]:
+            - generic [ref=e76]: Today
+            - generic [ref=e77]: +$0.00
+          - generic [ref=e78] [cursor=pointer]:
+            - generic [ref=e79]: Week
+            - generic [ref=e80]: +$0.00
+          - generic [ref=e81] [cursor=pointer]:
+            - generic [ref=e82]: All
+            - generic [ref=e83]: +$0.00
+      - generic [ref=e85]:
+        - generic [ref=e86]:
+          - generic [ref=e89]: Вхід
+          - generic [ref=e90]:
+            - generic [ref=e91]:
+              - generic [ref=e92]: Pass Rate
+              - generic [ref=e93]: —
+            - generic [ref=e94]:
+              - generic [ref=e95]: Топ відхилення
+              - generic [ref=e96]: —
+            - generic [ref=e97]:
+              - generic [ref=e98]: Signals/hr
+              - generic [ref=e99]: —
+            - generic [ref=e100]:
+              - generic [ref=e101]: CF чистий
+              - generic [ref=e102]: —
+        - generic [ref=e103]:
+          - generic [ref=e106]: Вихід
+          - generic [ref=e107]:
+            - generic [ref=e108]:
+              - generic [ref=e109]: TP спрацьованість
+              - generic [ref=e110]: —
+            - generic [ref=e111]:
+              - generic [ref=e112]: SL частота
+              - generic [ref=e113]: —
+            - generic [ref=e114]:
+              - generic [ref=e115]: Ефективність виходу
+              - generic [ref=e116]: —
+            - generic [ref=e117]:
+              - generic [ref=e118]: Втрачено
+              - generic [ref=e119]: —
+        - generic [ref=e120]:
+          - generic [ref=e123]: Результат
+          - generic [ref=e124]:
+            - generic [ref=e125]:
+              - generic [ref=e126]: Win Rate
+              - generic [ref=e127]: 0%
+              - generic [ref=e218]: 0W 0L
+            - generic [ref=e128]:
+              - generic [ref=e129]: Profit Factor
+              - generic [ref=e130]: —
+            - generic [ref=e131]:
+              - generic [ref=e132]: Avg PnL/Trade
+              - generic [ref=e133]: +$0.00
+              - generic [ref=e219]: 0 closed trades
+            - generic [ref=e134]:
+              - generic [ref=e135]: Max Drawdown
+              - generic [ref=e136]: —
+        - generic [ref=e137]:
+          - generic [ref=e140]: Технічні
+          - generic [ref=e141]:
+            - generic [ref=e142]:
+              - generic [ref=e143]: Avg Latency
+              - generic [ref=e144]: —
+            - generic [ref=e145]:
+              - generic [ref=e146]: Avg Duration
+              - generic [ref=e147]: —
+            - generic [ref=e148]:
+              - generic [ref=e149]: Exposure
+              - generic [ref=e150]: 0%
+              - generic [ref=e220]: $0.00 / $0.00
+            - generic [ref=e151]:
+              - generic [ref=e152]: Відкриті позиції
+              - generic [ref=e153]: "5"
+              - generic [ref=e221]: positions
+    - generic [ref=e154]:
+      - button "Трейди 6" [ref=e222] [cursor=pointer]:
+        - generic [ref=e156]: Трейди
+        - generic [ref=e157]: "6"
+      - button "Налаштування" [ref=e158] [cursor=pointer]
+      - button "🐋 Whales 1505" [ref=e223] [cursor=pointer]:
+        - generic [ref=e160]: 🐋 Whales
+        - generic [ref=e161]: "1505"
+      - button "⚙️ Калібрація" [active] [ref=e162] [cursor=pointer]
+      - button "⚡ Chain" [ref=e163] [cursor=pointer]
+      - button "📋 Логи" [ref=e164] [cursor=pointer]
+      - generic [ref=e165]: Оновлено 10:43
+    - generic [ref=e5796]:
+      - generic [ref=e5797]:
+        - generic [ref=e5798]: MANUAL
+        - generic [ref=e5799]:
+          - generic [ref=e5800]: "Цикл:"
+          - strong [ref=e5801]: —
+        - generic [ref=e5802]:
+          - generic [ref=e5803]: "Точок даних:"
+          - strong [ref=e5804]: "0"
+        - generic [ref=e5805]:
+          - generic [ref=e5806]: "Історія:"
+          - strong [ref=e5807]: "0"
+        - generic [ref=e5808]:
+          - button "manual" [ref=e5809] [cursor=pointer]
+          - button "watch" [ref=e5810] [cursor=pointer]
+          - button "auto" [ref=e5811] [cursor=pointer]
+        - button "Запустити" [ref=e5812] [cursor=pointer]
+      - generic [ref=e5813]:
+        - button "Огляд" [ref=e5814] [cursor=pointer]:
+          - generic [ref=e5815]: Огляд
+        - button "Entry" [ref=e5816] [cursor=pointer]
+        - button "Exit" [ref=e5817] [cursor=pointer]
+        - button "Whales" [ref=e5818] [cursor=pointer]
+        - button "Спорт" [ref=e5819] [cursor=pointer]
+        - button "Лог" [ref=e5820] [cursor=pointer]
+        - button "Налаштування" [ref=e5821] [cursor=pointer]
+      - generic [ref=e5823]:
+        - generic [ref=e5824]: 📊
+        - generic [ref=e5825]: Калібратор ще не запускався
+        - generic [ref=e5826]: Запустіть калібрацію або дочекайтесь автоматичного запуску
+  - generic [ref=e206]:
+    - generic [ref=e207]:
+      - generic [ref=e208]: ⚠ NOT WIRED · v1→v2 endpoints
+      - button "×" [ref=e209] [cursor=pointer]
+    - list [ref=e210]:
+      - listitem [ref=e211]: 1×/api/polymarket/wallets/discover/status

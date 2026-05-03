@@ -1,0 +1,403 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - button "🇺🇦" [ref=e4] [cursor=pointer]
+      - generic [ref=e5]:
+        - generic [ref=e6]: OraLab
+        - generic [ref=e7]: Ora et Labora
+    - generic [ref=e8]:
+      - generic [ref=e9]:
+        - generic [ref=e10]: MODE
+        - generic [ref=e11]:
+          - button "DRY" [ref=e12] [cursor=pointer]: DRY
+          - button "LIVE" [ref=e14] [cursor=pointer]: LIVE
+        - generic [ref=e16]:
+          - generic [ref=e17]: Оновлено 11:17
+          - 'generic "Heartbeat: — · Data: —" [ref=e212]':
+            - generic [ref=e214]: Бот офлайн
+      - generic [ref=e18]:
+        - generic [ref=e19]: BOTS
+        - generic [ref=e20]:
+          - generic [ref=e2215]:
+            - generic [ref=e2217]: Whale Copy Bot
+            - generic [ref=e2218]: —
+            - generic [ref=e2219]:
+              - button "▶" [disabled] [ref=e2220]
+              - button "⏹" [ref=e2221] [cursor=pointer]
+              - button "↻" [ref=e2222] [cursor=pointer]
+          - generic [ref=e2223]:
+            - generic [ref=e2225]: WS Feed
+            - generic [ref=e2226]: —
+            - generic [ref=e2227]:
+              - button "▶" [disabled] [ref=e2228]
+              - button "⏹" [ref=e2229] [cursor=pointer]
+              - button "↻" [ref=e2230] [cursor=pointer]
+          - generic [ref=e2231]:
+            - generic [ref=e2233]: RTDS Feed
+            - generic [ref=e2234]: —
+            - generic [ref=e2235]:
+              - button "▶" [disabled] [ref=e2236]
+              - button "⏹" [ref=e2237] [cursor=pointer]
+              - button "↻" [ref=e2238] [cursor=pointer]
+          - generic [ref=e2239]:
+            - generic [ref=e2241]: Calibrator
+            - generic [ref=e2242]: —
+            - generic [ref=e2243]:
+              - button "▶" [disabled] [ref=e2244]
+              - button "⏹" [ref=e2245] [cursor=pointer]
+              - button "↻" [ref=e2246] [cursor=pointer]
+        - generic [ref=e21]:
+          - button "▶ All" [ref=e22] [cursor=pointer]
+          - button "⏹ All" [ref=e23] [cursor=pointer]
+      - generic [ref=e24]:
+        - generic [ref=e25]: HEALTH
+        - generic [ref=e27]: ALL HEALTHY
+        - generic [ref=e29]:
+          - generic [ref=e32]: 0s ago
+          - generic [ref=e35]: 0s ago
+          - generic [ref=e38]: running
+          - generic [ref=e41]: 39s ago
+          - generic [ref=e44]: disconnected
+          - generic [ref=e46]: 0 events · 0 whales
+      - generic [ref=e47]:
+        - generic [ref=e48]: MONITOR
+        - 'generic "Watchdog daemon PID: — Last tick: —" [ref=e248] [cursor=pointer]':
+          - generic [ref=e51]: WD ✓ —
+        - generic [ref=e52]: + майбутні перевірки
+      - generic [ref=e53]:
+        - generic [ref=e54]: CONTROL
+        - generic [ref=e55]:
+          - button "🔄 Оновити" [ref=e56] [cursor=pointer]
+          - button "♻️ Перезапуск" [ref=e57] [cursor=pointer]
+          - button "KILL" [ref=e249] [cursor=pointer]
+          - button "❌ Скидання" [ref=e59] [cursor=pointer]
+    - generic [ref=e60]:
+      - generic [ref=e61]:
+        - generic [ref=e62]:
+          - text: Balance
+          - button "↑ Поповнити" [ref=e63] [cursor=pointer]
+        - generic [ref=e64]: $50.00 of $50.00
+        - generic [ref=e65]:
+          - generic [ref=e66]: Позиції $41.66
+          - generic [ref=e68]: Вільно $8.34
+      - generic [ref=e71]:
+        - generic [ref=e72]: Profit & Loss
+        - generic [ref=e73]: "-$253.69"
+        - generic [ref=e74]:
+          - generic [ref=e75] [cursor=pointer]:
+            - generic [ref=e76]: Today
+            - generic [ref=e77]: "-$1.20"
+          - generic [ref=e78] [cursor=pointer]:
+            - generic [ref=e79]: Week
+            - generic [ref=e80]: "-$253.69"
+          - generic [ref=e81] [cursor=pointer]:
+            - generic [ref=e82]: All
+            - generic [ref=e83]: "-$253.69"
+      - generic [ref=e85]:
+        - generic [ref=e86]:
+          - generic [ref=e89]: Вхід
+          - generic [ref=e90]:
+            - generic [ref=e91]:
+              - generic [ref=e92]: Pass Rate
+              - generic [ref=e93]: 0.4%
+              - generic [ref=e251]: 95 pipe + 0 conv / 22035
+            - generic [ref=e94]:
+              - generic [ref=e95]: Топ відхилення
+              - generic [ref=e96]: sport_only
+              - generic [ref=e252]: top blocker
+            - generic [ref=e97]:
+              - generic [ref=e98]: Signals/hr
+              - generic [ref=e99]: "918"
+              - generic [ref=e253]: ~22035/day
+            - generic [ref=e100]:
+              - generic [ref=e101]: CF чистий
+              - generic [ref=e102]: +$6455.04
+              - generic [ref=e254]: $6473.00 saved
+        - generic [ref=e103]:
+          - generic [ref=e106]: Вихід
+          - generic [ref=e107]:
+            - generic [ref=e108]:
+              - generic [ref=e109]: TP спрацьованість
+              - generic [ref=e110]: 0.0%
+              - generic [ref=e255]: target ≥35%
+            - generic [ref=e111]:
+              - generic [ref=e112]: SL частота
+              - generic [ref=e113]: 0.0%
+              - generic [ref=e256]: target <30%
+            - generic [ref=e114]:
+              - generic [ref=e115]: Ефективність виходу
+              - generic [ref=e116]: 0.0%
+              - generic [ref=e257]: realized/peak
+            - generic [ref=e117]:
+              - generic [ref=e118]: Втрачено
+              - generic [ref=e119]: 100.0%
+              - generic [ref=e258]: unrealized upside
+        - generic [ref=e120]:
+          - generic [ref=e123]: Результат
+          - generic [ref=e124]:
+            - generic [ref=e125]:
+              - generic [ref=e126]: Win Rate
+              - generic [ref=e127]: 1%
+              - generic [ref=e259]: 1W 83L
+            - generic [ref=e128]:
+              - generic [ref=e129]: Profit Factor
+              - generic [ref=e130]: "0.00"
+              - generic [ref=e260]: $0.10W / $253.79L
+            - generic [ref=e131]:
+              - generic [ref=e132]: Avg PnL/Trade
+              - generic [ref=e133]: "-$3.02"
+              - generic [ref=e261]: 84 closed trades
+            - generic [ref=e134]:
+              - generic [ref=e135]: Max Drawdown
+              - generic [ref=e136]: "-$253.79"
+              - generic [ref=e262]: peak→trough
+        - generic [ref=e137]:
+          - generic [ref=e140]: Технічні
+          - generic [ref=e141]:
+            - generic [ref=e142]:
+              - generic [ref=e143]: Avg Latency
+              - generic [ref=e144]: 52ms
+              - generic [ref=e263]: live_ask
+            - generic [ref=e145]:
+              - generic [ref=e146]: Avg Duration
+              - generic [ref=e147]: 34m
+              - generic [ref=e264]: 84 closed · 9 open
+            - generic [ref=e148]:
+              - generic [ref=e149]: Exposure
+              - generic [ref=e150]: 83%
+              - generic [ref=e265]: $41.66 / $50.00
+            - generic [ref=e151]:
+              - generic [ref=e152]: Відкриті позиції
+              - generic [ref=e153]: "9"
+              - generic [ref=e266]: positions
+    - generic [ref=e154]:
+      - button "Трейди 102" [ref=e267] [cursor=pointer]:
+        - generic [ref=e156]: Трейди
+        - generic [ref=e157]: "102"
+      - button "Налаштування" [ref=e158] [cursor=pointer]
+      - button "🐋 Whales 1505" [ref=e268] [cursor=pointer]:
+        - generic [ref=e160]: 🐋 Whales
+        - generic [ref=e161]: "1505"
+      - button "⚙️ Калібрація" [ref=e162] [cursor=pointer]
+      - button "⚡ Chain" [ref=e163] [cursor=pointer]
+      - button "📋 Логи" [ref=e164] [cursor=pointer]
+      - generic [ref=e165]: Оновлено 11:17
+    - generic [ref=e1998]:
+      - generic [ref=e1999]:
+        - generic [ref=e2000]: Events
+        - button "ALL" [ref=e2001] [cursor=pointer]
+        - button "ERROR" [ref=e2002] [cursor=pointer]
+        - button "WARN" [ref=e2003] [cursor=pointer]
+        - button "INFO" [ref=e2004] [cursor=pointer]
+        - button "All" [ref=e2006] [cursor=pointer]
+        - button "Pipeline" [ref=e2007] [cursor=pointer]
+        - button "Execution" [ref=e2008] [cursor=pointer]
+        - button "Exit" [ref=e2009] [cursor=pointer]
+        - button "Calibrator" [ref=e2010] [cursor=pointer]
+        - button "System" [ref=e2011] [cursor=pointer]
+        - textbox "Search... (trade_id, market, reason)" [ref=e2013]
+        - button "Copy" [ref=e2014] [cursor=pointer]
+        - button "Clear" [ref=e2015] [cursor=pointer]
+      - generic [ref=e2016]:
+        - generic [ref=e2248]:
+          - generic [ref=e2249]: 07:25:21.833
+          - generic [ref=e2250]: INFO
+          - generic [ref=e2251]: cycle_complete
+        - generic [ref=e2252]:
+          - generic [ref=e2253]: 07:25:21.824
+          - generic [ref=e2254]: INFO
+          - generic [ref=e2255]: lift_matrix
+        - generic [ref=e2256]:
+          - generic [ref=e2257]: 07:25:21.805
+          - generic [ref=e2258]: INFO
+          - generic [ref=e2259]: weights
+        - generic [ref=e2260]:
+          - generic [ref=e2261]: 07:25:21.798
+          - generic [ref=e2262]: INFO
+          - generic [ref=e2263]: deficits
+        - generic [ref=e2264]:
+          - generic [ref=e2265]: 07:25:21.601
+          - generic [ref=e2266]: INFO
+          - generic [ref=e2267]: cycle_start
+        - generic [ref=e2268]:
+          - generic [ref=e2269]: 06:44:13.356
+          - generic [ref=e2270]: INFO
+          - generic [ref=e2271]: cycle_complete
+        - generic [ref=e2272]:
+          - generic [ref=e2273]: 06:44:13.355
+          - generic [ref=e2274]: INFO
+          - generic [ref=e2275]: lift_matrix
+        - generic [ref=e2276]:
+          - generic [ref=e2277]: 06:44:13.348
+          - generic [ref=e2278]: INFO
+          - generic [ref=e2279]: weights
+        - generic [ref=e2280]:
+          - generic [ref=e2281]: 06:44:13.346
+          - generic [ref=e2282]: INFO
+          - generic [ref=e2283]: deficits
+        - generic [ref=e2284]:
+          - generic [ref=e2285]: 06:44:10.160
+          - generic [ref=e2286]: INFO
+          - generic [ref=e2287]: cycle_start
+        - generic [ref=e2288]:
+          - generic [ref=e2289]: 06:42:38.047
+          - generic [ref=e2290]: INFO
+          - generic [ref=e2291]: cycle_complete
+        - generic [ref=e2292]:
+          - generic [ref=e2293]: 06:42:38.046
+          - generic [ref=e2294]: INFO
+          - generic [ref=e2295]: lift_matrix
+        - generic [ref=e2296]:
+          - generic [ref=e2297]: 06:42:38.042
+          - generic [ref=e2298]: INFO
+          - generic [ref=e2299]: weights
+        - generic [ref=e2300]:
+          - generic [ref=e2301]: 06:42:38.040
+          - generic [ref=e2302]: INFO
+          - generic [ref=e2303]: deficits
+        - generic [ref=e2304]:
+          - generic [ref=e2305]: 06:42:37.125
+          - generic [ref=e2306]: INFO
+          - generic [ref=e2307]: cycle_start
+        - generic [ref=e2308]:
+          - generic [ref=e2309]: 06:32:39.674
+          - generic [ref=e2310]: INFO
+          - generic [ref=e2311]: cycle_complete
+        - generic [ref=e2312]:
+          - generic [ref=e2313]: 06:32:39.673
+          - generic [ref=e2314]: INFO
+          - generic [ref=e2315]: lift_matrix
+        - generic [ref=e2316]:
+          - generic [ref=e2317]: 06:32:39.670
+          - generic [ref=e2318]: INFO
+          - generic [ref=e2319]: weights
+        - generic [ref=e2320]:
+          - generic [ref=e2321]: 06:32:39.669
+          - generic [ref=e2322]: INFO
+          - generic [ref=e2323]: deficits
+        - generic [ref=e2324]:
+          - generic [ref=e2325]: 06:32:38.660
+          - generic [ref=e2326]: INFO
+          - generic [ref=e2327]: cycle_start
+        - generic [ref=e2328]:
+          - generic [ref=e2329]: 06:12:41.768
+          - generic [ref=e2330]: INFO
+          - generic [ref=e2331]: rollback
+        - generic [ref=e2332]:
+          - generic [ref=e2333]: 06:12:41.737
+          - generic [ref=e2334]: INFO
+          - generic [ref=e2335]: apply
+        - generic [ref=e2336]:
+          - generic [ref=e2337]: 06:12:41.716
+          - generic [ref=e2338]: INFO
+          - generic [ref=e2339]: cycle_complete
+        - generic [ref=e2340]:
+          - generic [ref=e2341]: 06:12:41.714
+          - generic [ref=e2342]: INFO
+          - generic [ref=e2343]: lift_matrix
+        - generic [ref=e2344]:
+          - generic [ref=e2345]: 06:12:41.710
+          - generic [ref=e2346]: INFO
+          - generic [ref=e2347]: deficits
+        - generic [ref=e2348]:
+          - generic [ref=e2349]: 06:12:41.710
+          - generic [ref=e2350]: INFO
+          - generic [ref=e2351]: weights
+        - generic [ref=e2352]:
+          - generic [ref=e2353]: 06:12:40.602
+          - generic [ref=e2354]: INFO
+          - generic [ref=e2355]: cycle_start
+        - generic [ref=e2356]:
+          - generic [ref=e2357]: 06:09:16.961
+          - generic [ref=e2358]: INFO
+          - generic [ref=e2359]: cycle_complete
+        - generic [ref=e2360]:
+          - generic [ref=e2361]: 06:09:16.960
+          - generic [ref=e2362]: INFO
+          - generic [ref=e2363]: lift_matrix
+        - generic [ref=e2364]:
+          - generic [ref=e2365]: 06:09:16.957
+          - generic [ref=e2366]: INFO
+          - generic [ref=e2367]: weights
+        - generic [ref=e2368]:
+          - generic [ref=e2369]: 06:09:16.952
+          - generic [ref=e2370]: INFO
+          - generic [ref=e2371]: deficits
+        - generic [ref=e2372]:
+          - generic [ref=e2373]: 06:09:15.464
+          - generic [ref=e2374]: INFO
+          - generic [ref=e2375]: cycle_start
+        - generic [ref=e2376]:
+          - generic [ref=e2377]: 06:09:09.935
+          - generic [ref=e2378]: INFO
+          - generic [ref=e2379]: cycle_complete
+        - generic [ref=e2380]:
+          - generic [ref=e2381]: 06:09:09.934
+          - generic [ref=e2382]: INFO
+          - generic [ref=e2383]: lift_matrix
+        - generic [ref=e2384]:
+          - generic [ref=e2385]: 06:09:09.930
+          - generic [ref=e2386]: INFO
+          - generic [ref=e2387]: weights
+        - generic [ref=e2388]:
+          - generic [ref=e2389]: 06:09:09.929
+          - generic [ref=e2390]: INFO
+          - generic [ref=e2391]: deficits
+        - generic [ref=e2392]:
+          - generic [ref=e2393]: 06:09:06.343
+          - generic [ref=e2394]: INFO
+          - generic [ref=e2395]: cycle_start
+        - generic [ref=e2396]:
+          - generic [ref=e2397]: 06:08:57.953
+          - generic [ref=e2398]: INFO
+          - generic [ref=e2399]: cycle_start
+        - generic [ref=e2400]:
+          - generic [ref=e2401]: 06:08:02.475
+          - generic [ref=e2402]: INFO
+          - generic [ref=e2403]: cycle_start
+        - generic [ref=e2404]:
+          - generic [ref=e2405]: 06:07:58.168
+          - generic [ref=e2406]: INFO
+          - generic [ref=e2407]: cycle_start
+        - generic [ref=e2408]:
+          - generic [ref=e2409]: 06:07:46.616
+          - generic [ref=e2410]: INFO
+          - generic [ref=e2411]: cycle_start
+        - generic [ref=e2412]:
+          - generic [ref=e2413]: 06:07:42.686
+          - generic [ref=e2414]: INFO
+          - generic [ref=e2415]: cycle_start
+        - generic [ref=e2416]:
+          - generic [ref=e2417]: 06:07:18.365
+          - generic [ref=e2418]: INFO
+          - generic [ref=e2419]: cycle_start
+        - generic [ref=e2420]:
+          - generic [ref=e2421]: 06:07:13.915
+          - generic [ref=e2422]: INFO
+          - generic [ref=e2423]: cycle_start
+        - generic [ref=e2424]:
+          - generic [ref=e2425]: 06:07:08.415
+          - generic [ref=e2426]: INFO
+          - generic [ref=e2427]: cycle_start
+        - generic [ref=e2428]:
+          - generic [ref=e2429]: 06:07:04.259
+          - generic [ref=e2430]: INFO
+          - generic [ref=e2431]: cycle_start
+        - generic [ref=e2432]:
+          - generic [ref=e2433]: 06:06:59.115
+          - generic [ref=e2434]: INFO
+          - generic [ref=e2435]: cycle_start
+        - generic [ref=e2436]:
+          - generic [ref=e2437]: 06:06:43.529
+          - generic [ref=e2438]: INFO
+          - generic [ref=e2439]: cycle_start
+      - generic [ref=e2209]:
+        - generic [ref=e2210]: events.jsonl
+        - generic [ref=e2212]: 48 entries
+  - generic [ref=e206]:
+    - generic [ref=e207]:
+      - generic [ref=e208]: ⚠ NOT WIRED · v1→v2 endpoints
+      - button "×" [ref=e209] [cursor=pointer]
+    - list [ref=e210]:
+      - listitem [ref=e2440]: 17×/api/polymarket/live-marks
+      - listitem [ref=e2441]: 1×/api/polymarket/wallets/discover/status

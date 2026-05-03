@@ -1,0 +1,376 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - button "🇺🇦" [ref=e4] [cursor=pointer]
+      - generic [ref=e5]:
+        - generic [ref=e6]: OraLab
+        - generic [ref=e7]: Ora et Labora
+    - generic [ref=e8]:
+      - generic [ref=e9]:
+        - generic [ref=e10]: MODE
+        - generic [ref=e11]:
+          - button "DRY" [ref=e12] [cursor=pointer]: DRY
+          - button "LIVE" [ref=e14] [cursor=pointer]: LIVE
+        - generic [ref=e16]:
+          - generic [ref=e17]: Оновлено 11:13
+          - 'generic "Heartbeat: — · Data: —" [ref=e212]':
+            - generic [ref=e214]: Бот офлайн
+      - generic [ref=e18]:
+        - generic [ref=e19]: BOTS
+        - generic [ref=e20]:
+          - generic [ref=e8807]:
+            - generic [ref=e8809]: Whale Copy Bot
+            - generic [ref=e8810]: —
+            - generic [ref=e8811]:
+              - button "▶" [disabled] [ref=e8812]
+              - button "⏹" [ref=e8813] [cursor=pointer]
+              - button "↻" [ref=e8814] [cursor=pointer]
+          - generic [ref=e8815]:
+            - generic [ref=e8817]: WS Feed
+            - generic [ref=e8818]: —
+            - generic [ref=e8819]:
+              - button "▶" [disabled] [ref=e8820]
+              - button "⏹" [ref=e8821] [cursor=pointer]
+              - button "↻" [ref=e8822] [cursor=pointer]
+          - generic [ref=e8823]:
+            - generic [ref=e8825]: RTDS Feed
+            - generic [ref=e8826]: —
+            - generic [ref=e8827]:
+              - button "▶" [disabled] [ref=e8828]
+              - button "⏹" [ref=e8829] [cursor=pointer]
+              - button "↻" [ref=e8830] [cursor=pointer]
+          - generic [ref=e8831]:
+            - generic [ref=e8833]: Calibrator
+            - generic [ref=e8834]: —
+            - generic [ref=e8835]:
+              - button "▶" [disabled] [ref=e8836]
+              - button "⏹" [ref=e8837] [cursor=pointer]
+              - button "↻" [ref=e8838] [cursor=pointer]
+        - generic [ref=e21]:
+          - button "▶ All" [ref=e22] [cursor=pointer]
+          - button "⏹ All" [ref=e23] [cursor=pointer]
+      - generic [ref=e24]:
+        - generic [ref=e25]: HEALTH
+        - generic [ref=e27]: ALL HEALTHY
+        - generic [ref=e29]:
+          - generic [ref=e32]: 2s ago
+          - generic [ref=e35]: 2s ago
+          - generic [ref=e38]: running
+          - generic [ref=e41]: 29s ago
+          - generic [ref=e44]: disconnected
+          - generic [ref=e46]: 0 events · 0 whales
+      - generic [ref=e47]:
+        - generic [ref=e48]: MONITOR
+        - 'generic "Watchdog daemon PID: — Last tick: —" [ref=e248] [cursor=pointer]':
+          - generic [ref=e51]: WD ✓ —
+        - generic [ref=e52]: + майбутні перевірки
+      - generic [ref=e53]:
+        - generic [ref=e54]: CONTROL
+        - generic [ref=e55]:
+          - button "🔄 Оновити" [ref=e56] [cursor=pointer]
+          - button "♻️ Перезапуск" [ref=e57] [cursor=pointer]
+          - button "KILL" [ref=e249] [cursor=pointer]
+          - button "❌ Скидання" [ref=e59] [cursor=pointer]
+    - generic [ref=e60]:
+      - generic [ref=e61]:
+        - generic [ref=e62]:
+          - text: Balance
+          - button "↑ Поповнити" [ref=e63] [cursor=pointer]
+        - generic [ref=e64]: $50.00 of $50.00
+        - generic [ref=e65]:
+          - generic [ref=e66]: Позиції $41.66
+          - generic [ref=e68]: Вільно $8.34
+      - generic [ref=e71]:
+        - generic [ref=e72]: Profit & Loss
+        - generic [ref=e73]: "-$253.69"
+        - generic [ref=e74]:
+          - generic [ref=e75] [cursor=pointer]:
+            - generic [ref=e76]: Today
+            - generic [ref=e77]: "-$1.20"
+          - generic [ref=e78] [cursor=pointer]:
+            - generic [ref=e79]: Week
+            - generic [ref=e80]: "-$253.69"
+          - generic [ref=e81] [cursor=pointer]:
+            - generic [ref=e82]: All
+            - generic [ref=e83]: "-$253.69"
+      - generic [ref=e85]:
+        - generic [ref=e86]:
+          - generic [ref=e89]: Вхід
+          - generic [ref=e90]:
+            - generic [ref=e91]:
+              - generic [ref=e92]: Pass Rate
+              - generic [ref=e93]: 0.4%
+              - generic [ref=e251]: 95 pipe + 0 conv / 21944
+            - generic [ref=e94]:
+              - generic [ref=e95]: Топ відхилення
+              - generic [ref=e96]: sport_only
+              - generic [ref=e252]: top blocker
+            - generic [ref=e97]:
+              - generic [ref=e98]: Signals/hr
+              - generic [ref=e99]: "914"
+              - generic [ref=e253]: ~21944/day
+            - generic [ref=e100]:
+              - generic [ref=e101]: CF чистий
+              - generic [ref=e102]: +$6427.21
+              - generic [ref=e254]: $6445.18 saved
+        - generic [ref=e103]:
+          - generic [ref=e106]: Вихід
+          - generic [ref=e107]:
+            - generic [ref=e108]:
+              - generic [ref=e109]: TP спрацьованість
+              - generic [ref=e110]: 0.0%
+              - generic [ref=e255]: target ≥35%
+            - generic [ref=e111]:
+              - generic [ref=e112]: SL частота
+              - generic [ref=e113]: 0.0%
+              - generic [ref=e256]: target <30%
+            - generic [ref=e114]:
+              - generic [ref=e115]: Ефективність виходу
+              - generic [ref=e116]: 0.0%
+              - generic [ref=e257]: realized/peak
+            - generic [ref=e117]:
+              - generic [ref=e118]: Втрачено
+              - generic [ref=e119]: 100.0%
+              - generic [ref=e258]: unrealized upside
+        - generic [ref=e120]:
+          - generic [ref=e123]: Результат
+          - generic [ref=e124]:
+            - generic [ref=e125]:
+              - generic [ref=e126]: Win Rate
+              - generic [ref=e127]: 1%
+              - generic [ref=e259]: 1W 83L
+            - generic [ref=e128]:
+              - generic [ref=e129]: Profit Factor
+              - generic [ref=e130]: "0.00"
+              - generic [ref=e260]: $0.10W / $253.79L
+            - generic [ref=e131]:
+              - generic [ref=e132]: Avg PnL/Trade
+              - generic [ref=e133]: "-$3.02"
+              - generic [ref=e261]: 84 closed trades
+            - generic [ref=e134]:
+              - generic [ref=e135]: Max Drawdown
+              - generic [ref=e136]: "-$253.79"
+              - generic [ref=e262]: peak→trough
+        - generic [ref=e137]:
+          - generic [ref=e140]: Технічні
+          - generic [ref=e141]:
+            - generic [ref=e142]:
+              - generic [ref=e143]: Avg Latency
+              - generic [ref=e144]: 52ms
+              - generic [ref=e263]: live_ask
+            - generic [ref=e145]:
+              - generic [ref=e146]: Avg Duration
+              - generic [ref=e147]: 34m
+              - generic [ref=e264]: 84 closed · 9 open
+            - generic [ref=e148]:
+              - generic [ref=e149]: Exposure
+              - generic [ref=e150]: 83%
+              - generic [ref=e265]: $41.66 / $50.00
+            - generic [ref=e151]:
+              - generic [ref=e152]: Відкриті позиції
+              - generic [ref=e153]: "9"
+              - generic [ref=e266]: positions
+    - generic [ref=e154]:
+      - button "Трейди 102" [ref=e267] [cursor=pointer]:
+        - generic [ref=e156]: Трейди
+        - generic [ref=e157]: "102"
+      - button "Налаштування" [ref=e158] [cursor=pointer]
+      - button "🐋 Whales 1505" [ref=e268] [cursor=pointer]:
+        - generic [ref=e160]: 🐋 Whales
+        - generic [ref=e161]: "1505"
+      - button "⚙️ Калібрація" [ref=e162] [cursor=pointer]
+      - button "⚡ Chain" [ref=e163] [cursor=pointer]
+      - button "📋 Логи" [ref=e164] [cursor=pointer]
+      - generic [ref=e165]: Оновлено 11:13
+    - generic [ref=e7971]:
+      - generic [ref=e7972]:
+        - generic [ref=e7973]: WATCH
+        - generic [ref=e7974]:
+          - generic [ref=e7975]: "Цикл:"
+          - strong [ref=e7976]: 2 год тому · наст. ~09:49
+        - generic [ref=e7977]:
+          - generic [ref=e7978]: "Точок даних:"
+          - strong [ref=e7979]: "84"
+        - generic [ref=e7980]:
+          - generic [ref=e7981]: "Історія:"
+          - strong [ref=e7982]: "0"
+        - generic [ref=e7983]:
+          - button "manual" [ref=e7984] [cursor=pointer]
+          - button "watch" [ref=e7985] [cursor=pointer]
+          - button "auto" [ref=e7986] [cursor=pointer]
+        - button "Запустити" [ref=e7987] [cursor=pointer]
+      - generic [ref=e7988]:
+        - button "Огляд 13" [ref=e7989] [cursor=pointer]:
+          - generic [ref=e7990]: Огляд
+          - generic [ref=e7991]: "13"
+        - button "Entry" [ref=e7992] [cursor=pointer]
+        - button "Exit" [ref=e7993] [cursor=pointer]
+        - button "Whales" [ref=e7994] [cursor=pointer]
+        - button "Спорт" [ref=e7995] [cursor=pointer]
+        - button "Лог" [ref=e7996] [cursor=pointer]
+        - button "Налаштування" [ref=e7997] [cursor=pointer]
+      - generic [ref=e8644]:
+        - generic [ref=e8645]:
+          - generic [ref=e8646]: НОВЕ
+          - generic [ref=e8647]:
+            - generic [ref=e8649]: Lift matrix по entry-леверах
+            - generic [ref=e8650]: multi-KPI
+          - generic [ref=e8651]:
+            - generic [ref=e8652]: Фільтр
+            - generic [ref=e8653]: Δ WR
+            - generic [ref=e8654]: Δ PF
+            - generic [ref=e8655]: Δ avg_pnl
+            - generic [ref=e8656]: Δ sl_rate
+            - generic [ref=e8657]: Conf
+            - generic [ref=e8658]: Score
+          - generic [ref=e8659]:
+            - generic [ref=e8660]:
+              - generic [ref=e8661]: —
+              - generic [ref=e8662]: · tighten
+            - generic [ref=e8663]: —
+            - generic [ref=e8664]: —
+            - generic [ref=e8665]: —
+            - generic [ref=e8666]: —
+            - generic [ref=e8667]: —
+            - generic [ref=e8668]: "+0.00"
+          - generic [ref=e8669]:
+            - generic [ref=e8670]:
+              - generic [ref=e8671]: —
+              - generic [ref=e8672]: · tighten
+            - generic [ref=e8673]: —
+            - generic [ref=e8674]: —
+            - generic [ref=e8675]: —
+            - generic [ref=e8676]: —
+            - generic [ref=e8677]: —
+            - generic [ref=e8678]: "+0.00"
+          - generic [ref=e8679]:
+            - generic [ref=e8680]:
+              - generic [ref=e8681]: —
+              - generic [ref=e8682]: · tighten
+            - generic [ref=e8683]: —
+            - generic [ref=e8684]: —
+            - generic [ref=e8685]: —
+            - generic [ref=e8686]: —
+            - generic [ref=e8687]: —
+            - generic [ref=e8688]: "+0.00"
+          - generic [ref=e8689]:
+            - generic [ref=e8690]:
+              - generic [ref=e8691]: —
+              - generic [ref=e8692]: · tighten
+            - generic [ref=e8693]: —
+            - generic [ref=e8694]: —
+            - generic [ref=e8695]: —
+            - generic [ref=e8696]: —
+            - generic [ref=e8697]: —
+            - generic [ref=e8698]: "+0.00"
+          - generic [ref=e8699]:
+            - generic [ref=e8700]:
+              - generic [ref=e8701]: —
+              - generic [ref=e8702]: · tighten
+            - generic [ref=e8703]: —
+            - generic [ref=e8704]: —
+            - generic [ref=e8705]: —
+            - generic [ref=e8706]: —
+            - generic [ref=e8707]: —
+            - generic [ref=e8708]: "+0.00"
+          - generic [ref=e8709]:
+            - generic [ref=e8710]:
+              - generic [ref=e8711]: —
+              - generic [ref=e8712]: · tighten
+            - generic [ref=e8713]: —
+            - generic [ref=e8714]: —
+            - generic [ref=e8715]: —
+            - generic [ref=e8716]: —
+            - generic [ref=e8717]: —
+            - generic [ref=e8718]: "+0.00"
+          - generic [ref=e8719]:
+            - generic [ref=e8720]:
+              - generic [ref=e8721]: —
+              - generic [ref=e8722]: · tighten
+            - generic [ref=e8723]: —
+            - generic [ref=e8724]: —
+            - generic [ref=e8725]: —
+            - generic [ref=e8726]: —
+            - generic [ref=e8727]: —
+            - generic [ref=e8728]: "+0.00"
+          - generic [ref=e8729]:
+            - generic [ref=e8730]:
+              - generic [ref=e8731]: —
+              - generic [ref=e8732]: · tighten
+            - generic [ref=e8733]: —
+            - generic [ref=e8734]: —
+            - generic [ref=e8735]: —
+            - generic [ref=e8736]: —
+            - generic [ref=e8737]: —
+            - generic [ref=e8738]: "+0.00"
+          - generic [ref=e8739]:
+            - generic [ref=e8740]:
+              - generic [ref=e8741]: —
+              - generic [ref=e8742]: · tighten
+            - generic [ref=e8743]: —
+            - generic [ref=e8744]: —
+            - generic [ref=e8745]: —
+            - generic [ref=e8746]: —
+            - generic [ref=e8747]: —
+            - generic [ref=e8748]: "+0.00"
+          - generic [ref=e8749]:
+            - generic [ref=e8750]:
+              - generic [ref=e8751]: —
+              - generic [ref=e8752]: · tighten
+            - generic [ref=e8753]: —
+            - generic [ref=e8754]: —
+            - generic [ref=e8755]: —
+            - generic [ref=e8756]: —
+            - generic [ref=e8757]: —
+            - generic [ref=e8758]: "+0.00"
+          - generic [ref=e8759]:
+            - generic [ref=e8760]:
+              - generic [ref=e8761]: —
+              - generic [ref=e8762]: · tighten
+            - generic [ref=e8763]: —
+            - generic [ref=e8764]: —
+            - generic [ref=e8765]: —
+            - generic [ref=e8766]: —
+            - generic [ref=e8767]: —
+            - generic [ref=e8768]: "+0.00"
+          - generic [ref=e8769]:
+            - generic [ref=e8770]:
+              - generic [ref=e8771]: —
+              - generic [ref=e8772]: · tighten
+            - generic [ref=e8773]: —
+            - generic [ref=e8774]: —
+            - generic [ref=e8775]: —
+            - generic [ref=e8776]: —
+            - generic [ref=e8777]: —
+            - generic [ref=e8778]: "+0.00"
+          - generic [ref=e8779]:
+            - generic [ref=e8780]:
+              - generic [ref=e8781]: —
+              - generic [ref=e8782]: · tighten
+            - generic [ref=e8783]: —
+            - generic [ref=e8784]: —
+            - generic [ref=e8785]: —
+            - generic [ref=e8786]: —
+            - generic [ref=e8787]: —
+            - generic [ref=e8788]: "+0.00"
+          - generic [ref=e8789]: "Кожен рядок — ідея зрушити поріг якогось фільтра. Колонки Δ показують, як змінилися б KPI, якби зміну прийняли (плюс — на краще; для sl_rate менше означає краще). Score — загальний бал корисності: якщо ≥ MIN_LIFT_THRESHOLD, зміна потрапляє до рекомендацій зверху і застосовується. Нижчі бали лежать у запасі, доки не набереться більше даних або KPI не почне сильніше тиснути. Зелений рядок = бал вище порогу."
+        - generic [ref=e8790]:
+          - generic [ref=e8791]:
+            - generic [ref=e8793]: $ Вартість фільтрів
+            - generic [ref=e8794]: "0"
+          - generic [ref=e8795]: "Counterfactual аналіз: скільки грошей зберіг/втратив кожен фільтр. Saved — відхилений сигнал пішов у мінус (правильне рішення). Lost — відхилений сигнал пішов у плюс (пропущений прибуток)."
+          - generic [ref=e8796]: Ще немає відхилених сигналів для аналізу. Дані з’являться після перших reject-ів у pipeline.
+        - generic [ref=e8797]:
+          - generic [ref=e8798]:
+            - generic [ref=e8800]: Байєсівська впевненість
+            - generic [ref=e8801]: "0"
+          - generic [ref=e8802]: Впевненість системи в оцінці кожного фільтра. Зростає з кількістю даних. Фільтри ≥70% (стабільний) — готові для автоматичних рекомендацій.
+          - generic [ref=e8803]: Bayesian модель ще не отримала даних. Дані з’являться після запуску калібратора з достатньою кількістю трейдів.
+        - generic [ref=e8804]: "Оновлено: 11:13:25"
+  - generic [ref=e206]:
+    - generic [ref=e207]:
+      - generic [ref=e208]: ⚠ NOT WIRED · v1→v2 endpoints
+      - button "×" [ref=e209] [cursor=pointer]
+    - list [ref=e210]:
+      - listitem [ref=e8840]: 67×/api/polymarket/live-marks
+      - listitem [ref=e8841]: 1×/api/polymarket/wallets/discover/status

@@ -1,0 +1,296 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - button "🇺🇦" [ref=e4] [cursor=pointer]
+      - generic [ref=e5]:
+        - generic [ref=e6]: OraLab
+        - generic [ref=e7]: Ora et Labora
+    - generic [ref=e8]:
+      - generic [ref=e9]:
+        - generic [ref=e10]: MODE
+        - generic [ref=e11]:
+          - button "DRY" [ref=e12] [cursor=pointer]: DRY
+          - button "LIVE" [ref=e14] [cursor=pointer]: LIVE
+        - generic [ref=e16]:
+          - generic [ref=e17]: Оновлено 11:13
+          - 'generic "Heartbeat: — · Data: —" [ref=e212]':
+            - generic [ref=e214]: Бот офлайн
+      - generic [ref=e18]:
+        - generic [ref=e19]: BOTS
+        - generic [ref=e20]:
+          - generic [ref=e9000]:
+            - generic [ref=e9002]: Whale Copy Bot
+            - generic [ref=e9003]: —
+            - generic [ref=e9004]:
+              - button "▶" [disabled] [ref=e9005]
+              - button "⏹" [ref=e9006] [cursor=pointer]
+              - button "↻" [ref=e9007] [cursor=pointer]
+          - generic [ref=e9008]:
+            - generic [ref=e9010]: WS Feed
+            - generic [ref=e9011]: —
+            - generic [ref=e9012]:
+              - button "▶" [disabled] [ref=e9013]
+              - button "⏹" [ref=e9014] [cursor=pointer]
+              - button "↻" [ref=e9015] [cursor=pointer]
+          - generic [ref=e9016]:
+            - generic [ref=e9018]: RTDS Feed
+            - generic [ref=e9019]: —
+            - generic [ref=e9020]:
+              - button "▶" [disabled] [ref=e9021]
+              - button "⏹" [ref=e9022] [cursor=pointer]
+              - button "↻" [ref=e9023] [cursor=pointer]
+          - generic [ref=e9024]:
+            - generic [ref=e9026]: Calibrator
+            - generic [ref=e9027]: —
+            - generic [ref=e9028]:
+              - button "▶" [disabled] [ref=e9029]
+              - button "⏹" [ref=e9030] [cursor=pointer]
+              - button "↻" [ref=e9031] [cursor=pointer]
+        - generic [ref=e21]:
+          - button "▶ All" [ref=e22] [cursor=pointer]
+          - button "⏹ All" [ref=e23] [cursor=pointer]
+      - generic [ref=e24]:
+        - generic [ref=e25]: HEALTH
+        - generic [ref=e27]: ALL HEALTHY
+        - generic [ref=e29]:
+          - generic [ref=e32]: 3s ago
+          - generic [ref=e35]: 3s ago
+          - generic [ref=e38]: running
+          - generic [ref=e41]: 9s ago
+          - generic [ref=e44]: disconnected
+          - generic [ref=e46]: 0 events · 0 whales
+      - generic [ref=e47]:
+        - generic [ref=e48]: MONITOR
+        - 'generic "Watchdog daemon PID: — Last tick: —" [ref=e248] [cursor=pointer]':
+          - generic [ref=e51]: WD ✓ —
+        - generic [ref=e52]: + майбутні перевірки
+      - generic [ref=e53]:
+        - generic [ref=e54]: CONTROL
+        - generic [ref=e55]:
+          - button "🔄 Оновити" [ref=e56] [cursor=pointer]
+          - button "♻️ Перезапуск" [ref=e57] [cursor=pointer]
+          - button "KILL" [ref=e249] [cursor=pointer]
+          - button "❌ Скидання" [ref=e59] [cursor=pointer]
+    - generic [ref=e60]:
+      - generic [ref=e61]:
+        - generic [ref=e62]:
+          - text: Balance
+          - button "↑ Поповнити" [ref=e63] [cursor=pointer]
+        - generic [ref=e64]: $50.00 of $50.00
+        - generic [ref=e65]:
+          - generic [ref=e66]: Позиції $41.66
+          - generic [ref=e68]: Вільно $8.34
+      - generic [ref=e71]:
+        - generic [ref=e72]: Profit & Loss
+        - generic [ref=e73]: "-$253.69"
+        - generic [ref=e74]:
+          - generic [ref=e75] [cursor=pointer]:
+            - generic [ref=e76]: Today
+            - generic [ref=e77]: "-$1.20"
+          - generic [ref=e78] [cursor=pointer]:
+            - generic [ref=e79]: Week
+            - generic [ref=e80]: "-$253.69"
+          - generic [ref=e81] [cursor=pointer]:
+            - generic [ref=e82]: All
+            - generic [ref=e83]: "-$253.69"
+      - generic [ref=e85]:
+        - generic [ref=e86]:
+          - generic [ref=e89]: Вхід
+          - generic [ref=e90]:
+            - generic [ref=e91]:
+              - generic [ref=e92]: Pass Rate
+              - generic [ref=e93]: 0.4%
+              - generic [ref=e251]: 95 pipe + 0 conv / 21958
+            - generic [ref=e94]:
+              - generic [ref=e95]: Топ відхилення
+              - generic [ref=e96]: sport_only
+              - generic [ref=e252]: top blocker
+            - generic [ref=e97]:
+              - generic [ref=e98]: Signals/hr
+              - generic [ref=e99]: "915"
+              - generic [ref=e253]: ~21958/day
+            - generic [ref=e100]:
+              - generic [ref=e101]: CF чистий
+              - generic [ref=e102]: +$6431.49
+              - generic [ref=e254]: $6449.46 saved
+        - generic [ref=e103]:
+          - generic [ref=e106]: Вихід
+          - generic [ref=e107]:
+            - generic [ref=e108]:
+              - generic [ref=e109]: TP спрацьованість
+              - generic [ref=e110]: 0.0%
+              - generic [ref=e255]: target ≥35%
+            - generic [ref=e111]:
+              - generic [ref=e112]: SL частота
+              - generic [ref=e113]: 0.0%
+              - generic [ref=e256]: target <30%
+            - generic [ref=e114]:
+              - generic [ref=e115]: Ефективність виходу
+              - generic [ref=e116]: 0.0%
+              - generic [ref=e257]: realized/peak
+            - generic [ref=e117]:
+              - generic [ref=e118]: Втрачено
+              - generic [ref=e119]: 100.0%
+              - generic [ref=e258]: unrealized upside
+        - generic [ref=e120]:
+          - generic [ref=e123]: Результат
+          - generic [ref=e124]:
+            - generic [ref=e125]:
+              - generic [ref=e126]: Win Rate
+              - generic [ref=e127]: 1%
+              - generic [ref=e259]: 1W 83L
+            - generic [ref=e128]:
+              - generic [ref=e129]: Profit Factor
+              - generic [ref=e130]: "0.00"
+              - generic [ref=e260]: $0.10W / $253.79L
+            - generic [ref=e131]:
+              - generic [ref=e132]: Avg PnL/Trade
+              - generic [ref=e133]: "-$3.02"
+              - generic [ref=e261]: 84 closed trades
+            - generic [ref=e134]:
+              - generic [ref=e135]: Max Drawdown
+              - generic [ref=e136]: "-$253.79"
+              - generic [ref=e262]: peak→trough
+        - generic [ref=e137]:
+          - generic [ref=e140]: Технічні
+          - generic [ref=e141]:
+            - generic [ref=e142]:
+              - generic [ref=e143]: Avg Latency
+              - generic [ref=e144]: 52ms
+              - generic [ref=e263]: live_ask
+            - generic [ref=e145]:
+              - generic [ref=e146]: Avg Duration
+              - generic [ref=e147]: 34m
+              - generic [ref=e264]: 84 closed · 9 open
+            - generic [ref=e148]:
+              - generic [ref=e149]: Exposure
+              - generic [ref=e150]: 83%
+              - generic [ref=e265]: $41.66 / $50.00
+            - generic [ref=e151]:
+              - generic [ref=e152]: Відкриті позиції
+              - generic [ref=e153]: "9"
+              - generic [ref=e266]: positions
+    - generic [ref=e154]:
+      - button "Трейди 102" [ref=e267] [cursor=pointer]:
+        - generic [ref=e156]: Трейди
+        - generic [ref=e157]: "102"
+      - button "Налаштування" [ref=e158] [cursor=pointer]
+      - button "🐋 Whales 1505" [ref=e268] [cursor=pointer]:
+        - generic [ref=e160]: 🐋 Whales
+        - generic [ref=e161]: "1505"
+      - button "⚙️ Калібрація" [ref=e162] [cursor=pointer]
+      - button "⚡ Chain" [ref=e163] [cursor=pointer]
+      - button "📋 Логи" [ref=e164] [cursor=pointer]
+      - generic [ref=e165]: Оновлено 11:13
+    - generic [ref=e7971]:
+      - generic [ref=e7972]:
+        - generic [ref=e7973]: WATCH
+        - generic [ref=e7974]:
+          - generic [ref=e7975]: "Цикл:"
+          - strong [ref=e7976]: 2 год тому · наст. ~09:49
+        - generic [ref=e7977]:
+          - generic [ref=e7978]: "Точок даних:"
+          - strong [ref=e7979]: "84"
+        - generic [ref=e7980]:
+          - generic [ref=e7981]: "Історія:"
+          - strong [ref=e7982]: "0"
+        - generic [ref=e7983]:
+          - button "manual" [ref=e7984] [cursor=pointer]
+          - button "watch" [ref=e7985] [cursor=pointer]
+          - button "auto" [ref=e7986] [cursor=pointer]
+        - button "Запустити" [ref=e7987] [cursor=pointer]
+      - generic [ref=e7988]:
+        - button "Огляд 13" [ref=e7989] [cursor=pointer]:
+          - generic [ref=e7990]: Огляд
+          - generic [ref=e7991]: "13"
+        - button "Entry" [ref=e7992] [cursor=pointer]
+        - button "Exit" [ref=e7993] [cursor=pointer]
+        - button "Whales" [ref=e7994] [cursor=pointer]
+        - button "Спорт" [ref=e7995] [cursor=pointer]
+        - button "Лог" [ref=e7996] [cursor=pointer]
+        - button "Налаштування" [ref=e7997] [cursor=pointer]
+      - generic [ref=e8911]:
+        - generic [ref=e8912]:
+          - generic [ref=e8913]: НОВЕ
+          - generic [ref=e8914]:
+            - generic [ref=e8916]: Lift matrix по exit-параметрах
+            - generic [ref=e8917]: multi-KPI
+          - generic [ref=e8920]: Поки немає пропозицій із балом ≥ 0.08. Матриця заповниться, коли з закритих трейдів набереться достатньо даних для оцінки ефекту зміни. Перевір пізніше або знизь поріг MIN_LIFT_THRESHOLD у Settings.
+          - generic [ref=e8921]: "Кожен рядок — ідея зрушити exit-поріг (TP, SL, трейлінг). Колонки Δ показують очікуваний ефект по exit-KPI: менше стоп-лосів, частіше доходити до тейк-профіту, вища ефективність виходу, менше недобраного прибутку. Score — загальний бал корисності: ≥ MIN_LIFT_THRESHOLD → зміна застосовується, менше — чекає, поки накопичиться більше закритих трейдів."
+        - generic [ref=e8924]: Розподіл виходів
+        - generic [ref=e8925]: No exit data yet
+        - generic [ref=e8928]: Аналіз параметрів
+        - generic [ref=e8929]:
+          - generic [ref=e8930]:
+            - generic [ref=e8931]: Take Profit (0%)
+            - generic [ref=e8932]:
+              - generic [ref=e8933]: TP виходи
+              - generic [ref=e8934]: 0 / 0
+            - generic [ref=e8935]:
+              - generic [ref=e8936]: Сер. PnL при TP
+              - generic [ref=e8937]: —
+            - generic [ref=e8938]:
+              - generic [ref=e8939]: Сер. пік PnL (TP трейди)
+              - generic [ref=e8940]: —
+            - generic [ref=e8941]:
+              - generic [ref=e8942]: Залишено на столі
+              - generic [ref=e8944]: — 0%
+            - generic [ref=e8945]: TP parameters balanced.
+          - generic [ref=e8946]:
+            - generic [ref=e8947]: Stop Loss (0%)
+            - generic [ref=e8948]:
+              - generic [ref=e8949]: SL виходи
+              - generic [ref=e8950]: 0 / 0
+            - generic [ref=e8951]:
+              - generic [ref=e8952]: Сер. збиток при SL
+              - generic [ref=e8953]: —
+            - generic [ref=e8954]:
+              - generic [ref=e8955]: SL Rate
+              - generic [ref=e8957]: — normal
+            - generic [ref=e8958]:
+              - generic [ref=e8959]: Мали позитивний пік до SL
+              - generic [ref=e8960]: 0 / 0
+            - generic [ref=e8961]:
+              - generic [ref=e8962]: Екстрених SL
+              - generic [ref=e8963]: "0"
+            - generic [ref=e8964]: SL rate acceptable.
+          - generic [ref=e8965]:
+            - generic [ref=e8966]: Trailing Stop (activate 0%, stop 0%)
+            - generic [ref=e8967]:
+              - generic [ref=e8968]: Trail виходи
+              - generic [ref=e8969]: 0 / 0
+            - generic [ref=e8970]:
+              - generic [ref=e8971]: Сер. PnL при TP
+              - generic [ref=e8972]: —
+            - generic [ref=e8973]:
+              - generic [ref=e8974]: Сер. захоплення піку
+              - generic [ref=e8975]: —
+            - generic [ref=e8976]:
+              - generic [ref=e8977]: Trail активовано
+              - generic [ref=e8978]: 0 / 0
+            - generic [ref=e8979]: No trailing stop exits yet — trail has not fired.
+          - generic [ref=e8980]:
+            - generic [ref=e8981]: Time & Duration
+            - generic [ref=e8982]:
+              - generic [ref=e8983]: Time виходи
+              - generic [ref=e8984]: 0 / 0
+            - generic [ref=e8985]:
+              - generic [ref=e8986]: Сер. PnL при TP
+              - generic [ref=e8987]: —
+            - generic [ref=e8988]:
+              - generic [ref=e8989]: Час до резолюції
+              - generic [ref=e8990]: —
+            - generic [ref=e8991]:
+              - generic [ref=e8992]: Мін. вік для SL
+              - generic [ref=e8993]: —
+            - generic [ref=e8994]:
+              - generic [ref=e8995]: Сер. тривалість
+              - generic [ref=e8996]: —
+            - generic [ref=e8997]: No time expiry exits yet.
+  - generic [ref=e206]:
+    - generic [ref=e207]:
+      - generic [ref=e208]: ⚠ NOT WIRED · v1→v2 endpoints
+      - button "×" [ref=e209] [cursor=pointer]
+    - list [ref=e210]:
+      - listitem [ref=e9033]: 90×/api/polymarket/live-marks
+      - listitem [ref=e9034]: 1×/api/polymarket/wallets/discover/status

@@ -1,0 +1,710 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - button "🇺🇦" [ref=e4] [cursor=pointer]
+      - generic [ref=e5]:
+        - generic [ref=e6]: OraLab
+        - generic [ref=e7]: Ora et Labora
+    - generic [ref=e8]:
+      - generic [ref=e9]:
+        - generic [ref=e10]: MODE
+        - generic [ref=e11]:
+          - button "DRY" [ref=e12] [cursor=pointer]: DRY
+          - button "LIVE" [ref=e14] [cursor=pointer]: LIVE
+        - generic [ref=e16]:
+          - generic [ref=e17]: Оновлено 11:03
+          - 'generic "Heartbeat: — · Data: —" [ref=e212]':
+            - generic [ref=e214]: Бот офлайн
+      - generic [ref=e18]:
+        - generic [ref=e19]: BOTS
+        - generic [ref=e20]:
+          - generic [ref=e302]:
+            - generic [ref=e304]: Whale Copy Bot
+            - generic [ref=e305]: —
+            - generic [ref=e306]:
+              - button "▶" [disabled] [ref=e307]
+              - button "⏹" [ref=e308] [cursor=pointer]
+              - button "↻" [ref=e309] [cursor=pointer]
+          - generic [ref=e310]:
+            - generic [ref=e312]: WS Feed
+            - generic [ref=e313]: —
+            - generic [ref=e314]:
+              - button "▶" [disabled] [ref=e315]
+              - button "⏹" [ref=e316] [cursor=pointer]
+              - button "↻" [ref=e317] [cursor=pointer]
+          - generic [ref=e318]:
+            - generic [ref=e320]: RTDS Feed
+            - generic [ref=e321]: —
+            - generic [ref=e322]:
+              - button "▶" [disabled] [ref=e323]
+              - button "⏹" [ref=e324] [cursor=pointer]
+              - button "↻" [ref=e325] [cursor=pointer]
+          - generic [ref=e326]:
+            - generic [ref=e328]: Calibrator
+            - generic [ref=e329]: —
+            - generic [ref=e330]:
+              - button "▶" [disabled] [ref=e331]
+              - button "⏹" [ref=e332] [cursor=pointer]
+              - button "↻" [ref=e333] [cursor=pointer]
+        - generic [ref=e21]:
+          - button "▶ All" [ref=e22] [cursor=pointer]
+          - button "⏹ All" [ref=e23] [cursor=pointer]
+      - generic [ref=e24]:
+        - generic [ref=e25]: HEALTH
+        - generic [ref=e27]: ALL HEALTHY
+        - generic [ref=e29]:
+          - generic [ref=e32]: 4s ago
+          - generic [ref=e35]: 4s ago
+          - generic [ref=e38]: running
+          - generic [ref=e41]: 27s ago
+          - generic [ref=e44]: disconnected
+          - generic [ref=e46]: 0 events · 0 whales
+      - generic [ref=e47]:
+        - generic [ref=e48]: MONITOR
+        - 'generic "Watchdog daemon PID: — Last tick: —" [ref=e248] [cursor=pointer]':
+          - generic [ref=e51]: WD ✓ —
+        - generic [ref=e52]: + майбутні перевірки
+      - generic [ref=e53]:
+        - generic [ref=e54]: CONTROL
+        - generic [ref=e55]:
+          - button "🔄 Оновити" [ref=e56] [cursor=pointer]
+          - button "♻️ Перезапуск" [ref=e57] [cursor=pointer]
+          - button "KILL" [ref=e249] [cursor=pointer]
+          - button "❌ Скидання" [ref=e59] [cursor=pointer]
+    - generic [ref=e60]:
+      - generic [ref=e61]:
+        - generic [ref=e62]:
+          - text: Balance
+          - button "↑ Поповнити" [ref=e63] [cursor=pointer]
+        - generic [ref=e64]: $50.00 of $50.00
+        - generic [ref=e65]:
+          - generic [ref=e66]: Позиції $41.66
+          - generic [ref=e68]: Вільно $8.34
+      - generic [ref=e71]:
+        - generic [ref=e72]: Profit & Loss
+        - generic [ref=e73]: "-$253.69"
+        - generic [ref=e74]:
+          - generic [ref=e75] [cursor=pointer]:
+            - generic [ref=e76]: Today
+            - generic [ref=e77]: "-$1.20"
+          - generic [ref=e78] [cursor=pointer]:
+            - generic [ref=e79]: Week
+            - generic [ref=e80]: "-$253.69"
+          - generic [ref=e81] [cursor=pointer]:
+            - generic [ref=e82]: All
+            - generic [ref=e83]: "-$253.69"
+      - generic [ref=e85]:
+        - generic [ref=e86]:
+          - generic [ref=e89]: Вхід
+          - generic [ref=e90]:
+            - generic [ref=e91]:
+              - generic [ref=e92]: Pass Rate
+              - generic [ref=e93]: 0.4%
+              - generic [ref=e251]: 95 pipe + 0 conv / 21667
+            - generic [ref=e94]:
+              - generic [ref=e95]: Топ відхилення
+              - generic [ref=e96]: sport_only
+              - generic [ref=e252]: top blocker
+            - generic [ref=e97]:
+              - generic [ref=e98]: Signals/hr
+              - generic [ref=e99]: "903"
+              - generic [ref=e253]: ~21667/day
+            - generic [ref=e100]:
+              - generic [ref=e101]: CF чистий
+              - generic [ref=e102]: +$6342.51
+              - generic [ref=e254]: $6360.48 saved
+        - generic [ref=e103]:
+          - generic [ref=e106]: Вихід
+          - generic [ref=e107]:
+            - generic [ref=e108]:
+              - generic [ref=e109]: TP спрацьованість
+              - generic [ref=e110]: 0.0%
+              - generic [ref=e255]: target ≥35%
+            - generic [ref=e111]:
+              - generic [ref=e112]: SL частота
+              - generic [ref=e113]: 0.0%
+              - generic [ref=e256]: target <30%
+            - generic [ref=e114]:
+              - generic [ref=e115]: Ефективність виходу
+              - generic [ref=e116]: 0.0%
+              - generic [ref=e257]: realized/peak
+            - generic [ref=e117]:
+              - generic [ref=e118]: Втрачено
+              - generic [ref=e119]: 100.0%
+              - generic [ref=e258]: unrealized upside
+        - generic [ref=e120]:
+          - generic [ref=e123]: Результат
+          - generic [ref=e124]:
+            - generic [ref=e125]:
+              - generic [ref=e126]: Win Rate
+              - generic [ref=e127]: 1%
+              - generic [ref=e259]: 1W 83L
+            - generic [ref=e128]:
+              - generic [ref=e129]: Profit Factor
+              - generic [ref=e130]: "0.00"
+              - generic [ref=e260]: $0.10W / $253.79L
+            - generic [ref=e131]:
+              - generic [ref=e132]: Avg PnL/Trade
+              - generic [ref=e133]: "-$3.02"
+              - generic [ref=e261]: 84 closed trades
+            - generic [ref=e134]:
+              - generic [ref=e135]: Max Drawdown
+              - generic [ref=e136]: "-$253.79"
+              - generic [ref=e262]: peak→trough
+        - generic [ref=e137]:
+          - generic [ref=e140]: Технічні
+          - generic [ref=e141]:
+            - generic [ref=e142]:
+              - generic [ref=e143]: Avg Latency
+              - generic [ref=e144]: 52ms
+              - generic [ref=e263]: live_ask
+            - generic [ref=e145]:
+              - generic [ref=e146]: Avg Duration
+              - generic [ref=e147]: 34m
+              - generic [ref=e264]: 84 closed · 9 open
+            - generic [ref=e148]:
+              - generic [ref=e149]: Exposure
+              - generic [ref=e150]: 83%
+              - generic [ref=e265]: $41.66 / $50.00
+            - generic [ref=e151]:
+              - generic [ref=e152]: Відкриті позиції
+              - generic [ref=e153]: "9"
+              - generic [ref=e266]: positions
+    - generic [ref=e154]:
+      - button "Трейди 93" [ref=e267] [cursor=pointer]:
+        - generic [ref=e156]: Трейди
+        - generic [ref=e157]: "93"
+      - button "Налаштування" [ref=e158] [cursor=pointer]
+      - button "🐋 Whales 1505" [ref=e268] [cursor=pointer]:
+        - generic [ref=e160]: 🐋 Whales
+        - generic [ref=e161]: "1505"
+      - button "⚙️ Калібрація" [active] [ref=e162] [cursor=pointer]
+      - button "⚡ Chain" [ref=e163] [cursor=pointer]
+      - button "📋 Логи" [ref=e164] [cursor=pointer]
+      - generic [ref=e165]: Оновлено 11:03
+    - generic [ref=e335]:
+      - generic [ref=e336]:
+        - generic [ref=e337]: WATCH
+        - generic [ref=e338]:
+          - generic [ref=e339]: "Цикл:"
+          - strong [ref=e340]: 2 год тому · наст. ~09:49
+        - generic [ref=e341]:
+          - generic [ref=e342]: "Точок даних:"
+          - strong [ref=e343]: "84"
+        - generic [ref=e344]:
+          - generic [ref=e345]: "Історія:"
+          - strong [ref=e346]: "0"
+        - generic [ref=e347]:
+          - button "manual" [ref=e348] [cursor=pointer]
+          - button "watch" [ref=e349] [cursor=pointer]
+          - button "auto" [ref=e350] [cursor=pointer]
+        - button "Запустити" [ref=e351] [cursor=pointer]
+      - generic [ref=e352]:
+        - button "Огляд 13" [ref=e353] [cursor=pointer]:
+          - generic [ref=e354]: Огляд
+          - generic [ref=e355]: "13"
+        - button "Entry" [ref=e356] [cursor=pointer]
+        - button "Exit" [ref=e357] [cursor=pointer]
+        - button "Whales" [ref=e358] [cursor=pointer]
+        - button "Спорт" [ref=e359] [cursor=pointer]
+        - button "Лог" [ref=e360] [cursor=pointer]
+        - button "Налаштування" [ref=e361] [cursor=pointer]
+      - generic [ref=e363]:
+        - generic [ref=e364]:
+          - generic [ref=e365]:
+            - generic [ref=e366]:
+              - generic [ref=e368]: Entry Pipeline
+              - generic [ref=e369]: filters
+            - generic [ref=e370]:
+              - generic "Відсоток сигналів які пройшли всі фільтри та стали трейдами" [ref=e371]:
+                - generic [ref=e372]: Pass Rate
+                - generic [ref=e373]: 0.4%
+                - generic [ref=e374]: 21671 signals
+              - generic "Фільтр який відхиляє найбільше сигналів" [ref=e375]:
+                - generic [ref=e376]: Top Rejection
+                - generic [ref=e377]: sport_only
+                - generic [ref=e378]: top filter
+              - 'generic "Чистий ефект фільтрів: скільки зберегли мінус скільки прибутку втратили" [ref=e379]':
+                - generic [ref=e380]: CF Net Impact
+                - generic [ref=e381]: +$6343.73
+                - generic [ref=e382]: counterfactual
+              - generic "Скільки потенційного прибутку ми втрачаємо через відхилення сигналів" [ref=e383]:
+                - generic [ref=e384]: CF Lost
+                - generic [ref=e385]: $17.96
+                - generic [ref=e386]: potential missed
+          - generic [ref=e387]:
+            - generic [ref=e388]:
+              - generic [ref=e390]: Exit Engine
+              - generic [ref=e391]: TP / SL / Trail
+            - generic [ref=e392]:
+              - generic "Який відсоток від максимального прибутку ми фіксуємо при виході" [ref=e393]:
+                - generic [ref=e394]: Exit Efficiency
+                - generic [ref=e395]: 0%
+                - generic [ref=e396]: avg peak capture
+              - generic "Як часто позиції досягають тейк-профіту" [ref=e397]:
+                - generic [ref=e398]: TP Hit Rate
+                - generic [ref=e399]: 0%
+                - generic [ref=e400]: 0/84 exits
+              - generic "Скільки потенційного прибутку ми не фіксуємо" [ref=e401]:
+                - generic [ref=e402]: Left on Table
+                - generic [ref=e403]: 100%
+                - generic [ref=e404]: avg unrealized peak
+              - generic "Відсоток позицій які закриваються по стоп-лосу" [ref=e405]:
+                - generic [ref=e406]: SL Rate
+                - generic [ref=e407]: 0%
+                - generic [ref=e408]: stop-loss rate
+          - generic [ref=e409]:
+            - generic [ref=e410]:
+              - generic [ref=e412]: Performance
+              - generic [ref=e413]: result
+            - generic [ref=e414]:
+              - generic "Відсоток прибуткових трейдів" [ref=e415]:
+                - generic [ref=e416]: Win Rate
+                - generic [ref=e417]: 119%
+                - generic [ref=e418]: 100W / -16L
+              - generic "Співвідношення загального прибутку до загальних збитків" [ref=e419]:
+                - generic [ref=e420]: Profit Factor
+                - generic [ref=e421]: 0.00×
+              - generic "Середній прибуток або збиток на один трейд" [ref=e422]:
+                - generic [ref=e423]: Avg PnL/Trade
+                - generic [ref=e424]: "-$3.02"
+              - generic "Загальний чистий прибуток" [ref=e425]:
+                - generic [ref=e426]: Total PnL
+                - generic [ref=e427]: "-$253.69"
+            - generic [ref=e431]: PF 0.00x — результат роботи entry pipeline + exit engine
+        - generic [ref=e432]:
+          - generic [ref=e433]: НОВЕ
+          - generic [ref=e434]:
+            - generic [ref=e435]: "Objective (deficit-weighted KPI bar) 8 KPI · Σ w = 1.00 · фокус: WR + PF + tp_rate"
+            - generic [ref=e436]: trace cyc-17777873
+          - generic [ref=e437]:
+            - generic "win_rate · weight 0.27 (27%) · deficit 1.00 · importance 0.0" [ref=e438]:
+              - generic [ref=e439]: WR
+              - generic [ref=e442]: 27%
+              - generic [ref=e443]: w 0.27
+            - generic "profit_factor · weight 0.27 (27%) · deficit 1.00 · importance 0.0" [ref=e444]:
+              - generic [ref=e445]: PF
+              - generic [ref=e448]: 27%
+              - generic [ref=e449]: w 0.27
+            - generic "tp_hit_rate · weight 0.13 (13%) · deficit 1.00 · importance 0.0" [ref=e450]:
+              - generic [ref=e451]: tp_rate
+              - generic [ref=e454]: 13%
+              - generic [ref=e455]: w 0.13
+            - generic "exit_efficiency · weight 0.09 (9%) · deficit 1.00 · importance 0.0" [ref=e456]:
+              - generic [ref=e457]: eff
+              - generic [ref=e460]: 9%
+              - generic [ref=e461]: w 0.09
+            - generic "left_on_table · weight 0.09 (9%) · deficit 1.00 · importance 0.0" [ref=e462]:
+              - generic [ref=e463]: LOT
+              - generic [ref=e466]: 9%
+              - generic [ref=e467]: w 0.09
+            - generic "avg_pnl · weight 0.08 (8%) · deficit 0.46 · importance 0.0" [ref=e468]:
+              - generic [ref=e469]: avg_pnl
+              - generic [ref=e472]: 8%
+              - generic [ref=e473]: w 0.08
+            - generic "pass_rate · weight 0.08 (8%) · deficit 0.85 · importance 0.0" [ref=e474]:
+              - generic [ref=e475]: pass_rate
+              - generic [ref=e478]: 8%
+              - generic [ref=e479]: w 0.08
+            - generic "sl_rate · weight 0.00 (0%) · deficit 0.00 · importance 0.0" [ref=e480]:
+              - generic [ref=e481]: sl_rate
+              - generic [ref=e484]: 0%
+              - generic [ref=e485]: w 0.00
+          - generic [ref=e486]:
+            - strong [ref=e487]: "Як читати:"
+            - text: Шкала показує, які KPI зараз найбільше болять системі. Чим ширший стовпчик — тим сильніше цей показник впливає на рішення калібратора в цьому циклі. Червоний = тисне найбільше, треба виправляти. Сірий = у межах норми, калібратор його ігнорує. Саме ці ваги закладаються в score кожної пропозиції нижче.
+        - generic [ref=e488]:
+          - generic [ref=e489]:
+            - generic [ref=e491]: Рекомендації
+            - generic [ref=e492]: "13"
+          - generic [ref=e493]:
+            - generic [ref=e494]:
+              - generic [ref=e495]:
+                - generic [ref=e496]:
+                  - generic [ref=e497]: entry · tighten
+                  - generic [ref=e498]: "цілить в: slRate"
+                  - generic [ref=e499]: score +0.12
+                  - generic [ref=e500]: conf 0.90 (stable)
+                - generic [ref=e501]: sm_score
+                - generic [ref=e502]:
+                  - text: "sm_score.min: 0 →"
+                  - strong [ref=e503]: "0"
+                - generic [ref=e504]: "+$0.12 if tightened: avgPnl=$-0.01, cut bottom 20% of 83 accepts"
+              - generic [ref=e505]:
+                - button "Пропустити" [ref=e506] [cursor=pointer]
+                - button "Застосувати" [ref=e507] [cursor=pointer]
+            - generic [ref=e508]:
+              - generic [ref=e509]:
+                - generic [ref=e510]: Δ WR
+                - generic [ref=e511]: —
+              - generic [ref=e512]:
+                - generic [ref=e513]: Δ PF
+                - generic [ref=e514]: —
+              - generic [ref=e515]:
+                - generic [ref=e516]: Δ avg_pnl
+                - generic [ref=e517]: —
+              - generic [ref=e518]:
+                - generic [ref=e519]: Δ sl_rate
+                - generic [ref=e520]: —
+          - generic [ref=e521]:
+            - generic [ref=e522]:
+              - generic [ref=e523]:
+                - generic [ref=e524]:
+                  - generic [ref=e525]: entry · tighten
+                  - generic [ref=e526]: "цілить в: slRate"
+                  - generic [ref=e527]: score +0.12
+                  - generic [ref=e528]: conf 0.90 (stable)
+                - generic [ref=e529]: market_volume
+                - generic [ref=e530]:
+                  - text: "market_volume.min: 0 →"
+                  - strong [ref=e531]: "0"
+                - generic [ref=e532]: "+$0.12 if tightened: avgPnl=$-0.01, cut bottom 20% of 83 accepts"
+              - generic [ref=e533]:
+                - button "Пропустити" [ref=e534] [cursor=pointer]
+                - button "Застосувати" [ref=e535] [cursor=pointer]
+            - generic [ref=e536]:
+              - generic [ref=e537]:
+                - generic [ref=e538]: Δ WR
+                - generic [ref=e539]: —
+              - generic [ref=e540]:
+                - generic [ref=e541]: Δ PF
+                - generic [ref=e542]: —
+              - generic [ref=e543]:
+                - generic [ref=e544]: Δ avg_pnl
+                - generic [ref=e545]: —
+              - generic [ref=e546]:
+                - generic [ref=e547]: Δ sl_rate
+                - generic [ref=e548]: —
+          - generic [ref=e549]:
+            - generic [ref=e550]:
+              - generic [ref=e551]:
+                - generic [ref=e552]:
+                  - generic [ref=e553]: entry · tighten
+                  - generic [ref=e554]: "цілить в: slRate"
+                  - generic [ref=e555]: score +0.12
+                  - generic [ref=e556]: conf 0.90 (stable)
+                - generic [ref=e557]: remaining_edge
+                - generic [ref=e558]:
+                  - text: "remaining_edge.min: 0 →"
+                  - strong [ref=e559]: "0"
+                - generic [ref=e560]: "+$0.12 if tightened: avgPnl=$-0.01, cut bottom 20% of 83 accepts"
+              - generic [ref=e561]:
+                - button "Пропустити" [ref=e562] [cursor=pointer]
+                - button "Застосувати" [ref=e563] [cursor=pointer]
+            - generic [ref=e564]:
+              - generic [ref=e565]:
+                - generic [ref=e566]: Δ WR
+                - generic [ref=e567]: —
+              - generic [ref=e568]:
+                - generic [ref=e569]: Δ PF
+                - generic [ref=e570]: —
+              - generic [ref=e571]:
+                - generic [ref=e572]: Δ avg_pnl
+                - generic [ref=e573]: —
+              - generic [ref=e574]:
+                - generic [ref=e575]: Δ sl_rate
+                - generic [ref=e576]: —
+          - generic [ref=e577]:
+            - generic [ref=e578]:
+              - generic [ref=e579]:
+                - generic [ref=e580]:
+                  - generic [ref=e581]: entry · tighten
+                  - generic [ref=e582]: "цілить в: slRate"
+                  - generic [ref=e583]: score +0.12
+                  - generic [ref=e584]: conf 0.90 (stable)
+                - generic [ref=e585]: price_collapsed
+                - generic [ref=e586]:
+                  - text: "price_collapsed.min: 0 →"
+                  - strong [ref=e587]: "0"
+                - generic [ref=e588]: "+$0.12 if tightened: avgPnl=$-0.01, cut bottom 20% of 83 accepts"
+              - generic [ref=e589]:
+                - button "Пропустити" [ref=e590] [cursor=pointer]
+                - button "Застосувати" [ref=e591] [cursor=pointer]
+            - generic [ref=e592]:
+              - generic [ref=e593]:
+                - generic [ref=e594]: Δ WR
+                - generic [ref=e595]: —
+              - generic [ref=e596]:
+                - generic [ref=e597]: Δ PF
+                - generic [ref=e598]: —
+              - generic [ref=e599]:
+                - generic [ref=e600]: Δ avg_pnl
+                - generic [ref=e601]: —
+              - generic [ref=e602]:
+                - generic [ref=e603]: Δ sl_rate
+                - generic [ref=e604]: —
+          - generic [ref=e605]:
+            - generic [ref=e606]:
+              - generic [ref=e607]:
+                - generic [ref=e608]:
+                  - generic [ref=e609]: entry · tighten
+                  - generic [ref=e610]: "цілить в: slRate"
+                  - generic [ref=e611]: score +0.12
+                  - generic [ref=e612]: conf 0.90 (stable)
+                - generic [ref=e613]: slippage
+                - generic [ref=e614]:
+                  - text: "slippage.min: 0 →"
+                  - strong [ref=e615]: "0"
+                - generic [ref=e616]: "+$0.12 if tightened: avgPnl=$-0.01, cut bottom 20% of 83 accepts"
+              - generic [ref=e617]:
+                - button "Пропустити" [ref=e618] [cursor=pointer]
+                - button "Застосувати" [ref=e619] [cursor=pointer]
+            - generic [ref=e620]:
+              - generic [ref=e621]:
+                - generic [ref=e622]: Δ WR
+                - generic [ref=e623]: —
+              - generic [ref=e624]:
+                - generic [ref=e625]: Δ PF
+                - generic [ref=e626]: —
+              - generic [ref=e627]:
+                - generic [ref=e628]: Δ avg_pnl
+                - generic [ref=e629]: —
+              - generic [ref=e630]:
+                - generic [ref=e631]: Δ sl_rate
+                - generic [ref=e632]: —
+          - generic [ref=e633]:
+            - generic [ref=e634]:
+              - generic [ref=e635]:
+                - generic [ref=e636]:
+                  - generic [ref=e637]: entry · tighten
+                  - generic [ref=e638]: "цілить в: slRate"
+                  - generic [ref=e639]: score +0.12
+                  - generic [ref=e640]: conf 0.90 (stable)
+                - generic [ref=e641]: slippage_cap
+                - generic [ref=e642]:
+                  - text: "slippage_cap.min: 0 →"
+                  - strong [ref=e643]: "0"
+                - generic [ref=e644]: "+$0.12 if tightened: avgPnl=$-0.01, cut bottom 20% of 83 accepts"
+              - generic [ref=e645]:
+                - button "Пропустити" [ref=e646] [cursor=pointer]
+                - button "Застосувати" [ref=e647] [cursor=pointer]
+            - generic [ref=e648]:
+              - generic [ref=e649]:
+                - generic [ref=e650]: Δ WR
+                - generic [ref=e651]: —
+              - generic [ref=e652]:
+                - generic [ref=e653]: Δ PF
+                - generic [ref=e654]: —
+              - generic [ref=e655]:
+                - generic [ref=e656]: Δ avg_pnl
+                - generic [ref=e657]: —
+              - generic [ref=e658]:
+                - generic [ref=e659]: Δ sl_rate
+                - generic [ref=e660]: —
+          - generic [ref=e661]:
+            - generic [ref=e662]:
+              - generic [ref=e663]:
+                - generic [ref=e664]:
+                  - generic [ref=e665]: entry · tighten
+                  - generic [ref=e666]: "цілить в: slRate"
+                  - generic [ref=e667]: score +0.12
+                  - generic [ref=e668]: conf 0.90 (stable)
+                - generic [ref=e669]: price_impact
+                - generic [ref=e670]:
+                  - text: "price_impact.min: 0 →"
+                  - strong [ref=e671]: "0"
+                - generic [ref=e672]: "+$0.12 if tightened: avgPnl=$-0.01, cut bottom 20% of 83 accepts"
+              - generic [ref=e673]:
+                - button "Пропустити" [ref=e674] [cursor=pointer]
+                - button "Застосувати" [ref=e675] [cursor=pointer]
+            - generic [ref=e676]:
+              - generic [ref=e677]:
+                - generic [ref=e678]: Δ WR
+                - generic [ref=e679]: —
+              - generic [ref=e680]:
+                - generic [ref=e681]: Δ PF
+                - generic [ref=e682]: —
+              - generic [ref=e683]:
+                - generic [ref=e684]: Δ avg_pnl
+                - generic [ref=e685]: —
+              - generic [ref=e686]:
+                - generic [ref=e687]: Δ sl_rate
+                - generic [ref=e688]: —
+          - generic [ref=e689]:
+            - generic [ref=e690]:
+              - generic [ref=e691]:
+                - generic [ref=e692]:
+                  - generic [ref=e693]: entry · tighten
+                  - generic [ref=e694]: "цілить в: slRate"
+                  - generic [ref=e695]: score +0.12
+                  - generic [ref=e696]: conf 0.90 (stable)
+                - generic [ref=e697]: entry_cooldown
+                - generic [ref=e698]:
+                  - text: "entry_cooldown.min: 0 →"
+                  - strong [ref=e699]: "0"
+                - generic [ref=e700]: "+$0.12 if tightened: avgPnl=$-0.01, cut bottom 20% of 83 accepts"
+              - generic [ref=e701]:
+                - button "Пропустити" [ref=e702] [cursor=pointer]
+                - button "Застосувати" [ref=e703] [cursor=pointer]
+            - generic [ref=e704]:
+              - generic [ref=e705]:
+                - generic [ref=e706]: Δ WR
+                - generic [ref=e707]: —
+              - generic [ref=e708]:
+                - generic [ref=e709]: Δ PF
+                - generic [ref=e710]: —
+              - generic [ref=e711]:
+                - generic [ref=e712]: Δ avg_pnl
+                - generic [ref=e713]: —
+              - generic [ref=e714]:
+                - generic [ref=e715]: Δ sl_rate
+                - generic [ref=e716]: —
+          - generic [ref=e717]:
+            - generic [ref=e718]:
+              - generic [ref=e719]:
+                - generic [ref=e720]:
+                  - generic [ref=e721]: exit · hold
+                  - generic [ref=e722]: "цілить в: slRate"
+                  - generic [ref=e723]: score +0.12
+                  - generic [ref=e724]: conf 0.90 (stable)
+                - generic [ref=e725]: exit_reentry_cooldown
+                - generic [ref=e726]:
+                  - text: "exit_reentry_cooldown.min: 0 →"
+                  - strong [ref=e727]: "0"
+                - generic [ref=e728]: "+$0.12 if tightened: avgPnl=$-0.01, cut bottom 20% of 83 accepts"
+              - generic [ref=e729]:
+                - button "Пропустити" [ref=e730] [cursor=pointer]
+                - button "Застосувати" [ref=e731] [cursor=pointer]
+            - generic [ref=e732]:
+              - generic [ref=e733]:
+                - generic [ref=e734]: Δ sl_rate
+                - generic [ref=e735]: —
+              - generic [ref=e736]:
+                - generic [ref=e737]: Δ tp_rate
+                - generic [ref=e738]: —
+              - generic [ref=e739]:
+                - generic [ref=e740]: Δ eff
+                - generic [ref=e741]: —
+              - generic [ref=e742]:
+                - generic [ref=e743]: Δ LOT
+                - generic [ref=e744]: —
+          - generic [ref=e745]:
+            - generic [ref=e746]:
+              - generic [ref=e747]:
+                - generic [ref=e748]:
+                  - generic [ref=e749]: entry · tighten
+                  - generic [ref=e750]: "цілить в: slRate"
+                  - generic [ref=e751]: score +0.12
+                  - generic [ref=e752]: conf 0.90 (stable)
+                - generic [ref=e753]: conviction_gate
+                - generic [ref=e754]:
+                  - text: "conviction_gate.min: 0.05 →"
+                  - strong [ref=e755]: "0.057499999999999996"
+                  - text: (+0.007499999999999993)
+                - generic [ref=e756]: "+$0.12 if tightened: avgPnl=$-0.01, cut bottom 20% of 83 accepts"
+              - generic [ref=e757]:
+                - button "Пропустити" [ref=e758] [cursor=pointer]
+                - button "Застосувати" [ref=e759] [cursor=pointer]
+            - generic [ref=e760]:
+              - generic [ref=e761]:
+                - generic [ref=e762]: Δ WR
+                - generic [ref=e763]: —
+              - generic [ref=e764]:
+                - generic [ref=e765]: Δ PF
+                - generic [ref=e766]: —
+              - generic [ref=e767]:
+                - generic [ref=e768]: Δ avg_pnl
+                - generic [ref=e769]: —
+              - generic [ref=e770]:
+                - generic [ref=e771]: Δ sl_rate
+                - generic [ref=e772]: —
+          - generic [ref=e773]:
+            - generic [ref=e774]:
+              - generic [ref=e775]:
+                - generic [ref=e776]:
+                  - generic [ref=e777]: entry · tighten
+                  - generic [ref=e778]: "цілить в: slRate"
+                  - generic [ref=e779]: score +0.12
+                  - generic [ref=e780]: conf 0.90 (stable)
+                - generic [ref=e781]: time_horizon_too_close
+                - generic [ref=e782]:
+                  - text: "time_horizon_too_close.min: 0 →"
+                  - strong [ref=e783]: "0"
+                - generic [ref=e784]: "+$0.12 if tightened: avgPnl=$-0.01, cut bottom 20% of 83 accepts"
+              - generic [ref=e785]:
+                - button "Пропустити" [ref=e786] [cursor=pointer]
+                - button "Застосувати" [ref=e787] [cursor=pointer]
+            - generic [ref=e788]:
+              - generic [ref=e789]:
+                - generic [ref=e790]: Δ WR
+                - generic [ref=e791]: —
+              - generic [ref=e792]:
+                - generic [ref=e793]: Δ PF
+                - generic [ref=e794]: —
+              - generic [ref=e795]:
+                - generic [ref=e796]: Δ avg_pnl
+                - generic [ref=e797]: —
+              - generic [ref=e798]:
+                - generic [ref=e799]: Δ sl_rate
+                - generic [ref=e800]: —
+          - generic [ref=e801]:
+            - generic [ref=e802]:
+              - generic [ref=e803]:
+                - generic [ref=e804]:
+                  - generic [ref=e805]: entry · tighten
+                  - generic [ref=e806]: "цілить в: slRate"
+                  - generic [ref=e807]: score +0.12
+                  - generic [ref=e808]: conf 0.90 (stable)
+                - generic [ref=e809]: time_horizon_too_far
+                - generic [ref=e810]:
+                  - text: "time_horizon_too_far.min: 0 →"
+                  - strong [ref=e811]: "0"
+                - generic [ref=e812]: "+$0.12 if tightened: avgPnl=$-0.01, cut bottom 20% of 83 accepts"
+              - generic [ref=e813]:
+                - button "Пропустити" [ref=e814] [cursor=pointer]
+                - button "Застосувати" [ref=e815] [cursor=pointer]
+            - generic [ref=e816]:
+              - generic [ref=e817]:
+                - generic [ref=e818]: Δ WR
+                - generic [ref=e819]: —
+              - generic [ref=e820]:
+                - generic [ref=e821]: Δ PF
+                - generic [ref=e822]: —
+              - generic [ref=e823]:
+                - generic [ref=e824]: Δ avg_pnl
+                - generic [ref=e825]: —
+              - generic [ref=e826]:
+                - generic [ref=e827]: Δ sl_rate
+                - generic [ref=e828]: —
+          - generic [ref=e829]:
+            - generic [ref=e830]:
+              - generic [ref=e831]:
+                - generic [ref=e832]:
+                  - generic [ref=e833]: entry · tighten
+                  - generic [ref=e834]: "цілить в: slRate"
+                  - generic [ref=e835]: score +0.12
+                  - generic [ref=e836]: conf 0.90 (stable)
+                - generic [ref=e837]: trust_gate
+                - generic [ref=e838]:
+                  - text: "trust_gate.min: 0 →"
+                  - strong [ref=e839]: "0"
+                - generic [ref=e840]: "+$0.12 if tightened: avgPnl=$-0.01, cut bottom 20% of 83 accepts"
+              - generic [ref=e841]:
+                - button "Пропустити" [ref=e842] [cursor=pointer]
+                - button "Застосувати" [ref=e843] [cursor=pointer]
+            - generic [ref=e844]:
+              - generic [ref=e845]:
+                - generic [ref=e846]: Δ WR
+                - generic [ref=e847]: —
+              - generic [ref=e848]:
+                - generic [ref=e849]: Δ PF
+                - generic [ref=e850]: —
+              - generic [ref=e851]:
+                - generic [ref=e852]: Δ avg_pnl
+                - generic [ref=e853]: —
+              - generic [ref=e854]:
+                - generic [ref=e855]: Δ sl_rate
+                - generic [ref=e856]: —
+          - generic [ref=e857]:
+            - strong [ref=e858]: "Звідки цифри:"
+            - text: "Усі пропозиції (entry + exit) в одному списку, відсортовані за score. Score — бал корисності зміни: враховує, наскільки вона покращить болючі KPI та наскільки надійні дані. Застосовуються тільки ті, що набрали ≥ MIN_LIFT_THRESHOLD — це захист від шуму. Решта лежить у «Відфільтровано» нижче і чекає, доки набере більше даних або поріг знизиться."
+          - button "Застосувати стабільні (13)" [ref=e860] [cursor=pointer]
+        - generic [ref=e862]:
+          - generic [ref=e865]: Історія змін Exit
+          - generic [ref=e866]: Ще не було даних
+  - generic [ref=e206]:
+    - generic [ref=e207]:
+      - generic [ref=e208]: ⚠ NOT WIRED · v1→v2 endpoints
+      - button "×" [ref=e209] [cursor=pointer]
+    - list [ref=e210]:
+      - listitem [ref=e211]: 1×/api/polymarket/wallets/discover/status

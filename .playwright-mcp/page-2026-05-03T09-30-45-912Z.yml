@@ -1,0 +1,284 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - button "🇺🇦" [ref=e4] [cursor=pointer]
+      - generic [ref=e5]:
+        - generic [ref=e6]: OraLab
+        - generic [ref=e7]: Ora et Labora
+      - generic [ref=e8]:
+        - text: USDC $
+        - generic [ref=e10]: "105.44"
+    - generic [ref=e11]:
+      - generic [ref=e12]:
+        - generic [ref=e13]: MODE
+        - generic [ref=e14]:
+          - button "DRY" [ref=e15] [cursor=pointer]: DRY
+          - button "LIVE" [ref=e17] [cursor=pointer]: LIVE
+        - generic [ref=e19]:
+          - generic [ref=e20]: Оновлено 12:30
+          - 'generic "Heartbeat: — · Data: —" [ref=e21]':
+            - generic [ref=e23]: Бот офлайн
+      - generic [ref=e24]:
+        - generic [ref=e25]: BOTS
+        - generic [ref=e26]:
+          - generic [ref=e310]:
+            - generic [ref=e312]: Whale Copy Bot
+            - generic [ref=e313]: —
+            - generic [ref=e314]:
+              - button "▶" [disabled] [ref=e315]
+              - button "⏹" [ref=e316] [cursor=pointer]
+              - button "↻" [ref=e317] [cursor=pointer]
+          - generic [ref=e318]:
+            - generic [ref=e320]: WS Feed
+            - generic [ref=e321]: —
+            - generic [ref=e322]:
+              - button "▶" [disabled] [ref=e323]
+              - button "⏹" [ref=e324] [cursor=pointer]
+              - button "↻" [ref=e325] [cursor=pointer]
+          - generic [ref=e326]:
+            - generic [ref=e328]: RTDS Feed
+            - generic [ref=e329]: —
+            - generic [ref=e330]:
+              - button "▶" [disabled] [ref=e331]
+              - button "⏹" [ref=e332] [cursor=pointer]
+              - button "↻" [ref=e333] [cursor=pointer]
+          - generic [ref=e334]:
+            - generic [ref=e336]: Calibrator
+            - generic [ref=e337]: —
+            - generic [ref=e338]:
+              - button "▶" [disabled] [ref=e339]
+              - button "⏹" [ref=e340] [cursor=pointer]
+              - button "↻" [ref=e341] [cursor=pointer]
+        - generic [ref=e59]:
+          - button "▶ All" [ref=e60] [cursor=pointer]
+          - button "⏹ All" [ref=e61] [cursor=pointer]
+      - generic [ref=e62]:
+        - generic [ref=e63]: HEALTH
+        - generic [ref=e65]: ALL HEALTHY
+        - generic [ref=e67]:
+          - generic [ref=e70]: 1s ago
+          - generic [ref=e73]: 1s ago
+          - generic [ref=e76]: running
+          - generic [ref=e79]: 5s ago
+          - generic [ref=e82]: disconnected
+          - generic [ref=e84]: 0 events · 0 whales
+      - generic [ref=e85]:
+        - generic [ref=e86]: MONITOR
+        - 'generic "Watchdog daemon PID: — Last tick: —" [ref=e87] [cursor=pointer]':
+          - generic [ref=e89]: WD ✓ —
+        - generic [ref=e90]: + майбутні перевірки
+      - generic [ref=e91]:
+        - generic [ref=e92]: CONTROL
+        - generic [ref=e93]:
+          - button "🔄 Оновити" [ref=e94] [cursor=pointer]
+          - button "♻️ Перезапуск" [ref=e95] [cursor=pointer]
+          - button "KILL ON" [ref=e96] [cursor=pointer]
+          - button "❌ Скидання" [ref=e98] [cursor=pointer]
+    - generic [ref=e99]:
+      - generic [ref=e100]:
+        - generic [ref=e101]:
+          - text: Balance
+          - button "↑ Поповнити" [ref=e102] [cursor=pointer]
+        - generic [ref=e103]: $105.44
+        - generic [ref=e104]:
+          - generic [ref=e105]: Позиції $0.00
+          - generic [ref=e107]: Вільно $105.44
+        - generic [ref=e344]:
+          - generic [ref=e345]: 0 phantom
+          - generic [ref=e346]: 0 untracked
+      - generic [ref=e110]:
+        - generic [ref=e111]: Profit & Loss
+        - generic [ref=e112]: +$2.54
+        - generic [ref=e113]:
+          - generic [ref=e114] [cursor=pointer]:
+            - generic [ref=e115]: Today
+            - generic [ref=e116]: +$0.00
+          - generic [ref=e117] [cursor=pointer]:
+            - generic [ref=e118]: Week
+            - generic [ref=e119]: +$2.54
+          - generic [ref=e120] [cursor=pointer]:
+            - generic [ref=e121]: All
+            - generic [ref=e122]: +$2.54
+      - generic [ref=e124]:
+        - generic [ref=e125]:
+          - generic [ref=e128]: Вхід
+          - generic [ref=e129]:
+            - generic [ref=e130]:
+              - generic [ref=e131]: Pass Rate
+              - generic [ref=e132]: 0.4%
+              - generic [ref=e347]: 106 pipe + 0 conv / 24259
+            - generic [ref=e133]:
+              - generic [ref=e134]: Топ відхилення
+              - generic [ref=e135]: sport_only
+              - generic [ref=e348]: top blocker
+            - generic [ref=e136]:
+              - generic [ref=e137]: Signals/hr
+              - generic [ref=e138]: "1011"
+              - generic [ref=e349]: ~24259/day
+            - generic [ref=e139]:
+              - generic [ref=e140]: CF чистий
+              - generic [ref=e141]: +$4736.34
+              - generic [ref=e350]: $4740.80 saved
+        - generic [ref=e142]:
+          - generic [ref=e145]: Вихід
+          - generic [ref=e146]:
+            - generic [ref=e147]:
+              - generic [ref=e148]: TP спрацьованість
+              - generic [ref=e149]: 0.0%
+              - generic [ref=e351]: target ≥35%
+            - generic [ref=e150]:
+              - generic [ref=e151]: SL частота
+              - generic [ref=e152]: 0.0%
+              - generic [ref=e352]: target <30%
+            - generic [ref=e153]:
+              - generic [ref=e154]: Ефективність виходу
+              - generic [ref=e155]: 0.0%
+              - generic [ref=e353]: realized/peak
+            - generic [ref=e156]:
+              - generic [ref=e157]: Втрачено
+              - generic [ref=e158]: 100.0%
+              - generic [ref=e354]: unrealized upside
+        - generic [ref=e159]:
+          - generic [ref=e162]: Результат
+          - generic [ref=e163]:
+            - generic [ref=e164]:
+              - generic [ref=e165]: Win Rate
+              - generic [ref=e166]: 0%
+              - generic [ref=e167]: 0W 2L
+            - generic [ref=e168]:
+              - generic [ref=e169]: Profit Factor
+              - generic [ref=e170]: "0.00"
+              - generic [ref=e355]: $0.00W / $3.93L
+            - generic [ref=e171]:
+              - generic [ref=e172]: Avg PnL/Trade
+              - generic [ref=e173]: "-$1.96"
+              - generic [ref=e174]: 2 closed trades
+            - generic [ref=e175]:
+              - generic [ref=e176]: Max Drawdown
+              - generic [ref=e177]: "-$3.93"
+              - generic [ref=e356]: peak→trough
+        - generic [ref=e178]:
+          - generic [ref=e181]: Технічні
+          - generic [ref=e182]:
+            - generic [ref=e183]:
+              - generic [ref=e184]: Avg Latency
+              - generic [ref=e185]: 48ms
+              - generic [ref=e357]: live_ask
+            - generic [ref=e186]:
+              - generic [ref=e187]: Avg Duration
+              - generic [ref=e188]: "-691s"
+              - generic [ref=e358]: 2 closed · 0 open
+            - generic [ref=e189]:
+              - generic [ref=e190]: Exposure
+              - generic [ref=e191]: 0%
+              - generic [ref=e192]: $0.00 / $105.44
+            - generic [ref=e193]:
+              - generic [ref=e194]: Відкриті позиції
+              - generic [ref=e195]: "0"
+              - generic [ref=e196]: positions
+    - generic [ref=e197]:
+      - button "Трейди 2" [ref=e198] [cursor=pointer]:
+        - generic [ref=e199]: Трейди
+        - generic [ref=e200]: "2"
+      - button "Налаштування" [ref=e201] [cursor=pointer]
+      - button "🐋 Whales 1505" [ref=e202] [cursor=pointer]:
+        - generic [ref=e203]: 🐋 Whales
+        - generic [ref=e204]: "1505"
+      - button "⚙️ Калібрація" [ref=e205] [cursor=pointer]
+      - button "⚡ Chain" [ref=e206] [cursor=pointer]
+      - button "📋 Логи" [ref=e207] [cursor=pointer]
+      - generic [ref=e208]: Оновлено 12:30
+    - generic [ref=e209]:
+      - generic [ref=e210]:
+        - generic [ref=e211]:
+          - generic [ref=e212]: P&L
+          - generic [ref=e213]: "-$3.93"
+        - generic [ref=e215]:
+          - generic [ref=e216]: Win Rate
+          - generic [ref=e217]: 0/2 (0%)
+        - generic [ref=e219]:
+          - generic [ref=e220]: Середня трив.
+          - generic [ref=e221]: "-12m"
+        - generic [ref=e223]:
+          - generic [ref=e224]: Wins
+          - generic [ref=e225]: "0"
+        - generic [ref=e227]:
+          - generic [ref=e228]: Losses
+          - generic [ref=e229]: "2"
+        - generic [ref=e231]:
+          - generic [ref=e232]: Open
+          - generic [ref=e233]: "0"
+        - generic "Медіанна свіжість марків (час з останнього оновлення від сервера)" [ref=e235]:
+          - generic [ref=e236]: Свіжість марків
+          - generic [ref=e237]: —
+      - generic [ref=e239]:
+        - button "Всі" [ref=e240] [cursor=pointer]
+        - button "Won" [ref=e241] [cursor=pointer]
+        - button "Lost" [ref=e242] [cursor=pointer]
+        - button "Open" [ref=e243] [cursor=pointer]
+        - button "LIVE" [ref=e244] [cursor=pointer]
+        - button "DRY" [ref=e245] [cursor=pointer]
+        - textbox "trade_id, market..." [ref=e246]
+        - button "📋 Copy All JSON" [ref=e247] [cursor=pointer]
+      - table [ref=e249]:
+        - rowgroup [ref=e250]:
+          - row "Час Mode Маркет Side Resolves Entry Exit Shares Cost P&L Exit Reason Result Dur" [ref=e359] [cursor=pointer]:
+            - columnheader "Час" [ref=e360]
+            - columnheader "Mode" [ref=e361]
+            - columnheader "Маркет" [ref=e362]
+            - columnheader "Side" [ref=e363]
+            - columnheader "Resolves" [ref=e364]
+            - columnheader "Entry" [ref=e365]
+            - columnheader "Exit" [ref=e366]
+            - columnheader "Shares" [ref=e367]
+            - columnheader "Cost" [ref=e368]
+            - columnheader "P&L" [ref=e369]
+            - columnheader "Exit Reason" [ref=e370]
+            - columnheader "Result" [ref=e371]
+            - columnheader "Dur" [ref=e372]
+          - row "13:45:09 LIVE NO NO resolved NaNd ago 0.480 0.500 10.25 ⚠ OVER $4.92 -$0.15 ✋ Вручну Lost ❌ —" [ref=e373] [cursor=pointer]:
+            - cell "13:45:09" [ref=e374]
+            - cell "LIVE" [ref=e375]:
+              - generic [ref=e376]: LIVE
+            - cell "NO" [ref=e377]
+            - cell "NO" [ref=e378]:
+              - generic [ref=e379]: "NO"
+            - cell "resolved NaNd ago" [ref=e380]
+            - cell "0.480" [ref=e381]
+            - cell "0.500" [ref=e382]
+            - cell "10.25 ⚠ OVER" [ref=e383]:
+              - generic [ref=e384]: 10.25 ⚠ OVER
+            - cell "$4.92" [ref=e385]
+            - cell "-$0.15" [ref=e386]
+            - cell "✋ Вручну" [ref=e387]:
+              - generic [ref=e388]: ✋ Вручну
+            - cell "Lost ❌" [ref=e389]:
+              - generic [ref=e390]: Lost ❌
+            - cell "—" [ref=e391]
+          - row "12:41:16 LIVE NO NO resolved NaNd ago 0.345 0.375 10.81 ⚠ OVER $3.73 -$3.77 🏁 Price resolv Lost ❌ 35m" [ref=e392] [cursor=pointer]:
+            - cell "12:41:16" [ref=e393]
+            - cell "LIVE" [ref=e394]:
+              - generic [ref=e395]: LIVE
+            - cell "NO" [ref=e396]
+            - cell "NO" [ref=e397]:
+              - generic [ref=e398]: "NO"
+            - cell "resolved NaNd ago" [ref=e399]
+            - cell "0.345" [ref=e400]
+            - cell "0.375" [ref=e401]
+            - cell "10.81 ⚠ OVER" [ref=e402]:
+              - generic [ref=e403]: 10.81 ⚠ OVER
+            - cell "$3.73" [ref=e404]
+            - cell "-$3.77" [ref=e405]
+            - cell "🏁 Price resolv" [ref=e406]:
+              - generic [ref=e407]: 🏁 Price resolv
+            - cell "Lost ❌" [ref=e408]:
+              - generic [ref=e409]: Lost ❌
+            - cell "35m" [ref=e410]
+        - rowgroup
+  - generic [ref=e303]:
+    - generic [ref=e304]:
+      - generic [ref=e305]: ⚠ NOT WIRED · v1→v2 endpoints
+      - button "×" [ref=e306] [cursor=pointer]
+    - list [ref=e307]:
+      - listitem [ref=e411]: 4×/api/polymarket/reconciliation
+      - listitem [ref=e412]: 1×/api/polymarket/wallets/discover/status

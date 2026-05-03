@@ -1,0 +1,614 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - button "🇺🇦" [ref=e4] [cursor=pointer]
+      - generic [ref=e5]:
+        - generic [ref=e6]: OraLab
+        - generic [ref=e7]: Ora et Labora
+    - generic [ref=e8]:
+      - generic [ref=e9]:
+        - generic [ref=e10]: MODE
+        - generic [ref=e11]:
+          - button "DRY" [ref=e12] [cursor=pointer]: DRY
+          - button "LIVE" [ref=e14] [cursor=pointer]: LIVE
+        - generic [ref=e16]:
+          - generic [ref=e17]: Оновлено 11:19
+          - 'generic "Heartbeat: — · Data: —" [ref=e212]':
+            - generic [ref=e214]: Бот офлайн
+      - generic [ref=e18]:
+        - generic [ref=e19]: BOTS
+        - generic [ref=e20]:
+          - generic [ref=e2440]:
+            - generic [ref=e2442]: Whale Copy Bot
+            - generic [ref=e2443]: —
+            - generic [ref=e2444]:
+              - button "▶" [disabled] [ref=e2445]
+              - button "⏹" [ref=e2446] [cursor=pointer]
+              - button "↻" [ref=e2447] [cursor=pointer]
+          - generic [ref=e2448]:
+            - generic [ref=e2450]: WS Feed
+            - generic [ref=e2451]: —
+            - generic [ref=e2452]:
+              - button "▶" [disabled] [ref=e2453]
+              - button "⏹" [ref=e2454] [cursor=pointer]
+              - button "↻" [ref=e2455] [cursor=pointer]
+          - generic [ref=e2456]:
+            - generic [ref=e2458]: RTDS Feed
+            - generic [ref=e2459]: —
+            - generic [ref=e2460]:
+              - button "▶" [disabled] [ref=e2461]
+              - button "⏹" [ref=e2462] [cursor=pointer]
+              - button "↻" [ref=e2463] [cursor=pointer]
+          - generic [ref=e2464]:
+            - generic [ref=e2466]: Calibrator
+            - generic [ref=e2467]: —
+            - generic [ref=e2468]:
+              - button "▶" [disabled] [ref=e2469]
+              - button "⏹" [ref=e2470] [cursor=pointer]
+              - button "↻" [ref=e2471] [cursor=pointer]
+        - generic [ref=e21]:
+          - button "▶ All" [ref=e22] [cursor=pointer]
+          - button "⏹ All" [ref=e23] [cursor=pointer]
+      - generic [ref=e24]:
+        - generic [ref=e25]: HEALTH
+        - generic [ref=e27]: ALL HEALTHY
+        - generic [ref=e29]:
+          - generic [ref=e32]: 1s ago
+          - generic [ref=e35]: 1s ago
+          - generic [ref=e38]: running
+          - generic [ref=e41]: 10s ago
+          - generic [ref=e44]: disconnected
+          - generic [ref=e46]: 0 events · 0 whales
+      - generic [ref=e47]:
+        - generic [ref=e48]: MONITOR
+        - 'generic "Watchdog daemon PID: — Last tick: —" [ref=e248] [cursor=pointer]':
+          - generic [ref=e51]: WD ✓ —
+        - generic [ref=e52]: + майбутні перевірки
+      - generic [ref=e53]:
+        - generic [ref=e54]: CONTROL
+        - generic [ref=e55]:
+          - button "🔄 Оновити" [ref=e56] [cursor=pointer]
+          - button "♻️ Перезапуск" [ref=e57] [cursor=pointer]
+          - button "KILL" [ref=e249] [cursor=pointer]
+          - button "❌ Скидання" [ref=e59] [cursor=pointer]
+    - generic [ref=e60]:
+      - generic [ref=e61]:
+        - generic [ref=e62]:
+          - text: Balance
+          - button "↑ Поповнити" [ref=e63] [cursor=pointer]
+        - generic [ref=e64]: $50.00 of $50.00
+        - generic [ref=e65]:
+          - generic [ref=e66]: Позиції $41.66
+          - generic [ref=e68]: Вільно $8.34
+      - generic [ref=e71]:
+        - generic [ref=e72]: Profit & Loss
+        - generic [ref=e73]: "-$253.69"
+        - generic [ref=e74]:
+          - generic [ref=e75] [cursor=pointer]:
+            - generic [ref=e76]: Today
+            - generic [ref=e77]: "-$1.20"
+          - generic [ref=e78] [cursor=pointer]:
+            - generic [ref=e79]: Week
+            - generic [ref=e80]: "-$253.69"
+          - generic [ref=e81] [cursor=pointer]:
+            - generic [ref=e82]: All
+            - generic [ref=e83]: "-$253.69"
+      - generic [ref=e85]:
+        - generic [ref=e86]:
+          - generic [ref=e89]: Вхід
+          - generic [ref=e90]:
+            - generic [ref=e91]:
+              - generic [ref=e92]: Pass Rate
+              - generic [ref=e93]: 0.4%
+              - generic [ref=e251]: 95 pipe + 0 conv / 22084
+            - generic [ref=e94]:
+              - generic [ref=e95]: Топ відхилення
+              - generic [ref=e96]: sport_only
+              - generic [ref=e252]: top blocker
+            - generic [ref=e97]:
+              - generic [ref=e98]: Signals/hr
+              - generic [ref=e99]: "920"
+              - generic [ref=e253]: ~22084/day
+            - generic [ref=e100]:
+              - generic [ref=e101]: CF чистий
+              - generic [ref=e102]: +$6470.02
+              - generic [ref=e254]: $6487.98 saved
+        - generic [ref=e103]:
+          - generic [ref=e106]: Вихід
+          - generic [ref=e107]:
+            - generic [ref=e108]:
+              - generic [ref=e109]: TP спрацьованість
+              - generic [ref=e110]: 0.0%
+              - generic [ref=e255]: target ≥35%
+            - generic [ref=e111]:
+              - generic [ref=e112]: SL частота
+              - generic [ref=e113]: 0.0%
+              - generic [ref=e256]: target <30%
+            - generic [ref=e114]:
+              - generic [ref=e115]: Ефективність виходу
+              - generic [ref=e116]: 0.0%
+              - generic [ref=e257]: realized/peak
+            - generic [ref=e117]:
+              - generic [ref=e118]: Втрачено
+              - generic [ref=e119]: 100.0%
+              - generic [ref=e258]: unrealized upside
+        - generic [ref=e120]:
+          - generic [ref=e123]: Результат
+          - generic [ref=e124]:
+            - generic [ref=e125]:
+              - generic [ref=e126]: Win Rate
+              - generic [ref=e127]: 1%
+              - generic [ref=e259]: 1W 83L
+            - generic [ref=e128]:
+              - generic [ref=e129]: Profit Factor
+              - generic [ref=e130]: "0.00"
+              - generic [ref=e260]: $0.10W / $253.79L
+            - generic [ref=e131]:
+              - generic [ref=e132]: Avg PnL/Trade
+              - generic [ref=e133]: "-$3.02"
+              - generic [ref=e261]: 84 closed trades
+            - generic [ref=e134]:
+              - generic [ref=e135]: Max Drawdown
+              - generic [ref=e136]: "-$253.79"
+              - generic [ref=e262]: peak→trough
+        - generic [ref=e137]:
+          - generic [ref=e140]: Технічні
+          - generic [ref=e141]:
+            - generic [ref=e142]:
+              - generic [ref=e143]: Avg Latency
+              - generic [ref=e144]: 52ms
+              - generic [ref=e263]: live_ask
+            - generic [ref=e145]:
+              - generic [ref=e146]: Avg Duration
+              - generic [ref=e147]: 34m
+              - generic [ref=e264]: 84 closed · 9 open
+            - generic [ref=e148]:
+              - generic [ref=e149]: Exposure
+              - generic [ref=e150]: 83%
+              - generic [ref=e265]: $41.66 / $50.00
+            - generic [ref=e151]:
+              - generic [ref=e152]: Відкриті позиції
+              - generic [ref=e153]: "9"
+              - generic [ref=e266]: positions
+    - generic [ref=e154]:
+      - button "Трейди 102" [ref=e267] [cursor=pointer]:
+        - generic [ref=e156]: Трейди
+        - generic [ref=e157]: "102"
+      - button "Налаштування" [ref=e158] [cursor=pointer]
+      - button "🐋 Whales 1505" [ref=e268] [cursor=pointer]:
+        - generic [ref=e160]: 🐋 Whales
+        - generic [ref=e161]: "1505"
+      - button "⚙️ Калібрація" [ref=e162] [cursor=pointer]
+      - button "⚡ Chain" [ref=e163] [cursor=pointer]
+      - button "📋 Логи" [ref=e164] [cursor=pointer]
+      - generic [ref=e165]: Оновлено 11:19
+    - generic [ref=e1997]:
+      - generic [ref=e1998]:
+        - generic [ref=e1999]:
+          - generic [ref=e2000]: Режим торгівлі
+          - generic [ref=e2001]: DRY RUN
+        - generic [ref=e2002]:
+          - generic [ref=e2473]:
+            - generic [ref=e2474] [cursor=pointer]:
+              - generic [ref=e2475]: ✓
+              - generic [ref=e2476]: Dry Run
+              - generic [ref=e2478]: Симуляція. Без реальних ордерів.
+            - generic [ref=e2479] [cursor=pointer]:
+              - generic [ref=e2480]: Live
+              - generic [ref=e2482]: Реальний USDC на Polymarket CLOB.
+          - generic [ref=e2483]:
+            - generic [ref=e2484]:
+              - generic [ref=e2485]: ✅
+              - text: POLY_API_KEY
+            - generic [ref=e2486]:
+              - generic [ref=e2487]: ✅
+              - text: POLY_API_SECRET
+            - generic [ref=e2488]:
+              - generic [ref=e2489]: ✅
+              - text: POLY_API_PASSPHRASE
+            - generic [ref=e2490]:
+              - generic [ref=e2491]: ✅
+              - text: POLY_PRIVATE_KEY
+            - generic [ref=e2492]:
+              - generic [ref=e2493]: ✅
+              - text: POLY_WALLET_ADDRESS
+        - button "Перейти на Live" [ref=e2025] [cursor=pointer]
+      - generic [ref=e2026]:
+        - generic [ref=e2027]:
+          - generic [ref=e2028]: Бюджет
+          - generic [ref=e2029]: $50 total · $8 avail
+        - generic [ref=e2030]:
+          - generic [ref=e2031]:
+            - generic [ref=e2033]:
+              - generic [ref=e2034]:
+                - generic [ref=e2035]: Виділений бюджет
+                - generic [ref=e2036]: Фіксована сума для ризику
+              - generic [ref=e2037]:
+                - textbox [ref=e2038]: "50"
+                - generic [ref=e2039]: USDC
+            - generic [ref=e2041]:
+              - generic [ref=e2042]: Статус
+              - generic [ref=e2043]:
+                - generic [ref=e2494]: $8.34 available
+                - generic [ref=e2495]: +$0.00 profit
+          - generic [ref=e2046]: Бюджет вичерпано = повна зупинка. В DRY RUN це симульований капітал.
+        - generic [ref=e2047]:
+          - button "Скинути" [ref=e2048] [cursor=pointer]
+          - button "Зберегти" [ref=e2049] [cursor=pointer]
+      - generic [ref=e2050]:
+        - generic [ref=e2052]: Просадка та розмір позицій
+        - generic [ref=e2496]:
+          - generic [ref=e2497]:
+            - generic [ref=e2498]:
+              - generic [ref=e2499]:
+                - text: Reduce bets at
+                - generic [ref=e2500]: Reduce bet size at this drawdown
+              - generic [ref=e2501]:
+                - textbox [ref=e2502]: "15"
+                - generic [ref=e2503]: "%"
+            - generic [ref=e2504]:
+              - generic [ref=e2505]:
+                - text: Minimal bets at
+                - generic [ref=e2506]: Minimal bet mode at this drawdown
+              - generic [ref=e2507]:
+                - textbox [ref=e2508]: "25"
+                - generic [ref=e2509]: "%"
+            - generic [ref=e2510]:
+              - generic [ref=e2511]:
+                - text: Full stop at
+                - generic [ref=e2512]: Stop all new positions
+              - generic [ref=e2513]:
+                - textbox [ref=e2514]: "35"
+                - generic [ref=e2515]: "%"
+          - generic [ref=e2517]:
+            - generic [ref=e2518]:
+              - text: Max bet size
+              - generic [ref=e2519]: "% of balance before drawdown reduction"
+            - generic [ref=e2520]:
+              - textbox [ref=e2521]: "5.0"
+              - generic [ref=e2522]: "%"
+      - generic [ref=e2081]:
+        - generic [ref=e2083]:
+          - generic [ref=e2084]: Ліміти та безпека
+          - generic [ref=e2085]: CRITICAL
+        - generic [ref=e2086]:
+          - generic [ref=e2523]:
+            - generic [ref=e2524]:
+              - generic [ref=e2525]:
+                - generic [ref=e2526]: Current Exposure
+                - generic [ref=e2527]:
+                  - generic [ref=e2528]: $0.00
+                  - generic [ref=e2529]: USDC
+              - generic [ref=e2531]:
+                - generic [ref=e2532]: of limit
+                - text: $0.00
+              - generic [ref=e2534]:
+                - generic [ref=e2535]: Positions
+                - text: "0"
+            - button "Reset" [ref=e2536] [cursor=pointer]
+          - generic [ref=e2537]:
+            - generic [ref=e2538]:
+              - generic [ref=e2539]:
+                - generic [ref=e2540]:
+                  - text: Max entry shares
+                  - generic [ref=e2541]: Hard cap on shares per trade
+                - generic [ref=e2542]:
+                  - textbox [ref=e2543]: "10"
+                  - generic [ref=e2544]: shares
+              - generic [ref=e2545]:
+                - generic [ref=e2546]: Max open positions
+                - textbox [ref=e2548]: "5"
+              - generic [ref=e2549]:
+                - generic [ref=e2550]:
+                  - text: Max total exposure
+                  - generic [ref=e2551]: "% of budget"
+                - generic [ref=e2552]:
+                  - textbox [ref=e2553]: "30"
+                  - generic [ref=e2554]: "%"
+            - generic [ref=e2555]:
+              - generic [ref=e2556]:
+                - generic [ref=e2557]: Daily loss limit
+                - generic [ref=e2558]:
+                  - textbox [ref=e2559]: "10"
+                  - generic [ref=e2560]: "%"
+              - generic [ref=e2561]:
+                - generic [ref=e2562]: Order timeout
+                - generic [ref=e2563]:
+                  - textbox [ref=e2564]: "30"
+                  - generic [ref=e2565]: sec
+              - generic [ref=e2566]:
+                - generic [ref=e2567]: Reconciliation interval
+                - generic [ref=e2568]:
+                  - textbox [disabled] [ref=e2569]: "300"
+                  - generic [ref=e2570]: sec
+          - generic [ref=e2571]:
+            - generic [ref=e2572]:
+              - generic [ref=e2573]: Emergency Kill Switch
+              - generic [ref=e2574]: Halts all trading instantly.
+            - button "ACTIVATE" [ref=e2575] [cursor=pointer]
+      - generic [ref=e2140]:
+        - generic [ref=e2142]: Налаштування виходу
+        - generic [ref=e2576]:
+          - generic [ref=e2577]:
+            - generic [ref=e2578]:
+              - generic [ref=e2579]: Take profit
+              - generic [ref=e2580]:
+                - textbox [ref=e2581]: "40"
+                - generic [ref=e2582]: "%"
+            - generic [ref=e2583]:
+              - generic [ref=e2584]: Stop loss
+              - generic [ref=e2585]:
+                - textbox [ref=e2586]: "-25"
+                - generic [ref=e2587]: "%"
+            - generic [ref=e2588]:
+              - generic [ref=e2589]: Emergency stop
+              - generic [ref=e2590]:
+                - textbox [ref=e2591]: "-50"
+                - generic [ref=e2592]: "%"
+            - generic [ref=e2593]:
+              - generic [ref=e2594]: Ceiling TP price
+              - textbox [ref=e2596]: "0.97"
+          - generic [ref=e2597]:
+            - generic [ref=e2598]:
+              - generic [ref=e2599]: Trail activate
+              - generic [ref=e2600]:
+                - textbox [ref=e2601]: "15"
+                - generic [ref=e2602]: "%"
+            - generic [ref=e2603]:
+              - generic [ref=e2604]: Trail stop
+              - generic [ref=e2605]:
+                - textbox [ref=e2606]: "10"
+                - generic [ref=e2607]: "%"
+            - generic [ref=e2608]:
+              - generic [ref=e2609]: Time before resolution
+              - generic [ref=e2610]:
+                - spinbutton [ref=e2611]: "6"
+                - generic [ref=e2612]: hrs
+            - generic [ref=e2613]:
+              - generic [ref=e2614]: Min SL age
+              - generic [ref=e2615]:
+                - textbox [ref=e2616]: "300"
+                - generic [ref=e2617]: sec
+      - generic [ref=e2187]:
+        - generic [ref=e2189]: Немає незбережених змін
+        - button "Зберегти все" [ref=e2191] [cursor=pointer]
+      - generic [ref=e2192]:
+        - generic [ref=e2618]:
+          - generic [ref=e2619]:
+            - generic [ref=e2620]: Filter pipeline
+            - generic [ref=e2621]: DRY RUN
+          - button "Reset stats" [ref=e2623] [cursor=pointer]
+        - generic [ref=e2624]:
+          - generic [ref=e2625]:
+            - generic [ref=e2626]: "0"
+            - generic [ref=e2627]: Rejected
+          - generic [ref=e2628]:
+            - generic [ref=e2629]: "0"
+            - generic [ref=e2630]: Hard Safety
+          - generic [ref=e2631]:
+            - generic [ref=e2632]: ~0
+            - generic [ref=e2633]: Accepted
+          - generic [ref=e2634]:
+            - generic [ref=e2635]: 0.0%
+            - generic [ref=e2636]: Pass rate
+          - generic [ref=e2637]:
+            - generic [ref=e2638]: 0 / 33
+            - generic [ref=e2639]: Active filters
+        - generic [ref=e2640]:
+          - generic [ref=e2641] [cursor=pointer]: Funnel
+          - generic [ref=e2642] [cursor=pointer]: Latency
+          - generic [ref=e2643] [cursor=pointer]: Live Feed
+        - generic [ref=e2644]:
+          - generic [ref=e2645]:
+            - generic [ref=e2646]: Signal Funnel · 24h
+            - generic [ref=e2647]:
+              - generic [ref=e2648]:
+                - generic [ref=e2649]: "0"
+                - generic [ref=e2650]: Сигнали
+              - generic [ref=e2651]: →
+              - generic [ref=e2652]:
+                - generic [ref=e2653]: "0"
+                - generic [ref=e2654]: Hard Safety
+                - generic [ref=e2655]: 0%
+              - generic [ref=e2656]: →
+              - generic [ref=e2657]:
+                - generic [ref=e2658]: "0"
+                - generic [ref=e2659]: Conviction
+                - generic [ref=e2660]: 0%
+              - generic [ref=e2661]: →
+              - generic [ref=e2662]:
+                - generic [ref=e2663]: "0"
+                - generic [ref=e2664]: Quality
+                - generic [ref=e2665]: 0%
+              - generic [ref=e2666]: →
+              - generic [ref=e2667]:
+                - generic [ref=e2668]: "0"
+                - generic [ref=e2669]: Execution
+                - generic [ref=e2670]: 0%
+              - generic [ref=e2671]: →
+              - generic [ref=e2672]:
+                - generic [ref=e2673]: "0"
+                - generic [ref=e2674]: Passed
+                - generic [ref=e2675]: 0 entered
+          - generic [ref=e2676]:
+            - generic [ref=e2677] [cursor=pointer]:
+              - generic [ref=e2678]: ⓪
+              - generic [ref=e2679]: Hard Safety
+              - generic [ref=e2680]: НЕВІДКЛЮЧАЄМО
+              - generic [ref=e2681]: ▾
+            - generic [ref=e2683]:
+              - generic [ref=e2684] [cursor=pointer]:
+                - generic [ref=e2685]:
+                  - generic [ref=e2686]: kill switch
+                  - generic [ref=e2687]: —
+                - generic [ref=e2688]:
+                  - generic [ref=e2689]: "0"
+                  - generic [ref=e2690]: edit
+              - generic [ref=e2691] [cursor=pointer]:
+                - generic [ref=e2692]:
+                  - generic [ref=e2693]: sell trade
+                  - generic [ref=e2694]: —
+                - generic [ref=e2696]: "0"
+              - generic [ref=e2697] [cursor=pointer]:
+                - generic [ref=e2698]:
+                  - generic [ref=e2699]: trade age
+                  - generic [ref=e2700]: "120"
+                - generic [ref=e2701]:
+                  - generic [ref=e2702]: "0"
+                  - generic [ref=e2703]: edit
+              - generic [ref=e2704] [cursor=pointer]:
+                - generic [ref=e2705]:
+                  - generic [ref=e2706]: entry cooldown
+                  - generic [ref=e2707]: "120"
+                - generic [ref=e2708]:
+                  - generic [ref=e2709]: "0"
+                  - generic [ref=e2710]: edit
+              - generic [ref=e2711] [cursor=pointer]:
+                - generic [ref=e2712]:
+                  - generic [ref=e2713]: exit reentry
+                  - generic [ref=e2714]: "600"
+                - generic [ref=e2715]:
+                  - generic [ref=e2716]: "0"
+                  - generic [ref=e2717]: edit
+              - generic [ref=e2718] [cursor=pointer]:
+                - generic [ref=e2719]:
+                  - generic [ref=e2720]: price band
+                  - generic [ref=e2721]: "[0.15, 0.85]"
+                - generic [ref=e2722]:
+                  - generic [ref=e2723]: "0"
+                  - generic [ref=e2724]: edit
+              - generic [ref=e2725] [cursor=pointer]:
+                - generic [ref=e2726]:
+                  - generic [ref=e2727]: category
+                  - generic [ref=e2728]: —
+                - generic [ref=e2729]:
+                  - generic [ref=e2730]: "0"
+                  - generic [ref=e2731]: edit
+              - generic [ref=e2732] [cursor=pointer]:
+                - generic [ref=e2733]:
+                  - generic [ref=e2734]: intraday binary
+                  - generic [ref=e2735]: —
+                - generic [ref=e2736]:
+                  - generic [ref=e2737]: "0"
+                  - generic [ref=e2738]: edit
+              - generic [ref=e2739] [cursor=pointer]:
+                - generic [ref=e2740]:
+                  - generic [ref=e2741]: market resolved
+                  - generic [ref=e2742]: —
+                - generic [ref=e2743]:
+                  - generic [ref=e2744]: "0"
+                  - generic [ref=e2745]: edit
+              - generic [ref=e2746] [cursor=pointer]:
+                - generic [ref=e2747]:
+                  - generic [ref=e2748]: min time to res
+                  - generic [ref=e2749]: —
+                - generic [ref=e2750]:
+                  - generic [ref=e2751]: "0"
+                  - generic [ref=e2752]: edit
+              - generic [ref=e2753] [cursor=pointer]:
+                - generic [ref=e2754]:
+                  - generic [ref=e2755]: max positions
+                  - generic [ref=e2756]: —
+                - generic [ref=e2757]:
+                  - generic [ref=e2758]: "0"
+                  - generic [ref=e2759]: edit
+              - generic [ref=e2760] [cursor=pointer]:
+                - generic [ref=e2761]:
+                  - generic [ref=e2762]: dedup
+                  - generic [ref=e2763]: —
+                - generic [ref=e2764]:
+                  - generic [ref=e2765]: "0"
+                  - generic [ref=e2766]: edit
+              - generic [ref=e2767] [cursor=pointer]:
+                - generic [ref=e2768]:
+                  - generic [ref=e2769]: drawdown full stop
+                  - generic [ref=e2770]: —
+                - generic [ref=e2771]:
+                  - generic [ref=e2772]: "0"
+                  - generic [ref=e2773]: edit
+              - generic [ref=e2774] [cursor=pointer]:
+                - generic [ref=e2775]:
+                  - generic [ref=e2776]: total exposure cap
+                  - generic [ref=e2777]: —
+                - generic [ref=e2778]:
+                  - generic [ref=e2779]: "0"
+                  - generic [ref=e2780]: edit
+              - generic [ref=e2781] [cursor=pointer]:
+                - generic [ref=e2782]:
+                  - generic [ref=e2783]: recent reject cache
+                  - generic [ref=e2784]: "60"
+                - generic [ref=e2785]:
+                  - generic [ref=e2786]: "0"
+                  - generic [ref=e2787]: edit
+              - generic [ref=e2788] [cursor=pointer]:
+                - generic [ref=e2789]:
+                  - generic [ref=e2790]: min whale size
+                  - generic [ref=e2791]: —
+                - generic [ref=e2792]:
+                  - generic [ref=e2793]: "0"
+                  - generic [ref=e2794]: edit
+              - generic [ref=e2795] [cursor=pointer]:
+                - generic [ref=e2796]:
+                  - generic [ref=e2797]: post resolution
+                  - generic [ref=e2798]: —
+                - generic [ref=e2799]:
+                  - generic [ref=e2800]: "0"
+                  - generic [ref=e2801]: edit
+              - generic [ref=e2802] [cursor=pointer]:
+                - generic [ref=e2803]:
+                  - generic [ref=e2804]: bid ask spread
+                  - generic [ref=e2805]: —
+                - generic [ref=e2806]:
+                  - generic [ref=e2807]: "0"
+                  - generic [ref=e2808]: edit
+              - generic [ref=e2809] [cursor=pointer]:
+                - generic [ref=e2810]:
+                  - generic [ref=e2811]: sport only
+                  - generic [ref=e2812]: —
+                - generic [ref=e2813]:
+                  - generic [ref=e2814]: "0"
+                  - generic [ref=e2815]: edit
+              - generic [ref=e2816] [cursor=pointer]:
+                - generic [ref=e2817]:
+                  - generic [ref=e2818]: budget exhausted
+                  - generic [ref=e2819]: —
+                - generic [ref=e2820]:
+                  - generic [ref=e2821]: "0"
+                  - generic [ref=e2822]: edit
+          - generic [ref=e2824] [cursor=pointer]:
+            - generic [ref=e2825]: c
+            - generic [ref=e2826]: conviction
+            - generic [ref=e2827]: ▸
+          - generic [ref=e2829] [cursor=pointer]:
+            - generic [ref=e2830]: w
+            - generic [ref=e2831]: wallet_quality
+            - generic [ref=e2832]: ▸
+          - generic [ref=e2834] [cursor=pointer]:
+            - generic [ref=e2835]: m
+            - generic [ref=e2836]: market_quality
+            - generic [ref=e2837]: ▸
+          - generic [ref=e2839] [cursor=pointer]:
+            - generic [ref=e2840]: p
+            - generic [ref=e2841]: price_quality
+            - generic [ref=e2842]: ▸
+          - generic [ref=e2844] [cursor=pointer]:
+            - generic [ref=e2845]: r
+            - generic [ref=e2846]: risk_exposure
+            - generic [ref=e2847]: ▸
+          - generic [ref=e2848]:
+            - generic [ref=e2849]: ✓
+            - generic [ref=e2851]: 0 трейдів увійшли в позиції
+          - generic [ref=e2852]:
+            - generic [ref=e2853]: Bottleneck (>15%)
+            - generic [ref=e2855]: Active (2–15%)
+            - generic [ref=e2857]: Light (<2%)
+            - generic [ref=e2859]: Quiet
+  - generic [ref=e206]:
+    - generic [ref=e207]:
+      - generic [ref=e208]: ⚠ NOT WIRED · v1→v2 endpoints
+      - button "×" [ref=e209] [cursor=pointer]
+    - list [ref=e210]:
+      - listitem [ref=e2861]: 20×/api/polymarket/live-marks
+      - listitem [ref=e2862]: 5×/api/polymarket/rejects/recent
+      - listitem [ref=e2863]: 5×/api/polymarket/diagnostic/groups
+      - listitem [ref=e2864]: 1×/api/polymarket/wallets/discover/status

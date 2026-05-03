@@ -1,0 +1,463 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - button "🇺🇦" [ref=e4] [cursor=pointer]
+      - generic [ref=e5]:
+        - generic [ref=e6]: OraLab
+        - generic [ref=e7]: Ora et Labora
+    - generic [ref=e8]:
+      - generic [ref=e9]:
+        - generic [ref=e10]: MODE
+        - generic [ref=e11]:
+          - button "DRY" [ref=e12] [cursor=pointer]: DRY
+          - button "LIVE" [ref=e14] [cursor=pointer]: LIVE
+        - generic [ref=e16]:
+          - generic [ref=e17]: Оновлено 11:03
+          - 'generic "Heartbeat: — · Data: —" [ref=e212]':
+            - generic [ref=e214]: Бот офлайн
+      - generic [ref=e18]:
+        - generic [ref=e19]: BOTS
+        - generic [ref=e20]:
+          - generic [ref=e933]:
+            - generic [ref=e935]: Whale Copy Bot
+            - generic [ref=e936]: —
+            - generic [ref=e937]:
+              - button "▶" [disabled] [ref=e938]
+              - button "⏹" [ref=e939] [cursor=pointer]
+              - button "↻" [ref=e940] [cursor=pointer]
+          - generic [ref=e941]:
+            - generic [ref=e943]: WS Feed
+            - generic [ref=e944]: —
+            - generic [ref=e945]:
+              - button "▶" [disabled] [ref=e946]
+              - button "⏹" [ref=e947] [cursor=pointer]
+              - button "↻" [ref=e948] [cursor=pointer]
+          - generic [ref=e949]:
+            - generic [ref=e951]: RTDS Feed
+            - generic [ref=e952]: —
+            - generic [ref=e953]:
+              - button "▶" [disabled] [ref=e954]
+              - button "⏹" [ref=e955] [cursor=pointer]
+              - button "↻" [ref=e956] [cursor=pointer]
+          - generic [ref=e957]:
+            - generic [ref=e959]: Calibrator
+            - generic [ref=e960]: —
+            - generic [ref=e961]:
+              - button "▶" [disabled] [ref=e962]
+              - button "⏹" [ref=e963] [cursor=pointer]
+              - button "↻" [ref=e964] [cursor=pointer]
+        - generic [ref=e21]:
+          - button "▶ All" [ref=e22] [cursor=pointer]
+          - button "⏹ All" [ref=e23] [cursor=pointer]
+      - generic [ref=e24]:
+        - generic [ref=e25]: HEALTH
+        - generic [ref=e27]: ALL HEALTHY
+        - generic [ref=e29]:
+          - generic [ref=e32]: 2s ago
+          - generic [ref=e35]: 2s ago
+          - generic [ref=e38]: running
+          - generic [ref=e41]: 17s ago
+          - generic [ref=e44]: disconnected
+          - generic [ref=e46]: 0 events · 0 whales
+      - generic [ref=e47]:
+        - generic [ref=e48]: MONITOR
+        - 'generic "Watchdog daemon PID: — Last tick: —" [ref=e248] [cursor=pointer]':
+          - generic [ref=e51]: WD ✓ —
+        - generic [ref=e52]: + майбутні перевірки
+      - generic [ref=e53]:
+        - generic [ref=e54]: CONTROL
+        - generic [ref=e55]:
+          - button "🔄 Оновити" [ref=e56] [cursor=pointer]
+          - button "♻️ Перезапуск" [ref=e57] [cursor=pointer]
+          - button "KILL" [ref=e249] [cursor=pointer]
+          - button "❌ Скидання" [ref=e59] [cursor=pointer]
+    - generic [ref=e60]:
+      - generic [ref=e61]:
+        - generic [ref=e62]:
+          - text: Balance
+          - button "↑ Поповнити" [ref=e63] [cursor=pointer]
+        - generic [ref=e64]: $50.00 of $50.00
+        - generic [ref=e65]:
+          - generic [ref=e66]: Позиції $41.66
+          - generic [ref=e68]: Вільно $8.34
+      - generic [ref=e71]:
+        - generic [ref=e72]: Profit & Loss
+        - generic [ref=e73]: "-$253.69"
+        - generic [ref=e74]:
+          - generic [ref=e75] [cursor=pointer]:
+            - generic [ref=e76]: Today
+            - generic [ref=e77]: "-$1.20"
+          - generic [ref=e78] [cursor=pointer]:
+            - generic [ref=e79]: Week
+            - generic [ref=e80]: "-$253.69"
+          - generic [ref=e81] [cursor=pointer]:
+            - generic [ref=e82]: All
+            - generic [ref=e83]: "-$253.69"
+      - generic [ref=e85]:
+        - generic [ref=e86]:
+          - generic [ref=e89]: Вхід
+          - generic [ref=e90]:
+            - generic [ref=e91]:
+              - generic [ref=e92]: Pass Rate
+              - generic [ref=e93]: 0.4%
+              - generic [ref=e251]: 95 pipe + 0 conv / 21677
+            - generic [ref=e94]:
+              - generic [ref=e95]: Топ відхилення
+              - generic [ref=e96]: sport_only
+              - generic [ref=e252]: top blocker
+            - generic [ref=e97]:
+              - generic [ref=e98]: Signals/hr
+              - generic [ref=e99]: "903"
+              - generic [ref=e253]: ~21677/day
+            - generic [ref=e100]:
+              - generic [ref=e101]: CF чистий
+              - generic [ref=e102]: +$6345.57
+              - generic [ref=e254]: $6363.53 saved
+        - generic [ref=e103]:
+          - generic [ref=e106]: Вихід
+          - generic [ref=e107]:
+            - generic [ref=e108]:
+              - generic [ref=e109]: TP спрацьованість
+              - generic [ref=e110]: 0.0%
+              - generic [ref=e255]: target ≥35%
+            - generic [ref=e111]:
+              - generic [ref=e112]: SL частота
+              - generic [ref=e113]: 0.0%
+              - generic [ref=e256]: target <30%
+            - generic [ref=e114]:
+              - generic [ref=e115]: Ефективність виходу
+              - generic [ref=e116]: 0.0%
+              - generic [ref=e257]: realized/peak
+            - generic [ref=e117]:
+              - generic [ref=e118]: Втрачено
+              - generic [ref=e119]: 100.0%
+              - generic [ref=e258]: unrealized upside
+        - generic [ref=e120]:
+          - generic [ref=e123]: Результат
+          - generic [ref=e124]:
+            - generic [ref=e125]:
+              - generic [ref=e126]: Win Rate
+              - generic [ref=e127]: 1%
+              - generic [ref=e259]: 1W 83L
+            - generic [ref=e128]:
+              - generic [ref=e129]: Profit Factor
+              - generic [ref=e130]: "0.00"
+              - generic [ref=e260]: $0.10W / $253.79L
+            - generic [ref=e131]:
+              - generic [ref=e132]: Avg PnL/Trade
+              - generic [ref=e133]: "-$3.02"
+              - generic [ref=e261]: 84 closed trades
+            - generic [ref=e134]:
+              - generic [ref=e135]: Max Drawdown
+              - generic [ref=e136]: "-$253.79"
+              - generic [ref=e262]: peak→trough
+        - generic [ref=e137]:
+          - generic [ref=e140]: Технічні
+          - generic [ref=e141]:
+            - generic [ref=e142]:
+              - generic [ref=e143]: Avg Latency
+              - generic [ref=e144]: 52ms
+              - generic [ref=e263]: live_ask
+            - generic [ref=e145]:
+              - generic [ref=e146]: Avg Duration
+              - generic [ref=e147]: 34m
+              - generic [ref=e264]: 84 closed · 9 open
+            - generic [ref=e148]:
+              - generic [ref=e149]: Exposure
+              - generic [ref=e150]: 83%
+              - generic [ref=e265]: $41.66 / $50.00
+            - generic [ref=e151]:
+              - generic [ref=e152]: Відкриті позиції
+              - generic [ref=e153]: "9"
+              - generic [ref=e266]: positions
+    - generic [ref=e154]:
+      - button "Трейди 93" [ref=e267] [cursor=pointer]:
+        - generic [ref=e156]: Трейди
+        - generic [ref=e157]: "93"
+      - button "Налаштування" [ref=e158] [cursor=pointer]
+      - button "🐋 Whales 1505" [ref=e268] [cursor=pointer]:
+        - generic [ref=e160]: 🐋 Whales
+        - generic [ref=e161]: "1505"
+      - button "⚙️ Калібрація" [ref=e162] [cursor=pointer]
+      - button "⚡ Chain" [ref=e163] [cursor=pointer]
+      - button "📋 Логи" [ref=e164] [cursor=pointer]
+      - generic [ref=e165]: Оновлено 11:03
+    - generic [ref=e335]:
+      - generic [ref=e336]:
+        - generic [ref=e337]: WATCH
+        - generic [ref=e338]:
+          - generic [ref=e339]: "Цикл:"
+          - strong [ref=e340]: 2 год тому · наст. ~09:49
+        - generic [ref=e341]:
+          - generic [ref=e342]: "Точок даних:"
+          - strong [ref=e343]: "84"
+        - generic [ref=e344]:
+          - generic [ref=e345]: "Історія:"
+          - strong [ref=e346]: "0"
+        - generic [ref=e347]:
+          - button "manual" [ref=e348] [cursor=pointer]
+          - button "watch" [ref=e349] [cursor=pointer]
+          - button "auto" [ref=e350] [cursor=pointer]
+        - button "Запустити" [ref=e351] [cursor=pointer]
+      - generic [ref=e352]:
+        - button "Огляд 13" [ref=e353] [cursor=pointer]:
+          - generic [ref=e354]: Огляд
+          - generic [ref=e355]: "13"
+        - button "Entry" [ref=e356] [cursor=pointer]
+        - button "Exit" [ref=e357] [cursor=pointer]
+        - button "Whales" [ref=e358] [cursor=pointer]
+        - button "Спорт" [active] [ref=e359] [cursor=pointer]
+        - button "Лог" [ref=e360] [cursor=pointer]
+        - button "Налаштування" [ref=e361] [cursor=pointer]
+      - generic [ref=e966]:
+        - generic [ref=e967]: Аналітика по спорту · 83 trades · 24h window
+        - generic [ref=e970]: Аналітика по спорту
+        - generic [ref=e971]: Розподіл угод по підкатегоріях спорту з тегів Gamma. Сортується за будь-якою колонкою.
+        - table [ref=e973]:
+          - rowgroup [ref=e974]:
+            - row "Спорт Угод ↕ Виграш ↕ Програш ↕ Net PnL ↓ Win Rate ↕ TP % ↕ SL % ↕ Сер. час ↕ Сер. ставка ↕ Performance" [ref=e975]:
+              - columnheader "Спорт" [ref=e976]
+              - columnheader "Угод ↕" [ref=e977] [cursor=pointer]
+              - columnheader "Виграш ↕" [ref=e978] [cursor=pointer]
+              - columnheader "Програш ↕" [ref=e979] [cursor=pointer]
+              - columnheader "Net PnL ↓" [ref=e980] [cursor=pointer]
+              - columnheader "Win Rate ↕" [ref=e981] [cursor=pointer]
+              - columnheader "TP % ↕" [ref=e982] [cursor=pointer]
+              - columnheader "SL % ↕" [ref=e983] [cursor=pointer]
+              - columnheader "Сер. час ↕" [ref=e984] [cursor=pointer]
+              - columnheader "Сер. ставка ↕" [ref=e985] [cursor=pointer]
+              - columnheader "Performance" [ref=e986]
+          - rowgroup [ref=e987]:
+            - row "NHL 4 0 0 +$0.00 0% 0% 0% 29m $3.11 0%" [ref=e988]:
+              - cell "NHL" [ref=e989]:
+                - generic [ref=e990]: NHL
+              - cell "4" [ref=e991]
+              - cell "0" [ref=e992]
+              - cell "0" [ref=e993]
+              - cell "+$0.00" [ref=e994]
+              - cell "0%" [ref=e995]
+              - cell "0%" [ref=e996]
+              - cell "0%" [ref=e997]
+              - cell "29m" [ref=e998]
+              - cell "$3.11" [ref=e999]
+              - cell "0%" [ref=e1000]:
+                - generic [ref=e1003]: 0%
+            - row "NBA 10 0 0 +$0.00 0% 0% 0% 30m $2.97 0%" [ref=e1004]:
+              - cell "NBA" [ref=e1005]:
+                - generic [ref=e1006]: NBA
+              - cell "10" [ref=e1007]
+              - cell "0" [ref=e1008]
+              - cell "0" [ref=e1009]
+              - cell "+$0.00" [ref=e1010]
+              - cell "0%" [ref=e1011]
+              - cell "0%" [ref=e1012]
+              - cell "0%" [ref=e1013]
+              - cell "30m" [ref=e1014]
+              - cell "$2.97" [ref=e1015]
+              - cell "0%" [ref=e1016]:
+                - generic [ref=e1019]: 0%
+            - row "MLB 25 0 0 +$0.00 0% 0% 0% 43m $3.02 0%" [ref=e1020]:
+              - cell "MLB" [ref=e1021]:
+                - generic [ref=e1022]: MLB
+              - cell "25" [ref=e1023]
+              - cell "0" [ref=e1024]
+              - cell "0" [ref=e1025]
+              - cell "+$0.00" [ref=e1026]
+              - cell "0%" [ref=e1027]
+              - cell "0%" [ref=e1028]
+              - cell "0%" [ref=e1029]
+              - cell "43m" [ref=e1030]
+              - cell "$3.02" [ref=e1031]
+              - cell "0%" [ref=e1032]:
+                - generic [ref=e1035]: 0%
+            - row "Esports 25 1 1 −$0.60 4% 0% 0% 26m $3.34 60%" [ref=e1036]:
+              - cell "Esports" [ref=e1037]:
+                - generic [ref=e1038]: Esports
+              - cell "25" [ref=e1039]
+              - cell "1" [ref=e1040]
+              - cell "1" [ref=e1041]
+              - cell "−$0.60" [ref=e1042]
+              - cell "4%" [ref=e1043]
+              - cell "0%" [ref=e1044]
+              - cell "0%" [ref=e1045]
+              - cell "26m" [ref=e1046]
+              - cell "$3.34" [ref=e1047]
+              - cell "60%" [ref=e1048]:
+                - generic [ref=e1052]: 60%
+            - row "Soccer 19 0 1 −$0.60 0% 0% 0% 38m $3.34 60%" [ref=e1053]:
+              - cell "Soccer" [ref=e1054]:
+                - generic [ref=e1055]: Soccer
+              - cell "19" [ref=e1056]
+              - cell "0" [ref=e1057]
+              - cell "1" [ref=e1058]
+              - cell "−$0.60" [ref=e1059]
+              - cell "0%" [ref=e1060]
+              - cell "0%" [ref=e1061]
+              - cell "0%" [ref=e1062]
+              - cell "38m" [ref=e1063]
+              - cell "$3.34" [ref=e1064]
+              - cell "60%" [ref=e1065]:
+                - generic [ref=e1069]: 60%
+        - generic [ref=e1072]: Hour-of-day heatmap
+        - generic [ref=e1073]: PnL ($) по спорту × година UTC. Видно часові вікна де певні спорти провисають.
+        - generic [ref=e1074]:
+          - generic [ref=e1075]: "View:"
+          - button "PnL ($)" [ref=e1076] [cursor=pointer]
+          - button "Win Rate (%)" [ref=e1077] [cursor=pointer]
+          - button "Кількість угод" [ref=e1078] [cursor=pointer]
+        - generic [ref=e1080]:
+          - generic [ref=e1082]: "00"
+          - generic [ref=e1083]: "01"
+          - generic [ref=e1084]: "02"
+          - generic [ref=e1085]: "03"
+          - generic [ref=e1086]: "04"
+          - generic [ref=e1087]: "05"
+          - generic [ref=e1088]: "06"
+          - generic [ref=e1089]: "07"
+          - generic [ref=e1090]: "08"
+          - generic [ref=e1091]: "09"
+          - generic [ref=e1092]: "10"
+          - generic [ref=e1093]: "11"
+          - generic [ref=e1094]: "12"
+          - generic [ref=e1095]: "13"
+          - generic [ref=e1096]: "14"
+          - generic [ref=e1097]: "15"
+          - generic [ref=e1098]: "16"
+          - generic [ref=e1099]: "17"
+          - generic [ref=e1100]: "18"
+          - generic [ref=e1101]: "19"
+          - generic [ref=e1102]: "20"
+          - generic [ref=e1103]: "21"
+          - generic [ref=e1104]: "22"
+          - generic [ref=e1105]: "23"
+          - generic [ref=e1107]: Esports
+          - generic "Esports @ 0:00 — no data" [ref=e1108]
+          - generic "Esports @ 1:00 — no data" [ref=e1109]
+          - generic "Esports @ 2:00 — no data" [ref=e1110]
+          - generic "Esports @ 3:00 — no data" [ref=e1111]
+          - generic "Esports @ 4:00 — no data" [ref=e1112]
+          - generic "Esports @ 5:00 — no data" [ref=e1113]
+          - generic "Esports @ 6:00 — no data" [ref=e1114]
+          - 'generic "Esports @ 7:00 — pnl: −$0.60 (0 trades)" [ref=e1115]': −0.60
+          - generic "Esports @ 8:00 — no data" [ref=e1116]
+          - generic "Esports @ 9:00 — no data" [ref=e1117]
+          - generic "Esports @ 10:00 — no data" [ref=e1118]
+          - generic "Esports @ 11:00 — no data" [ref=e1119]
+          - generic "Esports @ 12:00 — no data" [ref=e1120]
+          - generic "Esports @ 13:00 — no data" [ref=e1121]
+          - generic "Esports @ 14:00 — no data" [ref=e1122]
+          - generic "Esports @ 15:00 — no data" [ref=e1123]
+          - generic "Esports @ 16:00 — no data" [ref=e1124]
+          - 'generic "Esports @ 17:00 — pnl: +$0.00 (0 trades)" [ref=e1125]': "+0.00"
+          - 'generic "Esports @ 18:00 — pnl: +$0.00 (0 trades)" [ref=e1126]': "+0.00"
+          - generic "Esports @ 19:00 — no data" [ref=e1127]
+          - 'generic "Esports @ 20:00 — pnl: +$0.00 (0 trades)" [ref=e1128]': "+0.00"
+          - 'generic "Esports @ 21:00 — pnl: +$0.00 (0 trades)" [ref=e1129]': "+0.00"
+          - generic "Esports @ 22:00 — no data" [ref=e1130]
+          - generic "Esports @ 23:00 — no data" [ref=e1131]
+          - generic [ref=e1133]: MLB
+          - generic "MLB @ 0:00 — no data" [ref=e1134]
+          - generic "MLB @ 1:00 — no data" [ref=e1135]
+          - generic "MLB @ 2:00 — no data" [ref=e1136]
+          - generic "MLB @ 3:00 — no data" [ref=e1137]
+          - generic "MLB @ 4:00 — no data" [ref=e1138]
+          - generic "MLB @ 5:00 — no data" [ref=e1139]
+          - generic "MLB @ 6:00 — no data" [ref=e1140]
+          - generic "MLB @ 7:00 — no data" [ref=e1141]
+          - generic "MLB @ 8:00 — no data" [ref=e1142]
+          - generic "MLB @ 9:00 — no data" [ref=e1143]
+          - generic "MLB @ 10:00 — no data" [ref=e1144]
+          - generic "MLB @ 11:00 — no data" [ref=e1145]
+          - generic "MLB @ 12:00 — no data" [ref=e1146]
+          - generic "MLB @ 13:00 — no data" [ref=e1147]
+          - generic "MLB @ 14:00 — no data" [ref=e1148]
+          - generic "MLB @ 15:00 — no data" [ref=e1149]
+          - generic "MLB @ 16:00 — no data" [ref=e1150]
+          - generic "MLB @ 17:00 — no data" [ref=e1151]
+          - generic "MLB @ 18:00 — no data" [ref=e1152]
+          - generic "MLB @ 19:00 — no data" [ref=e1153]
+          - 'generic "MLB @ 20:00 — pnl: +$0.00 (0 trades)" [ref=e1154]': "+0.00"
+          - 'generic "MLB @ 21:00 — pnl: +$0.00 (0 trades)" [ref=e1155]': "+0.00"
+          - generic "MLB @ 22:00 — no data" [ref=e1156]
+          - generic "MLB @ 23:00 — no data" [ref=e1157]
+          - generic [ref=e1159]: NBA
+          - generic "NBA @ 0:00 — no data" [ref=e1160]
+          - generic "NBA @ 1:00 — no data" [ref=e1161]
+          - generic "NBA @ 2:00 — no data" [ref=e1162]
+          - generic "NBA @ 3:00 — no data" [ref=e1163]
+          - generic "NBA @ 4:00 — no data" [ref=e1164]
+          - generic "NBA @ 5:00 — no data" [ref=e1165]
+          - generic "NBA @ 6:00 — no data" [ref=e1166]
+          - generic "NBA @ 7:00 — no data" [ref=e1167]
+          - generic "NBA @ 8:00 — no data" [ref=e1168]
+          - generic "NBA @ 9:00 — no data" [ref=e1169]
+          - generic "NBA @ 10:00 — no data" [ref=e1170]
+          - generic "NBA @ 11:00 — no data" [ref=e1171]
+          - generic "NBA @ 12:00 — no data" [ref=e1172]
+          - generic "NBA @ 13:00 — no data" [ref=e1173]
+          - generic "NBA @ 14:00 — no data" [ref=e1174]
+          - generic "NBA @ 15:00 — no data" [ref=e1175]
+          - generic "NBA @ 16:00 — no data" [ref=e1176]
+          - generic "NBA @ 17:00 — no data" [ref=e1177]
+          - 'generic "NBA @ 18:00 — pnl: +$0.00 (0 trades)" [ref=e1178]': "+0.00"
+          - generic "NBA @ 19:00 — no data" [ref=e1179]
+          - 'generic "NBA @ 20:00 — pnl: +$0.00 (0 trades)" [ref=e1180]': "+0.00"
+          - 'generic "NBA @ 21:00 — pnl: +$0.00 (0 trades)" [ref=e1181]': "+0.00"
+          - generic "NBA @ 22:00 — no data" [ref=e1182]
+          - generic "NBA @ 23:00 — no data" [ref=e1183]
+          - generic [ref=e1185]: NHL
+          - generic "NHL @ 0:00 — no data" [ref=e1186]
+          - generic "NHL @ 1:00 — no data" [ref=e1187]
+          - generic "NHL @ 2:00 — no data" [ref=e1188]
+          - generic "NHL @ 3:00 — no data" [ref=e1189]
+          - generic "NHL @ 4:00 — no data" [ref=e1190]
+          - generic "NHL @ 5:00 — no data" [ref=e1191]
+          - generic "NHL @ 6:00 — no data" [ref=e1192]
+          - generic "NHL @ 7:00 — no data" [ref=e1193]
+          - generic "NHL @ 8:00 — no data" [ref=e1194]
+          - generic "NHL @ 9:00 — no data" [ref=e1195]
+          - generic "NHL @ 10:00 — no data" [ref=e1196]
+          - generic "NHL @ 11:00 — no data" [ref=e1197]
+          - generic "NHL @ 12:00 — no data" [ref=e1198]
+          - generic "NHL @ 13:00 — no data" [ref=e1199]
+          - generic "NHL @ 14:00 — no data" [ref=e1200]
+          - generic "NHL @ 15:00 — no data" [ref=e1201]
+          - generic "NHL @ 16:00 — no data" [ref=e1202]
+          - generic "NHL @ 17:00 — no data" [ref=e1203]
+          - 'generic "NHL @ 18:00 — pnl: +$0.00 (0 trades)" [ref=e1204]': "+0.00"
+          - generic "NHL @ 19:00 — no data" [ref=e1205]
+          - 'generic "NHL @ 20:00 — pnl: +$0.00 (0 trades)" [ref=e1206]': "+0.00"
+          - 'generic "NHL @ 21:00 — pnl: +$0.00 (0 trades)" [ref=e1207]': "+0.00"
+          - generic "NHL @ 22:00 — no data" [ref=e1208]
+          - generic "NHL @ 23:00 — no data" [ref=e1209]
+          - generic [ref=e1211]: Soccer
+          - generic "Soccer @ 0:00 — no data" [ref=e1212]
+          - generic "Soccer @ 1:00 — no data" [ref=e1213]
+          - generic "Soccer @ 2:00 — no data" [ref=e1214]
+          - 'generic "Soccer @ 3:00 — pnl: −$0.60 (0 trades)" [ref=e1215]': −0.60
+          - generic "Soccer @ 4:00 — no data" [ref=e1216]
+          - generic "Soccer @ 5:00 — no data" [ref=e1217]
+          - generic "Soccer @ 6:00 — no data" [ref=e1218]
+          - generic "Soccer @ 7:00 — no data" [ref=e1219]
+          - generic "Soccer @ 8:00 — no data" [ref=e1220]
+          - generic "Soccer @ 9:00 — no data" [ref=e1221]
+          - generic "Soccer @ 10:00 — no data" [ref=e1222]
+          - generic "Soccer @ 11:00 — no data" [ref=e1223]
+          - generic "Soccer @ 12:00 — no data" [ref=e1224]
+          - generic "Soccer @ 13:00 — no data" [ref=e1225]
+          - generic "Soccer @ 14:00 — no data" [ref=e1226]
+          - generic "Soccer @ 15:00 — no data" [ref=e1227]
+          - generic "Soccer @ 16:00 — no data" [ref=e1228]
+          - generic "Soccer @ 17:00 — no data" [ref=e1229]
+          - generic "Soccer @ 18:00 — no data" [ref=e1230]
+          - generic "Soccer @ 19:00 — no data" [ref=e1231]
+          - 'generic "Soccer @ 20:00 — pnl: +$0.00 (0 trades)" [ref=e1232]': "+0.00"
+          - 'generic "Soccer @ 21:00 — pnl: +$0.00 (0 trades)" [ref=e1233]': "+0.00"
+          - generic "Soccer @ 22:00 — no data" [ref=e1234]
+          - generic "Soccer @ 23:00 — no data" [ref=e1235]
+  - generic [ref=e206]:
+    - generic [ref=e207]:
+      - generic [ref=e208]: ⚠ NOT WIRED · v1→v2 endpoints
+      - button "×" [ref=e209] [cursor=pointer]
+    - list [ref=e210]:
+      - listitem [ref=e211]: 1×/api/polymarket/wallets/discover/status

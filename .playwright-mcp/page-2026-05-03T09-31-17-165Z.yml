@@ -1,0 +1,438 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - button "🇺🇦" [ref=e4] [cursor=pointer]
+      - generic [ref=e5]:
+        - generic [ref=e6]: OraLab
+        - generic [ref=e7]: Ora et Labora
+    - generic [ref=e8]:
+      - generic [ref=e9]:
+        - generic [ref=e10]: MODE
+        - generic [ref=e11]:
+          - button "DRY" [ref=e12] [cursor=pointer]: DRY
+          - button "LIVE" [ref=e14] [cursor=pointer]: LIVE
+        - generic [ref=e16]:
+          - generic [ref=e17]: Оновлено 12:31
+          - 'generic "Heartbeat: — · Data: —" [ref=e18]':
+            - generic [ref=e20]: Бот офлайн
+      - generic [ref=e21]:
+        - generic [ref=e22]: BOTS
+        - generic [ref=e23]:
+          - generic [ref=e473]:
+            - generic [ref=e475]: Whale Copy Bot
+            - generic [ref=e476]: —
+            - generic [ref=e477]:
+              - button "▶" [disabled] [ref=e478]
+              - button "⏹" [ref=e479] [cursor=pointer]
+              - button "↻" [ref=e480] [cursor=pointer]
+          - generic [ref=e481]:
+            - generic [ref=e483]: WS Feed
+            - generic [ref=e484]: —
+            - generic [ref=e485]:
+              - button "▶" [disabled] [ref=e486]
+              - button "⏹" [ref=e487] [cursor=pointer]
+              - button "↻" [ref=e488] [cursor=pointer]
+          - generic [ref=e489]:
+            - generic [ref=e491]: RTDS Feed
+            - generic [ref=e492]: —
+            - generic [ref=e493]:
+              - button "▶" [disabled] [ref=e494]
+              - button "⏹" [ref=e495] [cursor=pointer]
+              - button "↻" [ref=e496] [cursor=pointer]
+          - generic [ref=e497]:
+            - generic [ref=e499]: Calibrator
+            - generic [ref=e500]: —
+            - generic [ref=e501]:
+              - button "▶" [disabled] [ref=e502]
+              - button "⏹" [ref=e503] [cursor=pointer]
+              - button "↻" [ref=e504] [cursor=pointer]
+        - generic [ref=e56]:
+          - button "▶ All" [ref=e57] [cursor=pointer]
+          - button "⏹ All" [ref=e58] [cursor=pointer]
+      - generic [ref=e59]:
+        - generic [ref=e60]: HEALTH
+        - generic [ref=e62]: ALL HEALTHY
+        - generic [ref=e64]:
+          - generic [ref=e67]: 4s ago
+          - generic [ref=e70]: 4s ago
+          - generic [ref=e73]: running
+          - generic [ref=e76]: 16s ago
+          - generic [ref=e79]: disconnected
+          - generic [ref=e81]: 0 events · 0 whales
+      - generic [ref=e82]:
+        - generic [ref=e83]: MONITOR
+        - 'generic "Watchdog daemon PID: — Last tick: —" [ref=e84] [cursor=pointer]':
+          - generic [ref=e86]: WD ✓ —
+        - generic [ref=e87]: + майбутні перевірки
+      - generic [ref=e88]:
+        - generic [ref=e89]: CONTROL
+        - generic [ref=e90]:
+          - button "🔄 Оновити" [ref=e91] [cursor=pointer]
+          - button "♻️ Перезапуск" [ref=e92] [cursor=pointer]
+          - button "KILL ON" [ref=e93] [cursor=pointer]
+          - button "❌ Скидання" [ref=e95] [cursor=pointer]
+    - generic [ref=e96]:
+      - generic [ref=e97]:
+        - generic [ref=e98]:
+          - text: Balance
+          - button "↑ Поповнити" [ref=e99] [cursor=pointer]
+        - generic [ref=e100]: $50.00 of $50.00
+        - generic [ref=e101]:
+          - generic [ref=e102]: Позиції $19.00
+          - generic [ref=e104]: Вільно $31.00
+      - generic [ref=e107]:
+        - generic [ref=e108]: Profit & Loss
+        - generic [ref=e109]: "-$4.48"
+        - generic [ref=e110]:
+          - generic [ref=e111] [cursor=pointer]:
+            - generic [ref=e112]: Today
+            - generic [ref=e113]: "-$4.48"
+          - generic [ref=e114] [cursor=pointer]:
+            - generic [ref=e115]: Week
+            - generic [ref=e116]: "-$4.48"
+          - generic [ref=e117] [cursor=pointer]:
+            - generic [ref=e118]: All
+            - generic [ref=e119]: "-$4.48"
+      - generic [ref=e121]:
+        - generic [ref=e122]:
+          - generic [ref=e125]: Вхід
+          - generic [ref=e126]:
+            - generic [ref=e127]:
+              - generic [ref=e128]: Pass Rate
+              - generic [ref=e129]: 0.4%
+              - generic [ref=e507]: 106 pipe + 0 conv / 24274
+            - generic [ref=e130]:
+              - generic [ref=e131]: Топ відхилення
+              - generic [ref=e132]: sport_only
+              - generic [ref=e508]: top blocker
+            - generic [ref=e133]:
+              - generic [ref=e134]: Signals/hr
+              - generic [ref=e135]: "1011"
+              - generic [ref=e509]: ~24274/day
+            - generic [ref=e136]:
+              - generic [ref=e137]: CF чистий
+              - generic [ref=e138]: +$1801.50
+              - generic [ref=e510]: $1801.50 saved
+        - generic [ref=e139]:
+          - generic [ref=e142]: Вихід
+          - generic [ref=e143]:
+            - generic [ref=e144]:
+              - generic [ref=e145]: TP спрацьованість
+              - generic [ref=e146]: 0.0%
+              - generic [ref=e511]: target ≥35%
+            - generic [ref=e147]:
+              - generic [ref=e148]: SL частота
+              - generic [ref=e149]: 0.0%
+              - generic [ref=e512]: target <30%
+            - generic [ref=e150]:
+              - generic [ref=e151]: Ефективність виходу
+              - generic [ref=e152]: 0.0%
+              - generic [ref=e513]: realized/peak
+            - generic [ref=e153]:
+              - generic [ref=e154]: Втрачено
+              - generic [ref=e155]: 100.0%
+              - generic [ref=e514]: unrealized upside
+        - generic [ref=e156]:
+          - generic [ref=e159]: Результат
+          - generic [ref=e160]:
+            - generic [ref=e161]:
+              - generic [ref=e162]: Win Rate
+              - generic [ref=e163]: 0%
+              - generic [ref=e164]: 0W 6L
+            - generic [ref=e165]:
+              - generic [ref=e166]: Profit Factor
+              - generic [ref=e167]: "0.00"
+              - generic [ref=e515]: $0.00W / $4.48L
+            - generic [ref=e168]:
+              - generic [ref=e169]: Avg PnL/Trade
+              - generic [ref=e170]: "-$0.75"
+              - generic [ref=e171]: 6 closed trades
+            - generic [ref=e172]:
+              - generic [ref=e173]: Max Drawdown
+              - generic [ref=e174]: "-$4.48"
+              - generic [ref=e516]: peak→trough
+        - generic [ref=e175]:
+          - generic [ref=e178]: Технічні
+          - generic [ref=e179]:
+            - generic [ref=e180]:
+              - generic [ref=e181]: Avg Latency
+              - generic [ref=e182]: 48ms
+              - generic [ref=e517]: live_ask
+            - generic [ref=e183]:
+              - generic [ref=e184]: Avg Duration
+              - generic [ref=e185]: 3m
+              - generic [ref=e518]: 6 closed · 5 open
+            - generic [ref=e186]:
+              - generic [ref=e187]: Exposure
+              - generic [ref=e188]: 38%
+              - generic [ref=e189]: $19.00 / $50.00
+            - generic [ref=e190]:
+              - generic [ref=e191]: Відкриті позиції
+              - generic [ref=e192]: "5"
+              - generic [ref=e193]: positions
+    - generic [ref=e194]:
+      - button "Трейди 16" [ref=e195] [cursor=pointer]:
+        - generic [ref=e196]: Трейди
+        - generic [ref=e197]: "16"
+      - button "Налаштування" [ref=e198] [cursor=pointer]
+      - button "🐋 Whales 1505" [ref=e199] [cursor=pointer]:
+        - generic [ref=e200]: 🐋 Whales
+        - generic [ref=e201]: "1505"
+      - button "⚙️ Калібрація" [ref=e202] [cursor=pointer]
+      - button "⚡ Chain" [ref=e203] [cursor=pointer]
+      - button "📋 Логи" [ref=e204] [cursor=pointer]
+      - generic [ref=e205]: Оновлено 12:31
+    - generic [ref=e206]:
+      - generic [ref=e207]:
+        - generic [ref=e208]:
+          - generic [ref=e209]: P&L
+          - generic [ref=e210]: "-$4.48"
+        - generic [ref=e212]:
+          - generic [ref=e213]: Win Rate
+          - generic [ref=e214]: 0/6 (0%)
+        - generic [ref=e216]:
+          - generic [ref=e217]: Середня трив.
+          - generic [ref=e218]: 3m
+        - generic [ref=e220]:
+          - generic [ref=e221]: Wins
+          - generic [ref=e222]: "0"
+        - generic [ref=e224]:
+          - generic [ref=e225]: Losses
+          - generic [ref=e226]: "6"
+        - generic [ref=e228]:
+          - generic [ref=e229]: Open
+          - generic [ref=e230]: "5"
+        - 'generic "Медіана: 8с · Макс: 19с · Stale (>30с): 0/5" [ref=e519]':
+          - generic [ref=e233]: Свіжість марків
+          - generic [ref=e234]: 8с
+      - generic [ref=e236]:
+        - button "Всі" [ref=e237] [cursor=pointer]
+        - button "Won" [ref=e238] [cursor=pointer]
+        - button "Lost" [ref=e239] [cursor=pointer]
+        - button "Open" [ref=e240] [cursor=pointer]
+        - button "LIVE" [ref=e241] [cursor=pointer]
+        - button "DRY" [ref=e242] [cursor=pointer]
+        - textbox "trade_id, market..." [ref=e243]
+        - button "📋 Copy All JSON" [ref=e244] [cursor=pointer]
+      - table [ref=e246]:
+        - rowgroup [ref=e247]:
+          - row "Час Mode Маркет Side Resolves Entry Exit Shares Cost P&L Графік ціни Dur" [ref=e520] [cursor=pointer]:
+            - columnheader "Час" [ref=e521]
+            - columnheader "Mode" [ref=e522]
+            - columnheader "Маркет" [ref=e523]
+            - columnheader "Side" [ref=e524]
+            - columnheader "Resolves" [ref=e525]
+            - columnheader "Entry" [ref=e526]
+            - columnheader "Exit" [ref=e527]
+            - columnheader "Shares" [ref=e528]
+            - columnheader "Cost" [ref=e529]
+            - columnheader "P&L" [ref=e530]
+            - columnheader "Графік ціни" [ref=e531]
+            - columnheader "Dur" [ref=e532]
+          - 'row "12:20:33 DRY Spread: Pittsburgh Pirates (-1.5) YES — 0.370 0.345 10.00 $3.70 -$0.25 -6.8% 11m" [ref=e533] [cursor=pointer]':
+            - cell "12:20:33" [ref=e534]
+            - cell "DRY" [ref=e535]:
+              - generic [ref=e536]: DRY
+            - 'cell "Spread: Pittsburgh Pirates (-1.5)" [ref=e537]'
+            - cell "YES" [ref=e538]:
+              - generic [ref=e539]: "YES"
+            - cell "—" [ref=e540]
+            - cell "0.370" [ref=e541]
+            - cell "0.345" [ref=e542]
+            - cell "10.00" [ref=e543]
+            - cell "$3.70" [ref=e544]
+            - cell "-$0.25 -6.8%" [ref=e545]
+            - cell [ref=e546]
+            - cell "11m" [ref=e548]
+          - 'row "12:19:01 DRY Spread: AFC Bournemouth (-2.5) YES — 0.190 0.165 10.00 $1.90 -$0.25 -13.2% 12m" [ref=e549] [cursor=pointer]':
+            - cell "12:19:01" [ref=e550]
+            - cell "DRY" [ref=e551]:
+              - generic [ref=e552]: DRY
+            - 'cell "Spread: AFC Bournemouth (-2.5)" [ref=e553]'
+            - cell "YES" [ref=e554]:
+              - generic [ref=e555]: "YES"
+            - cell "—" [ref=e556]
+            - cell "0.190" [ref=e557]
+            - cell "0.165" [ref=e558]
+            - cell "10.00" [ref=e559]
+            - cell "$1.90" [ref=e560]
+            - cell "-$0.25 -13.2%" [ref=e561]
+            - cell [ref=e562]
+            - cell "12m" [ref=e564]
+          - 'row "12:16:09 DRY LoL: LOUD vs Vivo Keyd Stars (BO3) - CBLOL Regular Season YES — 0.460 0.435 10.00 $4.60 -$0.25 -5.4% 15m" [ref=e565] [cursor=pointer]':
+            - cell "12:16:09" [ref=e566]
+            - cell "DRY" [ref=e567]:
+              - generic [ref=e568]: DRY
+            - 'cell "LoL: LOUD vs Vivo Keyd Stars (BO3) - CBLOL Regular Season" [ref=e569]'
+            - cell "YES" [ref=e570]:
+              - generic [ref=e571]: "YES"
+            - cell "—" [ref=e572]
+            - cell "0.460" [ref=e573]
+            - cell "0.435" [ref=e574]
+            - cell "10.00" [ref=e575]
+            - cell "$4.60" [ref=e576]
+            - cell "-$0.25 -5.4%" [ref=e577]
+            - cell [ref=e578]
+            - cell "15m" [ref=e580]
+          - 'row "12:16:09 DRY LoL: LOUD vs Vivo Keyd Stars (BO3) - CBLOL Regular Season YES — 0.590 0.565 10.00 $5.90 -$0.25 -4.2% 15m" [ref=e581] [cursor=pointer]':
+            - cell "12:16:09" [ref=e582]
+            - cell "DRY" [ref=e583]:
+              - generic [ref=e584]: DRY
+            - 'cell "LoL: LOUD vs Vivo Keyd Stars (BO3) - CBLOL Regular Season" [ref=e585]'
+            - cell "YES" [ref=e586]:
+              - generic [ref=e587]: "YES"
+            - cell "—" [ref=e588]
+            - cell "0.590" [ref=e589]
+            - cell "0.565" [ref=e590]
+            - cell "10.00" [ref=e591]
+            - cell "$5.90" [ref=e592]
+            - cell "-$0.25 -4.2%" [ref=e593]
+            - cell [ref=e594]
+            - cell "15m" [ref=e596]
+          - row "12:14:35 DRY Magic vs. Pistons YES — 0.290 0.265 10.00 $2.90 -$0.25 -8.6% 17m" [ref=e597] [cursor=pointer]:
+            - cell "12:14:35" [ref=e598]
+            - cell "DRY" [ref=e599]:
+              - generic [ref=e600]: DRY
+            - cell "Magic vs. Pistons" [ref=e601]
+            - cell "YES" [ref=e602]:
+              - generic [ref=e603]: "YES"
+            - cell "—" [ref=e604]
+            - cell "0.290" [ref=e605]
+            - cell "0.265" [ref=e606]
+            - cell "10.00" [ref=e607]
+            - cell "$2.90" [ref=e608]
+            - cell "-$0.25 -8.6%" [ref=e609]
+            - cell [ref=e610]
+            - cell "17m" [ref=e612]
+          - row "Закриті позиції (6)" [ref=e613]:
+            - cell "Закриті позиції (6)" [ref=e614]:
+              - generic [ref=e616]: Закриті позиції (6)
+          - row "Час Mode Маркет Side Resolves Entry Exit Shares Cost P&L Exit Reason Result Dur" [ref=e617] [cursor=pointer]:
+            - columnheader "Час" [ref=e618]
+            - columnheader "Mode" [ref=e619]
+            - columnheader "Маркет" [ref=e620]
+            - columnheader "Side" [ref=e621]
+            - columnheader "Resolves" [ref=e622]
+            - columnheader "Entry" [ref=e623]
+            - columnheader "Exit" [ref=e624]
+            - columnheader "Shares" [ref=e625]
+            - columnheader "Cost" [ref=e626]
+            - columnheader "P&L" [ref=e627]
+            - columnheader "Exit Reason" [ref=e628]
+            - columnheader "Result" [ref=e629]
+            - columnheader "Dur" [ref=e630]
+          - 'row "12:15:05 DRY LoL: KT Rolster vs HANJIN BRION - Game 2 Winner YES resolved NaNd ago 0.310 0.240 10.00 $3.10 -$0.70 📋 dry simulated sell fill Lost ❌ 0m" [ref=e631] [cursor=pointer]':
+            - cell "12:15:05" [ref=e632]
+            - cell "DRY" [ref=e633]:
+              - generic [ref=e634]: DRY
+            - 'cell "LoL: KT Rolster vs HANJIN BRION - Game 2 Winner" [ref=e635]'
+            - cell "YES" [ref=e636]:
+              - generic [ref=e637]: "YES"
+            - cell "resolved NaNd ago" [ref=e638]
+            - cell "0.310" [ref=e639]
+            - cell "0.240" [ref=e640]
+            - cell "10.00" [ref=e641]
+            - cell "$3.10" [ref=e642]
+            - cell "-$0.70" [ref=e643]
+            - cell "📋 dry simulated sell fill" [ref=e644]:
+              - generic [ref=e645]: 📋 dry simulated sell fill
+            - cell "Lost ❌" [ref=e646]:
+              - generic [ref=e647]: Lost ❌
+            - cell "0m" [ref=e648]
+          - 'row "12:15:04 DRY LoL: KT Rolster vs HANJIN BRION (BO3) - LCK Rounds 1-2 YES resolved NaNd ago 0.610 0.520 9.09 $5.55 -$0.82 📋 dry simulated sell fill Lost ❌ 5m" [ref=e649] [cursor=pointer]':
+            - cell "12:15:04" [ref=e650]
+            - cell "DRY" [ref=e651]:
+              - generic [ref=e652]: DRY
+            - 'cell "LoL: KT Rolster vs HANJIN BRION (BO3) - LCK Rounds 1-2" [ref=e653]'
+            - cell "YES" [ref=e654]:
+              - generic [ref=e655]: "YES"
+            - cell "resolved NaNd ago" [ref=e656]
+            - cell "0.610" [ref=e657]
+            - cell "0.520" [ref=e658]
+            - cell "9.09" [ref=e659]
+            - cell "$5.55" [ref=e660]
+            - cell "-$0.82" [ref=e661]
+            - cell "📋 dry simulated sell fill" [ref=e662]:
+              - generic [ref=e663]: 📋 dry simulated sell fill
+            - cell "Lost ❌" [ref=e664]:
+              - generic [ref=e665]: Lost ❌
+            - cell "5m" [ref=e666]
+          - 'row "12:14:27 DRY LoL: ThunderTalk Gaming vs LNG Esports (BO3) - LPL Group Nirvana YES resolved NaNd ago 0.260 0.210 10.00 $2.60 -$0.50 📋 dry simulated sell fill Lost ❌ 5m" [ref=e667] [cursor=pointer]':
+            - cell "12:14:27" [ref=e668]
+            - cell "DRY" [ref=e669]:
+              - generic [ref=e670]: DRY
+            - 'cell "LoL: ThunderTalk Gaming vs LNG Esports (BO3) - LPL Group Nirvana" [ref=e671]'
+            - cell "YES" [ref=e672]:
+              - generic [ref=e673]: "YES"
+            - cell "resolved NaNd ago" [ref=e674]
+            - cell "0.260" [ref=e675]
+            - cell "0.210" [ref=e676]
+            - cell "10.00" [ref=e677]
+            - cell "$2.60" [ref=e678]
+            - cell "-$0.50" [ref=e679]
+            - cell "📋 dry simulated sell fill" [ref=e680]:
+              - generic [ref=e681]: 📋 dry simulated sell fill
+            - cell "Lost ❌" [ref=e682]:
+              - generic [ref=e683]: Lost ❌
+            - cell "5m" [ref=e684]
+          - 'row "12:14:15 DRY Counter-Strike: Ursa vs HAVU (BO3) - NODWIN Clutch Series Play-In Group D YES resolved NaNd ago 0.470 0.390 10.00 $4.70 -$0.80 📋 dry simulated sell fill Lost ❌ 2m" [ref=e685] [cursor=pointer]':
+            - cell "12:14:15" [ref=e686]
+            - cell "DRY" [ref=e687]:
+              - generic [ref=e688]: DRY
+            - 'cell "Counter-Strike: Ursa vs HAVU (BO3) - NODWIN Clutch Series Play-In Group D" [ref=e689]'
+            - cell "YES" [ref=e690]:
+              - generic [ref=e691]: "YES"
+            - cell "resolved NaNd ago" [ref=e692]
+            - cell "0.470" [ref=e693]
+            - cell "0.390" [ref=e694]
+            - cell "10.00" [ref=e695]
+            - cell "$4.70" [ref=e696]
+            - cell "-$0.80" [ref=e697]
+            - cell "📋 dry simulated sell fill" [ref=e698]:
+              - generic [ref=e699]: 📋 dry simulated sell fill
+            - cell "Lost ❌" [ref=e700]:
+              - generic [ref=e701]: Lost ❌
+            - cell "2m" [ref=e702]
+          - 'row "12:14:13 DRY LoL: KT Rolster vs HANJIN BRION (BO3) - LCK Rounds 1-2 YES resolved NaNd ago 0.540 0.450 9.62 $5.19 -$0.87 📋 dry simulated sell fill Lost ❌ 1m" [ref=e703] [cursor=pointer]':
+            - cell "12:14:13" [ref=e704]
+            - cell "DRY" [ref=e705]:
+              - generic [ref=e706]: DRY
+            - 'cell "LoL: KT Rolster vs HANJIN BRION (BO3) - LCK Rounds 1-2" [ref=e707]'
+            - cell "YES" [ref=e708]:
+              - generic [ref=e709]: "YES"
+            - cell "resolved NaNd ago" [ref=e710]
+            - cell "0.540" [ref=e711]
+            - cell "0.450" [ref=e712]
+            - cell "9.62" [ref=e713]
+            - cell "$5.19" [ref=e714]
+            - cell "-$0.87" [ref=e715]
+            - cell "📋 dry simulated sell fill" [ref=e716]:
+              - generic [ref=e717]: 📋 dry simulated sell fill
+            - cell "Lost ❌" [ref=e718]:
+              - generic [ref=e719]: Lost ❌
+            - cell "1m" [ref=e720]
+          - 'row "12:14:09 DRY LoL: ThunderTalk Gaming vs LNG Esports - Game 1 Winner YES resolved NaNd ago 0.290 0.210 10.00 $2.90 -$0.80 📋 dry simulated sell fill Lost ❌ 5m" [ref=e721] [cursor=pointer]':
+            - cell "12:14:09" [ref=e722]
+            - cell "DRY" [ref=e723]:
+              - generic [ref=e724]: DRY
+            - 'cell "LoL: ThunderTalk Gaming vs LNG Esports - Game 1 Winner" [ref=e725]'
+            - cell "YES" [ref=e726]:
+              - generic [ref=e727]: "YES"
+            - cell "resolved NaNd ago" [ref=e728]
+            - cell "0.290" [ref=e729]
+            - cell "0.210" [ref=e730]
+            - cell "10.00" [ref=e731]
+            - cell "$2.90" [ref=e732]
+            - cell "-$0.80" [ref=e733]
+            - cell "📋 dry simulated sell fill" [ref=e734]:
+              - generic [ref=e735]: 📋 dry simulated sell fill
+            - cell "Lost ❌" [ref=e736]:
+              - generic [ref=e737]: Lost ❌
+            - cell "5m" [ref=e738]
+        - rowgroup
+  - generic [ref=e467]:
+    - generic [ref=e468]:
+      - generic [ref=e469]: ⚠ NOT WIRED · v1→v2 endpoints
+      - button "×" [ref=e470] [cursor=pointer]
+    - list [ref=e471]:
+      - listitem [ref=e472]: 1×/api/polymarket/wallets/discover/status
