@@ -547,8 +547,75 @@
       return { build: b, version: b?.commit || 'v2' };
     },
 
-    // Filters
-    '/api/polymarket/filters': '/api/filters/registry',
+    // Filters — v1 expects an array of bot objects each with {name, type, emoji,
+    // running, active_mode, pipeline:[{key,label,group,description,reject_count,
+    // reject_keys, current_value, editable, is_overridden, pipeline_order, type, tooltip}]}.
+    // v2 returns {count, filters:[{name,group,description,...}]} — wrap to v1 shape.
+    '/api/polymarket/filters': async () => {
+      const [reg, stats, settings] = await Promise.allSettled([
+        v2Get('/api/filters/registry'),
+        v2Get('/api/filters/stats'),
+        v2Get('/api/exit_config'),
+      ]);
+      const regVal = reg.status === 'fulfilled' ? reg.value : { filters: [] };
+      const statsVal = stats.status === 'fulfilled' ? stats.value : {};
+      const settingsVal = settings.status === 'fulfilled' ? settings.value : {};
+      const groups = {
+        hard_safety:  '⓪ Hard Safety',
+        risk:         '① Risk',
+        whale:        '② Whale',
+        market:       '③ Market',
+        sport:        '④ Sport',
+        timing:       '⑤ Timing',
+        sizing:       '⑥ Sizing',
+        misc:         '⑨ Misc',
+      };
+      const flist = (regVal && Array.isArray(regVal.filters)) ? regVal.filters : [];
+      // statsVal could be a flat counts dict — try to extract reject_count by name.
+      function rejectCount(name) {
+        if (!statsVal) return 0;
+        if (typeof statsVal === 'number') return 0;
+        if (typeof statsVal[name] === 'number') return statsVal[name];
+        if (statsVal.byFilter && typeof statsVal.byFilter[name] === 'number') return statsVal.byFilter[name];
+        if (Array.isArray(statsVal.rejections)) {
+          const m = statsVal.rejections.find(r => r.filter === name || r.name === name);
+          if (m) return m.count || 0;
+        }
+        return 0;
+      }
+      const pipeline = flist.map((f, i) => {
+        const settingKey = (f.settingsKey || f.configKey || '').toUpperCase();
+        const curVal = settingKey && settingsVal && settingsVal[settingKey] != null
+          ? settingsVal[settingKey]
+          : (f.defaultThreshold != null ? f.defaultThreshold : null);
+        return {
+          key: f.name,
+          label: f.label || f.name.replace(/_/g, ' '),
+          group: groups[f.group] || f.group || '⑨ Misc',
+          description: f.description || f.note || '',
+          tooltip: f.note || '',
+          reject_count: rejectCount(f.name),
+          reject_keys: [f.name],
+          current_value: curVal,
+          editable: !!f.ported,
+          is_overridden: false,
+          pipeline_order: i,
+          type: typeof curVal === 'number' ? 'number' : 'text',
+        };
+      });
+      return [{
+        name: 'Trader',
+        type: 'trader',
+        emoji: '📈',
+        running: true,
+        active_mode: 'dry_run',
+        config_source: 'config/exit_config.ts',
+        filter_groups: groups,
+        preset_state: {},
+        presets: [],
+        pipeline,
+      }];
+    },
     '/api/polymarket/filters/reject_stats': '/api/filters/stats',
     '/api/polymarket/tab/filters': async () => {
       const [filters, stats, settings] = await Promise.allSettled([
