@@ -215,7 +215,7 @@
       asset_id: p.assetId,
       condition_id: p.conditionId,
       market: p.marketTitle || p.outcomeName || p.assetId,
-      market_end_ts: null,                      // v2 doesn't expose; UI tolerates null
+      market_end_ts: p.resolvesTs != null ? p.resolvesTs : null,
       event_slug: null,                          // can be derived later
       side: (p.side === 'YES' || p.side === 'yes') ? 'Yes' : (p.side === 'NO' ? 'No' : p.side),
       mode: _v1Mode(p.mode),
@@ -285,7 +285,7 @@
       asset_id: t.assetId,
       condition_id: t.conditionId || null,
       market: t.marketTitle || t.outcomeName || t.assetId,
-      market_end_ts: null,
+      market_end_ts: t.resolvesTs != null ? t.resolvesTs : null,
       event_slug: null,
       side: (t.side === 'YES' || t.side === 'yes') ? 'Yes' : (t.side === 'NO' ? 'No' : t.side),
       mode: _v1Mode(t.mode),
@@ -625,28 +625,35 @@
       const regVal = reg.status === 'fulfilled' ? reg.value : { filters: [] };
       const statsVal = stats.status === 'fulfilled' ? stats.value : {};
       const settingsVal = settings.status === 'fulfilled' ? settings.value : {};
+      // v1 funnel/phase rendering keys off these exact group labels (filters.js
+      // funnelPhases + phaseColors). Map v2 groups → v1 phase strings.
       const groups = {
-        hard_safety:  '⓪ Hard Safety',
-        risk:         '① Risk',
-        whale:        '② Whale',
-        market:       '③ Market',
-        sport:        '④ Sport',
-        timing:       '⑤ Timing',
-        sizing:       '⑥ Sizing',
-        misc:         '⑨ Misc',
+        hard_safety:    '⓪ Hard Safety',
+        conviction:     '① Conviction',
+        wallet_quality: '② Wallet Quality',
+        market_quality: '③ Market Quality',
+        price_quality:  '④ Price Quality',
+        risk_exposure:  '⑤ Risk & Exposure',
+        timing:         '⑥ Order Execution',
+        sizing:         '⑥ Order Execution',
+        misc:           '⑨ Misc',
       };
       const flist = (regVal && Array.isArray(regVal.filters)) ? regVal.filters : [];
-      // statsVal could be a flat counts dict — try to extract reject_count by name.
-      function rejectCount(name) {
-        if (!statsVal) return 0;
-        if (typeof statsVal === 'number') return 0;
-        if (typeof statsVal[name] === 'number') return statsVal[name];
-        if (statsVal.byFilter && typeof statsVal.byFilter[name] === 'number') return statsVal.byFilter[name];
-        if (Array.isArray(statsVal.rejections)) {
-          const m = statsVal.rejections.find(r => r.filter === name || r.name === name);
-          if (m) return m.count || 0;
+      // v2 /api/filters/stats returns {total, accepted, rejected, byReason: {<reason>: N}}.
+      // Each registry filter exposes `name` (canonical v1 key) plus optional
+      // `aliasOf` (v2 reject reason, may be `a+b` for split filters like price_band).
+      const byReason = (statsVal && statsVal.byReason && typeof statsVal.byReason === 'object')
+        ? statsVal.byReason : {};
+      function rejectCount(f) {
+        const keys = [f.name];
+        if (f.aliasOf) {
+          for (const a of String(f.aliasOf).split('+')) keys.push(a.trim());
         }
-        return 0;
+        let sum = 0;
+        for (const k of keys) {
+          if (typeof byReason[k] === 'number') sum += byReason[k];
+        }
+        return sum;
       }
       const pipeline = flist.map((f, i) => {
         const settingKey = (f.settingsKey || f.configKey || '').toUpperCase();
@@ -659,8 +666,8 @@
           group: groups[f.group] || f.group || '⑨ Misc',
           description: f.description || f.note || '',
           tooltip: f.note || '',
-          reject_count: rejectCount(f.name),
-          reject_keys: [f.name],
+          reject_count: rejectCount(f),
+          reject_keys: f.aliasOf ? [f.name].concat(String(f.aliasOf).split('+').map(s => s.trim())) : [f.name],
           current_value: curVal,
           editable: !!f.ported,
           is_overridden: false,
@@ -693,10 +700,23 @@
         v2Get('/api/exit_config'),
       ]);
       const botArray = botsResp.status === 'fulfilled' && Array.isArray(botsResp.value) ? botsResp.value : [];
+      // v1 filters.js reads rejectStats.total_checked / total_accepted /
+      // total_rejected / window_hours / counts. v2 stats has total / accepted /
+      // rejected / windowHours / byReason — translate.
+      const v2Stats = stats.status === 'fulfilled' ? (stats.value || {}) : {};
+      const rejectStats = {
+        window_hours:   v2Stats.windowHours || 24,
+        total_checked:  v2Stats.total       || 0,
+        total_accepted: v2Stats.accepted    || 0,
+        total_rejected: v2Stats.rejected    || 0,
+        accept_rate_pct: v2Stats.acceptRatePct || 0,
+        counts:         v2Stats.byReason   || {},
+        bottlenecks:    v2Stats.bottlenecks || [],
+      };
       return {
         filters: botArray,
         config: {},                       // v1 had filters/config — UNWIRED in v2
-        reject_stats: stats.status === 'fulfilled' ? stats.value : {},
+        reject_stats: rejectStats,
         convergence_stats: {},            // UNWIRED
         recent_rejections: [],            // UNWIRED
         settings: settings.status === 'fulfilled' ? settings.value : {},
@@ -754,7 +774,9 @@
         stageMeta[k] = { phase: chain, type: typeOf(k) };
       });
       const totalAvg = Object.values(summary).reduce((s, v) => s + v.avg, 0);
-      const totalCount = Object.values(summary).reduce((s, v) => Math.max(s, v.count), 0);
+      // Sum of per-stage counts gives the total number of recorded measurements;
+      // Math.max() under-reported and made data.count look like 0 in some cases.
+      const totalCount = Object.values(summary).reduce((s, v) => s + (v.count || 0), 0);
       return {
         count: totalCount,
         summary,
@@ -927,7 +949,42 @@
     },
 
     '/api/polymarket/calibration/mode': '/api/calibrator/mode',
-    '/api/polymarket/calibration/run': '/api/calibrator/run',
+    // v1 cal UI expects {success:true|false, message, error?, recommendations}.
+    // v2 returns {cycleId, mode, recCount, appliedCount, conditionsMet, summary}
+    // — translate so the run-button never shows "Calibration error" when the
+    // engine ran successfully but produced 0 recs (waiting for more trades).
+    '/api/polymarket/calibration/run': async ({ opts }) => {
+      try {
+        const r = await v2Fetch('/api/calibrator/run', Object.assign({ method: 'POST' }, opts || {}));
+        const data = await r.json().catch(() => ({}));
+        const recCount = data && data.recCount != null ? data.recCount : 0;
+        const conditionsMet = !!(data && data.conditionsMet);
+        let message;
+        if (recCount > 0) {
+          message = `Calibration cycle complete — ${recCount} recommendation${recCount === 1 ? '' : 's'}`;
+        } else if (!conditionsMet) {
+          message = 'Calibration ran — conditions not met (need ≥20 closed trades to produce recommendations)';
+        } else {
+          message = 'Calibration ran — no new recommendations this cycle';
+        }
+        return {
+          success: true,                         // v1 UI gates the toast on this
+          cycle_id: data ? data.cycleId : null,
+          mode: data ? data.mode : null,
+          rec_count: recCount,
+          recommendations_count: recCount,
+          applied_count: data ? data.appliedCount : 0,
+          conditions_met: conditionsMet,
+          summary: data ? data.summary : [],
+          message,
+        };
+      } catch (e) {
+        return {
+          success: false,
+          error: 'Calibrator run failed: ' + (e && e.message ? e.message : 'unknown'),
+        };
+      }
+    },
 
     // /calibration/whales — v1 cal-whales.js expects {whales:[…], total, totals, ts}
     '/api/polymarket/calibration/whales': async ({ query }) => {
@@ -1275,28 +1332,39 @@
     '/api/polymarket/diagnostic/groups':              null,   // diagnostic groupings
     '/api/polymarket/lifecycle':                      null,   // position lifecycle dashboard
     '/api/polymarket/lifecycle/events':               null,
-    // live-marks: v1 expects { '<asset_id>': {price, ts, source}, ... }. v2
-    // /api/positions already carries currentPrice + markSource + markAgeMs per
-    // position, so synthesize from that single fetch.
+    // live-marks: v1 trades.js poll reads `payload.marks[<asset_id>].best_bid|mid|last_trade`.
+    // v2 /api/positions already carries currentPrice + currentBid/Ask + markSource + markAgeMs
+    // per position, so synthesize the v1-shaped envelope from that single fetch.
     '/api/polymarket/live-marks': async () => {
       const list = await safeGet('/api/positions');
-      const out = {};
-      if (!Array.isArray(list)) return out;
+      const marks = {};
+      const envelope = { marks, ts: Math.floor(Date.now() / 1000) };
+      if (!Array.isArray(list)) return envelope;
       const now = Date.now();
       for (const p of list) {
         if (!p || !p.assetId || p.currentPrice == null) continue;
         const ageMs = (typeof p.markAgeMs === 'number' && p.markAgeMs >= 0) ? p.markAgeMs : 0;
-        out[p.assetId] = {
+        const bid = (p.currentBid != null) ? p.currentBid : p.currentPrice;
+        const ask = (p.currentAsk != null) ? p.currentAsk : p.currentPrice;
+        const mid = (p.currentBid != null && p.currentAsk != null)
+          ? (Number(p.currentBid) + Number(p.currentAsk)) / 2
+          : p.currentPrice;
+        marks[p.assetId] = {
+          // v1 trades.js reads these three keys in order: best_bid → mid → last_trade
+          best_bid: bid,
+          mid,
+          last_trade: p.currentPrice,
+          // legacy fields for any other consumer
           price: p.currentPrice,
-          bid: p.currentBid != null ? p.currentBid : null,
-          ask: p.currentAsk != null ? p.currentAsk : null,
+          bid,
+          ask,
           ts: Math.floor((now - ageMs) / 1000),
           ts_ms: now - ageMs,
           source: p.markSource || 'rest_book',
           quality: ageMs < 10000 ? 'executable' : 'stale',
         };
       }
-      return out;
+      return envelope;
     },
     '/api/polymarket/poke-mark':                      null,   // manual mark refresh
     '/api/polymarket/logs/clear':                     null,

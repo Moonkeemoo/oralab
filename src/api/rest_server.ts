@@ -42,6 +42,7 @@ import {
   outcomeNameForSide,
   renderExitReason,
   resolvesText,
+  resolvesTsSeconds,
 } from "./market_enrich.js";
 
 /**
@@ -313,6 +314,7 @@ async function handlePositions(req: http.IncomingMessage): Promise<unknown> {
       marketTitle: market?.question ?? null,
       outcomeName: outcomeNameForSide(market, p.side),
       resolvesText: resolvesText(market, now),
+      resolvesTs: resolvesTsSeconds(market),
       isSportsMarket: market?.isSportsMarket ?? false,
       durationMs: fillTsMs > 0 ? Math.max(0, now - fillTsMs) : null,
       priceChartPoints: downsample(sparkVals, 30),
@@ -644,6 +646,7 @@ async function handleHistory(req: http.IncomingMessage): Promise<unknown> {
         marketTitle: market?.question ?? null,
         outcomeName: outcomeNameForSide(market, p.side),
         resolvesText: resolvesText(market, nowMs),
+        resolvesTs: resolvesTsSeconds(market),
         isSportsMarket: market?.isSportsMarket ?? false,
         mode: p.mode,
       };

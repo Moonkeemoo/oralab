@@ -86,6 +86,19 @@ export function resolvesText(market: GammaMarket | null, now: number = Date.now(
   return `in ${humanDuration(diff)}`;
 }
 
+/**
+ * Return market.endDate as a Unix epoch in seconds, or null when not parseable.
+ * v1 dashboard's `App.fmtResolution` reads `trade.market_end_ts` in seconds and
+ * computes the "in Xh / overdue / resolved" cell. Exposing the raw timestamp
+ * lets the v1-shim feed the existing UI without losing precision.
+ */
+export function resolvesTsSeconds(market: GammaMarket | null): number | null {
+  if (!market) return null;
+  const endMs = Date.parse(market.endDate);
+  if (!Number.isFinite(endMs)) return null;
+  return Math.floor(endMs / 1000);
+}
+
 function humanDuration(ms: number): string {
   const s = Math.round(ms / 1000);
   if (s < 60) return `${s}s`;
