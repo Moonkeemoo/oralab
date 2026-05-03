@@ -617,14 +617,19 @@
       }];
     },
     '/api/polymarket/filters/reject_stats': '/api/filters/stats',
+    // /tab/filters — v1 expects {filters: <bot-array>, settings, reject_stats, …}.
+    // The frontend writes S.filters = data.filters (and later calls S.filters.find).
+    // Reuse the shim's /api/polymarket/filters adapter to get the bot-array shape.
     '/api/polymarket/tab/filters': async () => {
-      const [filters, stats, settings] = await Promise.allSettled([
-        v2Get('/api/filters/registry'),
+      // Call the shim's own /filters adapter via window.fetch (re-enters shim).
+      const [botsResp, stats, settings] = await Promise.allSettled([
+        window.fetch('/api/polymarket/filters').then(r => r.json()),
         v2Get('/api/filters/stats'),
         v2Get('/api/exit_config'),
       ]);
+      const botArray = botsResp.status === 'fulfilled' && Array.isArray(botsResp.value) ? botsResp.value : [];
       return {
-        filters: filters.status === 'fulfilled' ? filters.value : [],
+        filters: botArray,
         config: {},                       // v1 had filters/config — UNWIRED in v2
         reject_stats: stats.status === 'fulfilled' ? stats.value : {},
         convergence_stats: {},            // UNWIRED
