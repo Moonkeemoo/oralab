@@ -344,10 +344,12 @@
   function mapWhale(w) {
     // v1 wallet fields: address, trust_score, trust_wins, trust_losses,
     //                   trust_pnl, trust_disabled, categories, classification.
+    // trustScore in v2 backend is stored 0-1; v1 expects 0-100.
+    const ts = Number(w.trustScore || 0);
     return {
       address: w.address,
       wallet: w.address,
-      trust_score: Math.round((w.trustScore || 0) * 100),
+      trust_score: Math.round(ts > 1 ? ts : ts * 100),
       trust_wins: w.wins || 0,
       trust_losses: w.losses || 0,
       trust_pnl: w.pnlUsd || 0,
@@ -360,6 +362,14 @@
       win_rate: w.winRate,
       confidence: w.confidence,
       tracked: w.tracked,
+      // Enrichment surfaced from /api/whales aggregates (positions LEFT JOIN)
+      pnl_usd: w.pnlUsd || 0,
+      total_capital: w.totalCapital || 0,
+      markets_tracked: w.marketsTracked || 0,
+      active_markets: w.activeMarkets || 0,
+      conviction_rate: w.convictionRate != null ? Math.round(Number(w.convictionRate)) : null,
+      primary_domain: w.primaryDomain || '',
+      total_trades: w.totalTrades || 0,
     };
   }
 
@@ -904,16 +914,18 @@
     //          deficits, weights, importance, lift_matrix, exit_targets,
     //          exit_keys, min_lift_threshold, ts, cycle_interval_s, bot_has_run, min_trades}
     '/api/polymarket/calibration/overview': async () => {
-      const [snap, recs, status, kpi] = await Promise.allSettled([
+      const [snap, recs, status, kpi, hist] = await Promise.allSettled([
         v2Get('/api/calibrator/snapshot'),
         v2Get('/api/calibrator/recommendations'),
         v2Get('/api/calibrator/status'),
         v2Get('/api/kpi'),
+        v2Get('/api/calibrator/history?limit=50'),
       ]);
       const s   = snap.status === 'fulfilled' ? snap.value : null;
       const rs  = recs.status === 'fulfilled' ? recs.value : null;
       const st  = status.status === 'fulfilled' ? status.value : null;
       const k   = kpi.status === 'fulfilled' ? kpi.value : null;
+      const h   = hist.status === 'fulfilled' ? hist.value : null;
 
       // Map snapshot KPIs → v1 cal-overview shape
       const sKpi = (s && s.kpi) || {};
@@ -963,12 +975,34 @@
         reject_key: r.filterName,
       }));
 
+      // History from /api/calibrator/history — split into entry/exit by phase
+      // (frontend doesn't actually split, but format expected: array of
+      // {ts, config_key, direction, current_value, recommended_value, reason}).
+      const histRows = (h && Array.isArray(h.items)) ? h.items : [];
+      const v1History = histRows.map((r) => ({
+        ts: r.appliedAt ? Math.floor(r.appliedAt / 1000) : (r.createdAt ? Math.floor(r.createdAt / 1000) : 0),
+        config_key: r.filterName + '.' + r.paramKey,
+        human_name: r.filterName,
+        phase: r.filterName && r.filterName.startsWith('EXIT_') ? 'exit' : 'entry',
+        direction: r.direction,
+        current_value: r.currentValue,
+        recommended_value: r.recommendedValue,
+        delta: (r.recommendedValue || 0) - (r.currentValue || 0),
+        reason: r.reason,
+        status: r.status,
+        applied_at: r.appliedAt ? Math.floor(r.appliedAt / 1000) : null,
+        rolled_back_at: r.rolledBackAt ? Math.floor(r.rolledBackAt / 1000) : null,
+        sport: r.sport,
+      }));
+
       return {
         kpi: v1Kpi,
         exit_kpi: v1ExitKpi,
         performance: v1Perf,
         recommendations: v1Recs,
-        history: [],            // applied/rolled-back history derive needs more wiring
+        history: v1History,
+        history_entry: v1History.filter((x) => x.phase === 'entry'),
+        history_exit: v1History.filter((x) => x.phase === 'exit'),
         mode: (st && st.mode) || (s && s.mode) || 'manual',
         deficits: (s && s.deficits) || {},
         weights: (s && s.weights) || {},
@@ -1010,20 +1044,26 @@
     // ── WIRED — adapters mapping v1 shapes to v2 backend ─────────────────
 
     // /profiles — top-N whale profiles (v1: array of {wallet, trust, classification, ...})
+    // Returns 2000 to ensure all wallets in S.wallets have a matching profile
+    // entry — frontend uses lookup by addr.toLowerCase() in profilesMap.
     '/api/polymarket/profiles': async () => {
-      const v2 = await safeGet('/api/whales?limit=200');
+      const v2 = await safeGet('/api/whales?limit=2000');
       const items = v2 && Array.isArray(v2.items) ? v2.items : [];
-      return items.map((w) => ({
-        wallet: w.address,
-        trust: Math.round((w.trustScore || 0) * 100),
-        classification: w.classification || 'NOISE',
-        win_rate: w.winRate || 0,
-        total_trades: w.totalTrades || 0,
-        confidence: w.confidence || 0,
-        sm_score: w.smScore || 0,
-        smart_money_score: Math.round((w.smScore || 0) * 100),
-        tracked: w.tracked,
-      }));
+      return items.map((w) => {
+        const ts = Number(w.trustScore || 0);
+        return {
+          wallet: w.address,
+          trust: Math.round(ts > 1 ? ts : ts * 100),
+          classification: w.classification || 'NOISE',
+          win_rate: w.winRate || 0,
+          total_trades: w.totalTrades || 0,
+          confidence: w.confidence || 0,
+          sm_score: w.smScore || 0,
+          smart_money_score: Math.round((w.smScore || 0) * 100),
+          tracked: w.tracked,
+          primary_domain: w.primaryDomain || '',
+        };
+      });
     },
 
     // /budget — v1 reads budget_usd, available, remaining_budget, mode, profit, …
@@ -1093,21 +1133,31 @@
         }));
     },
 
-    // /leaderboard — top whales by win_rate
+    // /leaderboard — per-wallet trade-derived leaderboard. v1 lbMap reads
+    // .conviction_rate, .total_capital, .markets_tracked, .active_markets
+    // for the whales table — return one row per wallet that has any trade.
     '/api/polymarket/leaderboard': async () => {
-      const v2 = await safeGet('/api/whales?limit=50&trackedOnly=true');
+      const v2 = await safeGet('/api/whales?limit=2000');
       const items = v2 && Array.isArray(v2.items) ? v2.items : [];
-      return items
-        .filter((w) => (w.winRate || 0) > 0)
-        .sort((a, b) => (b.winRate || 0) - (a.winRate || 0))
-        .slice(0, 20)
-        .map((w, i) => ({
-          rank: i + 1,
-          wallet: w.address,
-          win_rate: w.winRate,
-          classification: w.classification,
-          tracked: w.tracked,
-        }));
+      // Keep only wallets that actually have trades in v2 corpus —
+      // others contribute null lookups (UI shows em-dash).
+      const traded = items.filter((w) => (w.totalTrades || 0) > 0 || (w.totalCapital || 0) > 0);
+      traded.sort((a, b) => (b.convictionRate || 0) - (a.convictionRate || 0));
+      return traded.map((w, i) => ({
+        rank: i + 1,
+        wallet: w.address,
+        win_rate: w.winRate || 0,
+        classification: w.classification,
+        tracked: w.tracked,
+        conviction_rate: w.convictionRate != null ? Math.round(Number(w.convictionRate)) : null,
+        total_capital: w.totalCapital || 0,
+        markets_tracked: w.marketsTracked || 0,
+        active_markets: w.activeMarkets || 0,
+        pnl_usd: w.pnlUsd || 0,
+        wins: w.wins || 0,
+        losses: w.losses || 0,
+        total_trades: w.totalTrades || 0,
+      }));
     },
 
     // /logs — last N calibrator_trace events (closest analog v2 has)
@@ -1203,7 +1253,16 @@
     '/api/polymarket/decision-log':                   null,   // legacy decision log
     '/api/polymarket/decision-log/clear':             null,
     '/api/polymarket/rejects/recent':                 null,   // covered partly by tab/filters adapter (recent_rejections=[])
-    '/api/polymarket/reconciliation':                 null,   // ghost / phantom reconciliation report
+    // /reconciliation — INV-D3 ghost/phantom report (mode=live|dry passes through)
+    '/api/polymarket/reconciliation': async ({ query }) => {
+      const qm = new URLSearchParams((query || '').replace(/^\?/, ''));
+      const mode = (qm.get('mode') || '').toLowerCase();
+      const path = mode === 'live' || mode === 'dry'
+        ? `/api/reconciliation?mode=${mode === 'live' ? 'LIVE' : 'DRY'}`
+        : '/api/reconciliation';
+      const r = await safeGet(path);
+      return r || { ts: Date.now(), phantom: [], drifted: [], ok: [] };
+    },
     '/api/polymarket/stream':                         null,   // SSE — also stubbed at EventSource layer below
     '/api/polymarket/filters/config':                 null,   // saved-presets store
     '/api/polymarket/filters/recent_rejections':      null,
