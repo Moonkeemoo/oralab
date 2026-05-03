@@ -40,10 +40,17 @@ async function main(): Promise<void> {
     const m = prof.metrics ?? {};
     const winRate = Number(m["win_rate"] ?? 0);
     const avgHoldHours = Number(m["avg_hold_hours"] ?? 0);
-    const trustScore = winRate * Math.min(avgHoldHours / 24, 1); // bounded heuristic
+    const confidence = Number(prof.confidence ?? 0);
+    const winRateDerived = winRate * Math.min(avgHoldHours / 24, 1);
+    // Use v1 confidence as canonical trust signal (0..1, set by classifier);
+    // fall back to win-rate-derived only when confidence missing. Earlier
+    // import dropped confidence and used winRate*hold which was 0 for the
+    // 99% of v1 wallets that lacked completed cycles → conviction_gate
+    // rejected everyone except 33 long-history whales.
+    const trustScore = confidence > 0 ? confidence : winRateDerived;
     const values = {
       classification: String(prof.classification ?? "NOISE"),
-      confidence: Number(prof.confidence ?? 0),
+      confidence,
       smScore: Number(m["size_escalation_score"] ?? 0),
       trustScore,
       totalTrades: Number(m["total_trades"] ?? 0),

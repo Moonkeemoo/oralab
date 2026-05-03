@@ -8,7 +8,7 @@ export const marketVolume: Filter = {
   name: "market_volume",
   description: "Min market 24h volume / liquidity in USD",
   evaluate(ctx, params) {
-    const min = (params["minVolumeUsd"] as number | undefined) ?? 5_000;
+    const min = Number(params["min"] ?? params["minVolumeUsd"] ?? 0);
     const v = ctx.market.volumeUsd;
     if (v < min) return SKIP({ v, t: min }, "market volume below threshold");
     return PASS({ v, t: min });

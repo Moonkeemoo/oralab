@@ -8,7 +8,9 @@ export const convictionGate: Filter = {
   name: "conviction_gate",
   description: "Min whale conviction score to enter",
   evaluate(ctx, params) {
-    const min = (params["minConviction"] as number | undefined) ?? 0.05;
+    const min = Number(
+      params["min"] ?? params["minConviction"] ?? params["thresholdProbe"] ?? 0,
+    );
     const v = ctx.whale.convictionScore;
     if (v < min) return SKIP({ v, t: min }, "conviction below threshold");
     return PASS({ v, t: min });

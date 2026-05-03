@@ -8,7 +8,7 @@ export const smScore: Filter = {
   name: "sm_score",
   description: "Signal-to-market score floor",
   evaluate(ctx, params) {
-    const min = (params["minSmScore"] as number | undefined) ?? 0.5;
+    const min = Number(params["min"] ?? params["minSmScore"] ?? 0);
     const v = ctx.whale.smScore;
     if (v < min) return SKIP({ v, t: min }, "sm_score below threshold");
     return PASS({ v, t: min });

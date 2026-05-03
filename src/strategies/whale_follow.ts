@@ -31,6 +31,8 @@ interface WhaleRow {
   classification: string;
   confidence: number;
   tracked: boolean;
+  smScore: number;
+  trustScore: number;
 }
 
 interface WhaleFollowParams {
@@ -116,9 +118,14 @@ export class WhaleFollowStrategy implements Strategy {
         tracked: whale.tracked,
         classification: whale.classification,
         confidence: whale.confidence,
-        convictionScore: Number(signal.payload["convictionScore"] ?? 0),
-        trustScore: Number(signal.payload["trustScore"] ?? 0),
-        smScore: Number(signal.payload["smScore"] ?? 0),
+        // Per-trade convictionScore is computed upstream by the (future) v1-style
+        // calculate_conviction(whale_volume, total_cap, hist_vol). Until that
+        // enrichment lands, fall back to the whale's classifier confidence —
+        // that's the closest proxy v1 used during the wallet-profile phase.
+        convictionScore:
+          Number(signal.payload["convictionScore"] ?? 0) || whale.confidence,
+        trustScore: Number(signal.payload["trustScore"] ?? 0) || whale.trustScore,
+        smScore: Number(signal.payload["smScore"] ?? 0) || whale.smScore,
         signalAgeSec: Math.max(0, (Date.now() - signal.receivedTs) / 1000),
       },
       nowMs: Date.now(),
@@ -157,8 +164,10 @@ export class WhaleFollowStrategy implements Strategy {
     if (!row) return null;
     return {
       classification: row.classification,
-      confidence: row.confidence,
+      confidence: Number(row.confidence ?? 0),
       tracked: row.tracked,
+      smScore: Number(row.smScore ?? 0),
+      trustScore: Number(row.trustScore ?? 0),
     };
   }
 
