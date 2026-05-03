@@ -64,6 +64,13 @@
       "when": 1778457600000,
       "tag": "0008_calibrator_multikpi",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1777786804790,
+      "tag": "0009_ambitious_tattoo",
+      "breakpoints": true
     }
   ]
 }

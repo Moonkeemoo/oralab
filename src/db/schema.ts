@@ -185,6 +185,10 @@ export const signals = pgTable(
     payload: jsonb("payload").notNull().default({}),
     accepted: boolean("accepted"),
     rejectReason: varchar("reject_reason", { length: 64 }),
+    // Sport classification mirrored from positions at evaluation time so
+    // counterfactual + per-sport rejection analytics can group rejects by
+    // sport without joining gamma. Null when not a classified sports market.
+    sport: varchar("sport", { length: 32 }),
     receivedTs: bigint("received_ts", { mode: "number" }).notNull(),
     processedAt: timestamp("processed_at", { withTimezone: true }),
   },
@@ -192,6 +196,9 @@ export const signals = pgTable(
     index("idx_signals_user_received").on(t.userId, t.receivedTs),
     index("idx_signals_strategy_received").on(t.strategyId, t.receivedTs),
     index("idx_signals_condition").on(t.conditionId),
+    index("idx_signals_sport_processed")
+      .on(t.sport, t.processedAt.desc())
+      .where(sql`accepted = false`),
   ],
 );
 
@@ -239,6 +246,12 @@ export const positions = pgTable(
       league: string;
       at: number;
     } | null>(),
+    // Sport classification — set at INSERT time from gamma.gameId →
+    // sports_events.league. `league` is the raw code (mlb/cs2/lol/...);
+    // `sport` is the canonical UI grouping (NHL/MLB/Esports/Soccer/...).
+    // Both null for non-sports markets or when classification fails.
+    league: varchar("league", { length: 32 }),
+    sport: varchar("sport", { length: 32 }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -246,6 +259,7 @@ export const positions = pgTable(
     index("idx_positions_user_status").on(t.userId, t.status),
     index("idx_positions_condition_asset").on(t.conditionId, t.assetId),
     index("idx_positions_mode_status").on(t.mode, t.status),
+    index("idx_positions_sport_lastchange").on(t.sport, t.lastStateChangeTs.desc()),
     uniqueIndex("uq_positions_open_per_asset")
       .on(t.userId, t.assetId)
       .where(sql`status IN ('PENDING','FILLED','OPEN','EXITING','RESOLVED','FROZEN')`),
@@ -554,3 +568,119 @@ export const calibratorRecommendations = pgTable(
     index("idx_calibrator_recs_created").on(t.createdAt.desc()),
   ],
 );
+
+// =============================================================================
+// CALIBRATOR_TRACE — append-only event log per cycle (Layer 0 in v1 audit).
+//   One row per (cycle, event_type) — cycle_start, cycle_complete, weights,
+//   deficits, lift_matrix, recommendation, apply, rollback. JSONB payload
+//   carries the per-event detail. Backs the Лог tab + replay/replay-debug.
+// =============================================================================
+
+export const calibratorTrace = pgTable(
+  "calibrator_trace",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    cycleId: varchar("cycle_id", { length: 64 }).notNull(),
+    eventType: varchar("event_type", { length: 32 }).notNull(),
+    payload: jsonb("payload").notNull().default(sql`'{}'::jsonb`),
+    ts: bigint("ts", { mode: "number" }).notNull(),
+  },
+  (t) => [
+    index("idx_cal_trace_cycle").on(t.cycleId),
+    index("idx_cal_trace_ts").on(t.ts.desc()),
+  ],
+);
+
+// =============================================================================
+// CALIBRATOR_BELIEFS — Bayesian Beta(α, β) confidence per (reject_key, sport).
+//   sport=null → global belief; per-sport rows when populated.
+//   Confidence = α / (α + β); data_points = α + β - 2 (subtract Beta(1,1)
+//   uninformative prior). Updated by Phase B counterfactual resolution.
+// =============================================================================
+
+export const calibratorBeliefs = pgTable(
+  "calibrator_beliefs",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    rejectKey: varchar("reject_key", { length: 64 }).notNull(),
+    sport: varchar("sport", { length: 32 }),
+    alpha: doublePrecision("alpha").notNull().default(1.0),
+    beta: doublePrecision("beta").notNull().default(1.0),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex("uq_cal_beliefs_key_sport").on(t.rejectKey, t.sport)],
+);
+
+// =============================================================================
+// CF_PENDING — counterfactual queue: rejected signals awaiting outcome.
+//   Phase B writes one row per rejected signal; resolver pops rows older than
+//   CF_TRACKING_WINDOW (6h default), looks up market resolution + price move,
+//   then updates cf_attribution rollups.
+// =============================================================================
+
+export const cfPending = pgTable(
+  "cf_pending",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    conditionId: varchar("condition_id", { length: 128 }).notNull(),
+    rejectKey: varchar("reject_key", { length: 64 }).notNull(),
+    assetId: varchar("asset_id", { length: 128 }).notNull(),
+    sport: varchar("sport", { length: 32 }),
+    whalePrice: doublePrecision("whale_price"),
+    hypotheticalSizeUsd: doublePrecision("hypothetical_size_usd"),
+    recordedTs: bigint("recorded_ts", { mode: "number" }).notNull(),
+  },
+  (t) => [
+    uniqueIndex("uq_cf_pending_cid_key").on(t.conditionId, t.rejectKey),
+    index("idx_cf_pending_recorded").on(t.recordedTs),
+  ],
+);
+
+// =============================================================================
+// CF_ATTRIBUTION — windowed counterfactual rollups per (reject_key, sport).
+//   sport=null → global aggregation row. Populated by Phase B resolver.
+//   Drives entry-lift compute: lift relax = (winners_blocked × avg_winner_pnl)
+//   etc. saved/lost/net are dollar attributions for UI summary.
+// =============================================================================
+
+export const cfAttribution = pgTable(
+  "cf_attribution",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    rejectKey: varchar("reject_key", { length: 64 }).notNull(),
+    sport: varchar("sport", { length: 32 }),
+    windowStartTs: bigint("window_start_ts", { mode: "number" }).notNull(),
+    windowEndTs: bigint("window_end_ts", { mode: "number" }).notNull(),
+    rejectCount: integer("reject_count").notNull().default(0),
+    dataPoints: integer("data_points").notNull().default(0),
+    winnersBlocked: integer("winners_blocked").notNull().default(0),
+    losersBlocked: integer("losers_blocked").notNull().default(0),
+    avgWinnerPnl: doublePrecision("avg_winner_pnl").notNull().default(0),
+    avgLoserPnl: doublePrecision("avg_loser_pnl").notNull().default(0),
+    savedUsd: doublePrecision("saved_usd").notNull().default(0),
+    lostUsd: doublePrecision("lost_usd").notNull().default(0),
+    netUsd: doublePrecision("net_usd").notNull().default(0),
+  },
+  (t) => [
+    uniqueIndex("uq_cf_attribution_key_sport_window").on(
+      t.rejectKey,
+      t.sport,
+      t.windowStartTs,
+    ),
+    index("idx_cf_attribution_window").on(t.windowEndTs.desc()),
+  ],
+);
+
+// =============================================================================
+// CALIBRATOR_SETTINGS — typed key/value runtime knobs for Phase A→F.
+//   Mirrors v1 calibrator/settings.py defaults (MIN_LIFT_THRESHOLD,
+//   IMPORTANCE_*, CF_*, CAL_*, BAYES_*, SAFETY_*). Phase A seeds defaults;
+//   Phase D exposes write API. Either valueNum or valueText is set per row.
+// =============================================================================
+
+export const calibratorSettings = pgTable("calibrator_settings", {
+  key: varchar("key", { length: 64 }).primaryKey(),
+  valueNum: doublePrecision("value_num"),
+  valueText: text("value_text"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
