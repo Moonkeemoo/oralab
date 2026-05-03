@@ -861,6 +861,31 @@ async function handleBalance(): Promise<unknown> {
   });
   const allocatedUsd = active.reduce((s, p) => s + Number(p.entryCostUsd ?? 0), 0);
 
+  // FROZEN positions = phantoms (chain disagreement / manual freeze) — should
+  // be 0 in DRY since the simulator IS source of truth. UI surfaces a count
+  // pill so operators can spot freezes without scanning logs.
+  const phantoms = await db.query.positions.findMany({
+    where: and(eq(positions.mode, mode), eq(positions.status, "FROZEN")),
+    columns: { id: true },
+  });
+  const phantomCount = phantoms.length;
+
+  // Untracked = positions whose strategyId is no longer enabled. Cheap proxy
+  // for "we hold this but the strategy that opened it is off".
+  const untrackedRows = (await db.execute(sql`
+    SELECT COUNT(*)::int AS n
+    FROM positions p
+    LEFT JOIN strategies s ON s.id = p.strategy_id
+    WHERE p.mode = ${mode}
+      AND p.status IN ('PENDING','FILLED','OPEN','EXITING','RESOLVED','FROZEN')
+      AND (s.id IS NULL OR s.enabled = false)
+  `)) as unknown as { n: number }[];
+  const untrackedCount = untrackedRows[0]?.n ?? 0;
+
+  // Polymarket pUSD deposit page — placeholder until we wire up a real link
+  // (eg whitelabel deposit flow). Mini App "Top Up" button just opens this URL.
+  const topUpUrl = "https://polymarket.com/account/deposit";
+
   if (mode === "DRY") {
     // Simulated balance: per-strategy budget sum
     const strats = await db.query.strategies.findMany({ columns: { params: true, enabled: true } });
@@ -877,6 +902,9 @@ async function handleBalance(): Promise<unknown> {
       allocatedUsd,
       freeUsd: Math.max(0, totalBudget - allocatedUsd),
       totalBudgetUsd: totalBudget,
+      phantomCount,
+      untrackedCount,
+      topUpUrl,
       source: "strategy_budget_simulated",
     };
   }
@@ -895,6 +923,9 @@ async function handleBalance(): Promise<unknown> {
       allocatedUsd,
       freeUsd: pUsdAvailable - allocatedUsd,
       totalBudgetUsd: pUsdAvailable + allocatedUsd,
+      phantomCount,
+      untrackedCount,
+      topUpUrl,
       source: "clob_balance_allowance",
     };
   } catch (err) {
@@ -902,6 +933,9 @@ async function handleBalance(): Promise<unknown> {
       mode: "LIVE",
       error: `clob balance fetch failed: ${(err as Error).message}`,
       allocatedUsd,
+      phantomCount,
+      untrackedCount,
+      topUpUrl,
     };
   }
 }
