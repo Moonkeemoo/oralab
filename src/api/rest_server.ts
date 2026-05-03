@@ -34,6 +34,13 @@ import {
   validateExitConfigKey,
   validateStrategyParam,
 } from "./strategy_schema.js";
+import {
+  downsample,
+  getMarketsCachedBatch,
+  outcomeNameForSide,
+  renderExitReason,
+  resolvesText,
+} from "./market_enrich.js";
 
 /**
  * ora2-api — minimal REST server for the Mini App (P2a deliverable).
@@ -186,6 +193,39 @@ async function handlePositions(): Promise<unknown> {
   const liveByPos = new Map<number, LiveRow>();
   for (const row of latest) liveByPos.set(Number(row.position_id), row);
 
+  // Sparkline: pull last ~50 mark values per position (downsample to 30 client-side
+  // friendly points). One query covers all positions at once via window function.
+  type SparkRow = { position_id: number; mark: string | null; ts: string };
+  const sparkRaw = (await db.execute(sql`
+    SELECT position_id, input_snapshot->>'mark' AS mark, ts
+    FROM (
+      SELECT position_id, input_snapshot, ts,
+             ROW_NUMBER() OVER (PARTITION BY position_id ORDER BY ts DESC) AS rn
+      FROM decisions
+      WHERE position_id IN (${idList})
+    ) sub
+    WHERE rn <= 50
+    ORDER BY position_id, ts ASC
+  `)) as unknown as SparkRow[];
+  const sparkByPos = new Map<number, number[]>();
+  for (const r of sparkRaw) {
+    if (r.mark == null) continue;
+    const v = Number(r.mark);
+    if (!Number.isFinite(v)) continue;
+    const pid = Number(r.position_id);
+    let arr = sparkByPos.get(pid);
+    if (!arr) {
+      arr = [];
+      sparkByPos.set(pid, arr);
+    }
+    arr.push(v);
+  }
+
+  // Gamma metadata (market title + outcome names) for every asset in the page.
+  // Cached per-asset for 60s — 50-row pages cost at most 50 cold-cache fetches.
+  const markets = await getMarketsCachedBatch(rows.map((p) => p.assetId));
+
+  const now = Date.now();
   return rows.map((p) => {
     const fillPrice = Number(p.fillPrice ?? 0);
     const shares = Number(p.shares ?? 0);
@@ -199,6 +239,9 @@ async function handlePositions(): Promise<unknown> {
     // means DB and chain disagree, > 0.05 reconciler tries sync, > 0.10 freeze.
     const chainShares = live?.chain_shares != null ? Number(live.chain_shares) : null;
     const driftPct = live?.drift_pct != null ? Number(live.drift_pct) : null;
+    const market = markets.get(p.assetId) ?? null;
+    const sparkVals = sparkByPos.get(Number(p.id)) ?? [];
+    const fillTsMs = Number(p.fillTs ?? 0);
     return {
       id: p.id,
       status: p.status,
@@ -236,6 +279,13 @@ async function handlePositions(): Promise<unknown> {
               : driftPct < 0.1
                 ? "warn"
                 : "freeze",
+      // v1 parity enrichment
+      marketTitle: market?.question ?? null,
+      outcomeName: outcomeNameForSide(market, p.side),
+      resolvesText: resolvesText(market, now),
+      isSportsMarket: market?.isSportsMarket ?? false,
+      durationMs: fillTsMs > 0 ? Math.max(0, now - fillTsMs) : null,
+      priceChartPoints: downsample(sparkVals, 30),
     };
   });
 }
@@ -446,23 +496,53 @@ async function handleHistory(req: http.IncomingMessage): Promise<unknown> {
     orderBy: desc(positions.id),
     limit: 200,
   });
+  // Gamma metadata for closed-position list — same caching strategy as live.
+  const markets = await getMarketsCachedBatch(rows.map((p) => p.assetId));
+  const nowMs = Date.now();
+
   const enriched = await Promise.all(
     rows.map(async (p) => {
       const sells = await db.query.fills.findMany({
         where: and(eq(fills.positionId, Number(p.id)), eq(fills.side, "SELL")),
       });
       const exitUsd = sells.reduce((s, f) => s + Number(f.shares ?? 0) * Number(f.price ?? 0), 0);
+      // Effective exit price for display: weighted avg of SELL fills, falling back
+      // to peakPrice when no fills exist (DRY simulator may close without a fill row).
+      const sellShares = sells.reduce((s, f) => s + Number(f.shares ?? 0), 0);
+      const exitPrice =
+        sellShares > 0 ? exitUsd / sellShares : Number(p.peakPrice ?? 0) || null;
       const entryUsd = Number(p.entryCostUsd ?? 0);
       const pnl = exitUsd - entryUsd;
+      const market = markets.get(p.assetId) ?? null;
+      const reason = renderExitReason(p.closeReason);
+      const fillTs = Number(p.fillTs ?? 0);
+      const closeTs = Number(p.lastStateChangeTs ?? 0);
       return {
         id: p.id,
+        assetId: p.assetId,
+        side: p.side,
+        shares: Number(p.shares ?? 0),
+        fillPrice: Number(p.fillPrice ?? 0),
+        peakPrice: Number(p.peakPrice ?? 0),
+        exitPrice,
         closeReason: p.closeReason,
-        closeTs: Number(p.lastStateChangeTs ?? 0),
+        closeReasonLabel: reason.label,
+        closeReasonIcon: reason.icon,
+        closeReasonFamily: reason.family,
+        closeTs,
+        fillTs,
+        durationMs: fillTs > 0 && closeTs > 0 ? Math.max(0, closeTs - fillTs) : null,
         entryUsd,
         exitUsd,
         pnlUsd: pnl,
         pnlPct: entryUsd > 0 ? pnl / entryUsd : 0,
         outcome: pnl >= 0 ? "win" : "loss",
+        result: pnl > 0 ? "won" : pnl < 0 ? "lost" : "break_even",
+        marketTitle: market?.question ?? null,
+        outcomeName: outcomeNameForSide(market, p.side),
+        resolvesText: resolvesText(market, nowMs),
+        isSportsMarket: market?.isSportsMarket ?? false,
+        mode: p.mode,
       };
     }),
   );
