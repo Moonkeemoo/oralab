@@ -1571,7 +1571,11 @@ const MIME: Record<string, string> = {
 
 function serveStatic(req: http.IncomingMessage, res: http.ServerResponse): boolean {
   if (!req.url?.startsWith("/app")) return false;
-  let rel = req.url.slice(4); // strip "/app"
+  // Strip query string before path resolution — `/app/?dev=foo` must map to
+  // index.html, not a file literally named `?dev=foo`.
+  const qIdx = req.url.indexOf("?");
+  const cleanUrl = qIdx === -1 ? req.url : req.url.slice(0, qIdx);
+  let rel = cleanUrl.slice(4); // strip "/app"
   if (rel === "" || rel === "/") rel = "/index.html";
   // Prevent path traversal
   const fullPath = path.normalize(path.join(WEB_ROOT, rel));
