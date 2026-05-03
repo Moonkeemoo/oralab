@@ -13,6 +13,8 @@
     "dev:watchdog": "tsx watch --env-file=.env src/watchdog/main.ts",
     "dev:bot": "tsx watch --env-file=.env src/notify/main.ts",
     "dev:api": "tsx watch --env-file=.env src/api/main.ts",
+    "dev:calibrator": "tsx watch --env-file=.env src/calibrator/main.ts",
+    "calibrator:once": "tsx --env-file=.env src/calibrator/main.ts --one-shot",
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
     "test": "vitest run",
