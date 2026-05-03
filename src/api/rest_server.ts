@@ -293,41 +293,97 @@ async function handlePositions(): Promise<unknown> {
 async function handlePnl(req: http.IncomingMessage): Promise<unknown> {
   const url = new URL(req.url ?? "/", "http://x");
   const windowHours = Math.max(1, Math.min(24 * 30, Number(url.searchParams.get("windowHours") ?? 24)));
-  const sinceMs = Date.now() - windowHours * 60 * 60 * 1000;
+  const nowMs = Date.now();
+  const sinceMs = nowMs - windowHours * 60 * 60 * 1000;
+  const mode = currentMode();
   const db = getDb();
-  const closed = await db.query.positions.findMany({
-    where: and(
-      eq(positions.mode, currentMode()),
-      eq(positions.status, "CLOSED"),
-      gte(positions.lastStateChangeTs, sinceMs),
-    ),
+
+  // For TODAY/WEEK/ALL summaries we need the full closed corpus, not just the
+  // window slice. Pull all CLOSED positions for current mode in one shot.
+  const allClosed = await db.query.positions.findMany({
+    where: and(eq(positions.mode, mode), eq(positions.status, "CLOSED")),
   });
+
+  // Per-position PnL is sum(SELL fills) − entryCostUsd. Aggregate fills in one
+  // query keyed by position_id (avoids N+1).
+  const pnlByPos = new Map<number, number>();
+  if (allClosed.length > 0) {
+    const sellRows = await db.query.fills.findMany({
+      where: and(
+        inArray(fills.positionId, allClosed.map((p) => Number(p.id))),
+        eq(fills.side, "SELL"),
+      ),
+    });
+    const sellSumByPos = new Map<number, number>();
+    for (const f of sellRows) {
+      const pid = Number(f.positionId ?? 0);
+      const v = Number(f.shares ?? 0) * Number(f.price ?? 0);
+      sellSumByPos.set(pid, (sellSumByPos.get(pid) ?? 0) + v);
+    }
+    for (const p of allClosed) {
+      const id = Number(p.id);
+      const exit = sellSumByPos.get(id) ?? 0;
+      const entry = Number(p.entryCostUsd ?? 0);
+      pnlByPos.set(id, exit - entry);
+    }
+  }
+
+  // Today / week boundaries — UTC day for "today" is good enough for the
+  // header pill (no per-user timezone wiring yet).
+  const todayStart = new Date(nowMs);
+  todayStart.setUTCHours(0, 0, 0, 0);
+  const todayMs = todayStart.getTime();
+  const weekMs = nowMs - 7 * 24 * 60 * 60 * 1000;
+
+  let today = 0;
+  let week = 0;
+  let all = 0;
+  for (const p of allClosed) {
+    const pnl = pnlByPos.get(Number(p.id)) ?? 0;
+    const closeTs = Number(p.lastStateChangeTs ?? 0);
+    all += pnl;
+    if (closeTs >= weekMs) week += pnl;
+    if (closeTs >= todayMs) today += pnl;
+  }
+
+  // Window-scoped breakdown + cumulative timeseries for sparkline. Sparkline
+  // uses the windowed slice so the chart matches the active toggle.
+  const windowed = allClosed
+    .filter((p) => Number(p.lastStateChangeTs ?? 0) >= sinceMs)
+    .slice()
+    .sort((a, b) => Number(a.lastStateChangeTs) - Number(b.lastStateChangeTs));
   let totalEntry = 0;
   let totalExit = 0;
-  const breakdown = [] as { id: number; closeReason: string | null; pnlUsd: number; pnlPct: number }[];
-  for (const p of closed) {
-    const sells = await db.query.fills.findMany({ where: eq(fills.positionId, Number(p.id)) });
-    const sellSum = sells
-      .filter((f) => f.side === "SELL")
-      .reduce((s, f) => s + Number(f.shares ?? 0) * Number(f.price ?? 0), 0);
+  let cum = 0;
+  const breakdown: { id: number; closeReason: string | null; pnlUsd: number; pnlPct: number }[] = [];
+  const timeseries: { ts: number; cumulativeUsd: number }[] = [];
+  for (const p of windowed) {
+    const id = Number(p.id);
+    const pnl = pnlByPos.get(id) ?? 0;
     const entry = Number(p.entryCostUsd ?? 0);
-    const pnl = sellSum - entry;
     totalEntry += entry;
-    totalExit += sellSum;
+    totalExit += entry + pnl;
+    cum += pnl;
     breakdown.push({
-      id: Number(p.id),
+      id,
       closeReason: p.closeReason,
       pnlUsd: pnl,
       pnlPct: entry > 0 ? pnl / entry : 0,
     });
+    timeseries.push({ ts: Number(p.lastStateChangeTs ?? 0), cumulativeUsd: cum });
   }
+
   return {
     windowHours,
-    closedCount: closed.length,
+    closedCount: windowed.length,
     totalEntryUsd: totalEntry,
     totalExitUsd: totalExit,
     netPnlUsd: totalExit - totalEntry,
     netPnlPct: totalEntry > 0 ? (totalExit - totalEntry) / totalEntry : 0,
+    today,
+    week,
+    all,
+    timeseries,
     breakdown,
   };
 }
