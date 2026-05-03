@@ -1051,6 +1051,34 @@
 
     // pass-through everything that isn't a v1 polymarket call
     if (!u.startsWith('/api/polymarket/')) {
+      // /api/health: desktop dash health.js reads richer v1 shape ({status,
+      // ws_feed:{alive}, trader:{alive}, decisions_age_s, ws_state_age_s}).
+      // Synthesize it from v2's /api/connections + /api/status + /api/health.
+      if (u === '/api/health' || u.startsWith('/api/health?')) {
+        return (async () => {
+          const [h, status, conn] = await Promise.allSettled([
+            v2Get('/api/health'),
+            v2Get('/api/status'),
+            v2Get('/api/connections'),
+          ]);
+          const ok = h.status === 'fulfilled' && h.value && h.value.ok;
+          const conns = conn.status === 'fulfilled' && Array.isArray(conn.value) ? conn.value : [];
+          const wsConn = conns.find(c => c.source === 'rtds_ws') || conns[0];
+          const sportsConn = conns.find(c => c.source === 'sports_ws');
+          const wsAge = wsConn && wsConn.ageMs != null ? wsConn.ageMs / 1000 : null;
+          const sportsAge = sportsConn && sportsConn.ageMs != null ? sportsConn.ageMs / 1000 : null;
+          const allOk = ok && conns.every(c => c.state === 'ok');
+          const someOk = ok && conns.some(c => c.state === 'ok');
+          return jsonResponse({
+            ok,
+            status: allOk ? 'healthy' : someOk ? 'degraded' : 'down',
+            ws_feed: { alive: !!wsConn && wsConn.state === 'ok' },
+            trader: { alive: ok },
+            ws_state_age_s: wsAge,
+            decisions_age_s: sportsAge,
+          });
+        })();
+      }
       // For calls already pointing at v2 (/api/...), ensure dev-bypass header
       if (u.startsWith('/api/')) {
         return v2Fetch(u, opts);
