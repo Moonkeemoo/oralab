@@ -759,25 +759,32 @@ async function handleWhalesList(req: http.IncomingMessage): Promise<unknown> {
   const addrList = rows.map((w) => w.address.toLowerCase());
   const aggByAddr = new Map<string, AggRow>();
   if (addrList.length > 0) {
-    // Build a comma-separated quoted list — addresses are validated 0x-hex by
-    // the import pipeline so safe to inline. Use ANY for safety anyway.
-    const aggRows = (await db.execute(sql`
-      SELECT
-        LOWER(whale_address)                                          AS whale_address,
-        count(*)::int                                                 AS trades,
-        count(*) FILTER (WHERE status IN ('PENDING','FILLED','OPEN','EXITING','RESOLVED','FROZEN'))::int AS open_count,
-        count(*) FILTER (WHERE status = 'CLOSED')::int                AS closed_count,
-        count(*) FILTER (WHERE realized_pnl_usd > 0)::int             AS wins,
-        count(*) FILTER (WHERE realized_pnl_usd <= 0 AND status='CLOSED')::int AS losses,
-        COALESCE(SUM(realized_pnl_usd) FILTER (WHERE status='CLOSED'), 0) AS pnl_usd,
-        COALESCE(SUM(entry_cost_usd), 0)                              AS capital_usd,
-        COUNT(DISTINCT condition_id)::int                             AS markets
-      FROM positions
-      WHERE whale_address IS NOT NULL
-        AND LOWER(whale_address) = ANY(${addrList})
-      GROUP BY LOWER(whale_address)
-    `)) as unknown as AggRow[];
-    for (const r of aggRows) aggByAddr.set(r.whale_address, r);
+    // Inline quoted list — addresses are 0x-hex validated by the import
+    // pipeline so SQLi-safe. Filter to a-f0-9 to be paranoid.
+    const safe = addrList
+      .filter((a) => /^0x[0-9a-f]{40}$/.test(a))
+      .map((a) => `'${a}'`)
+      .join(",");
+    if (safe.length > 0) {
+      const inList = sql.raw(safe);
+      const aggRows = (await db.execute(sql`
+        SELECT
+          LOWER(whale_address)                                          AS whale_address,
+          count(*)::int                                                 AS trades,
+          count(*) FILTER (WHERE status IN ('PENDING','FILLED','OPEN','EXITING','RESOLVED','FROZEN'))::int AS open_count,
+          count(*) FILTER (WHERE status = 'CLOSED')::int                AS closed_count,
+          count(*) FILTER (WHERE realized_pnl_usd > 0)::int             AS wins,
+          count(*) FILTER (WHERE realized_pnl_usd <= 0 AND status='CLOSED')::int AS losses,
+          COALESCE(SUM(realized_pnl_usd) FILTER (WHERE status='CLOSED'), 0) AS pnl_usd,
+          COALESCE(SUM(entry_cost_usd), 0)                              AS capital_usd,
+          COUNT(DISTINCT condition_id)::int                             AS markets
+        FROM positions
+        WHERE whale_address IS NOT NULL
+          AND LOWER(whale_address) IN (${inList})
+        GROUP BY LOWER(whale_address)
+      `)) as unknown as AggRow[];
+      for (const r of aggRows) aggByAddr.set(r.whale_address, r);
+    }
   }
 
   const primaryDomainOf = (w: typeof rows[number]): string => {
