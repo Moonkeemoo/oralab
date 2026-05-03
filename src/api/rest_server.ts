@@ -1559,6 +1559,7 @@ function send(res: http.ServerResponse, status: number, body: unknown): void {
 // ── Static /app/* — Mini App served from same origin (no CORS) ──
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WEB_ROOT = path.resolve(__dirname, "..", "..", "web");
+const DASH_ROOT = path.resolve(__dirname, "..", "..", "web-dash");
 const MIME: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
   ".js": "application/javascript; charset=utf-8",
@@ -1592,6 +1593,48 @@ function serveStatic(req: http.IncomingMessage, res: http.ServerResponse): boole
   res.setHeader("Content-Type", MIME[ext] ?? "application/octet-stream");
   // Mini App needs to embed via Telegram WebApp; allow framing.
   res.setHeader("Content-Security-Policy", "frame-ancestors 'self' https://web.telegram.org https://*.telegram.org");
+  res.setHeader("Cache-Control", "no-cache");
+  res.end(readFileSync(fullPath));
+  return true;
+}
+
+/**
+ * /dash/* — desktop dashboard (verbatim v1 verstka, served from `web-dash/`).
+ * Also handles `/static/*` because v1 HTML hard-codes `/static/<path>`
+ * references for stylesheets and scripts. Both prefixes resolve into the
+ * same DASH_ROOT directory.
+ *
+ * Dev-only tool. The desktop dashboard does NOT carry the Telegram CSP
+ * frame-ancestors header. Auth on the API layer continues to require
+ * X-Dev-Bypass: $DEV_AUTH_TOKEN — the v2-shim.js client adds this
+ * header automatically on every API call.
+ */
+function serveDash(req: http.IncomingMessage, res: http.ServerResponse): boolean {
+  const url = req.url ?? "";
+  let prefixLen = 0;
+  if (url.startsWith("/dash")) {
+    prefixLen = 5;
+  } else if (url.startsWith("/static/")) {
+    prefixLen = 7;
+  } else {
+    return false;
+  }
+  const qIdx = url.indexOf("?");
+  const cleanUrl = qIdx === -1 ? url : url.slice(0, qIdx);
+  let rel = cleanUrl.slice(prefixLen);
+  if (rel === "" || rel === "/") rel = "/index.html";
+  const fullPath = path.normalize(path.join(DASH_ROOT, rel));
+  if (!fullPath.startsWith(DASH_ROOT)) {
+    send(res, 403, { error: "forbidden" });
+    return true;
+  }
+  if (!existsSync(fullPath) || !statSync(fullPath).isFile()) {
+    send(res, 404, { error: "not_found", path: rel });
+    return true;
+  }
+  const ext = path.extname(fullPath).toLowerCase();
+  res.statusCode = 200;
+  res.setHeader("Content-Type", MIME[ext] ?? "application/octet-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.end(readFileSync(fullPath));
   return true;
@@ -1860,6 +1903,8 @@ export function createRestServer(): http.Server {
 
     // Static /app/* (Mini App) — no auth gate; the auth is on the API layer.
     if ((req.method === "GET" || req.method === "HEAD") && serveStatic(req, res)) return;
+    // Static /dash/* + /static/* (desktop dashboard, dev-only) — same model.
+    if ((req.method === "GET" || req.method === "HEAD") && serveDash(req, res)) return;
 
     // Public health check
     if (req.method === "GET" && req.url === "/api/health") return send(res, 200, { ok: true });
