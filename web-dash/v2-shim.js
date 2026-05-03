@@ -1071,19 +1071,21 @@
 
     // /calibration/exit — v1 cal-exit.js expects {total, breakdown, analysis, params, lift_matrix_exit, min_lift_threshold}
     '/api/polymarket/calibration/exit': async () => {
-      const [k, liftExit, exitConfig] = await Promise.allSettled([
+      const [k, liftExit, exitConfig, brk] = await Promise.allSettled([
         v2Get('/api/kpi'),
         v2Get('/api/calibrator/lift_matrix?phase=exit'),
         v2Get('/api/exit_config'),
+        v2Get('/api/exit_breakdown'),
       ]);
       const kVal = k.status === 'fulfilled' ? k.value : null;
       const liftVal = liftExit.status === 'fulfilled' ? liftExit.value : null;
       const params = exitConfig.status === 'fulfilled' ? exitConfig.value : {};
-      const total = (kVal && kVal.closedCount) || 0;
+      const brkVal = brk.status === 'fulfilled' ? brk.value : null;
+      const total = (brkVal && brkVal.total) || (kVal && kVal.closedCount) || 0;
       return {
         total,
-        breakdown: {},          // closure-reason histogram not yet exposed by v2
-        analysis: {},
+        breakdown: (brkVal && brkVal.breakdown) || {},
+        analysis: (brkVal && brkVal.analysis) || {},
         params,
         lift_matrix_exit: (liftVal && Array.isArray(liftVal.matrix)) ? liftVal.matrix : [],
         min_lift_threshold: 0.08,

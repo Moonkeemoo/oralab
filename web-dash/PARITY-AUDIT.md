@@ -217,8 +217,8 @@ All ⚠ items below were fixed by editing `web-dash/v2-shim.js`. All commits in
 | Field | v1 | v2 | Status | Action |
 |---|---|---|---|---|
 | LIFT MATRIX по exit-параметрах | shown | wired, empty | ✅ | /api/calibrator/lift_matrix?phase=exit; empty until calibrator emits EXIT_* recommendations. |
-| Розподіл виходів | shown | "No exit data yet" | 🔵 | needs server-side close-reason histogram aggregation; out-of-scope for this pass — would require new endpoint /api/exit_breakdown. Future-work. |
-| TAKE PROFIT / STOP LOSS / TRAILING / TIME analysis sections | shown with values | shown with em-dashes | 🔵 | depends on close-reason histogram above; skipped same reason. |
+| Розподіл виходів | shown | populated (10 close-reason buckets, 39 total) | ✅ | new /api/exit_breakdown groups positions by close_reason (count/avg_pnl/win_rate). Shim joins into calibration/exit envelope. |
+| TAKE PROFIT / STOP LOSS / TRAILING / TIME analysis sections | shown with values | populated | ✅ | analysis{} buckets close_reason → tp/sl/trailing/time families server-side; sums weighted avg_pnl + win_rate per category. |
 
 ### Sub-tab: Whales
 | Field | v1 | v2 | Status | Action |
@@ -285,20 +285,18 @@ All ⚠ items below were fixed by editing `web-dash/v2-shim.js`. All commits in
 | Whales | 6 | 6 | 0 | 0 | 0 | 0 |
 | Калібрація · Огляд | 11 | 11 | 0 | 0 | 0 | 0 |
 | Калібрація · Entry | 3 | 3 | 0 | 0 | 0 | 0 |
-| Калібрація · Exit | 4 | 2 | 0 | 2 | 0 | 0 |
+| Калібрація · Exit | 4 | 4 | 0 | 0 | 0 | 0 |
 | Калібрація · Whales | 4 | 4 | 0 | 0 | 0 | 0 |
 | Калібрація · Спорт | 3 | 3 | 0 | 0 | 0 | 0 |
 | Калібрація · Лог | 2 | 2 | 0 | 0 | 0 | 0 |
 | Калібрація · Налаштування | 5 | 5 | 0 | 0 | 0 | 0 |
 | Chain | 7 | 7 | 0 | 0 | 0 | 0 |
 | Логи | 6 | 5 | 1 | 0 | 0 | 0 |
-| **Total** | **94** | **85** | **6** | **2** | **0** | **1** |
+| **Total** | **94** | **87** | **6** | **0** | **0** | **1** |
 
-**Match rate (✅) = 85/94 = 90%.** Adding fixed ⚠ → 91/94 = **97%**.
-Only 2 🔵 entries remain — both on Калібрація·Exit (close-reason
-histogram aggregation) and gated on a new backend `/api/exit_breakdown`
-endpoint which is out of scope for this pass. All other rows wired,
-populated when underlying data arrives.
+**Match rate (✅) = 87/94 = 93%.** Adding fixed ⚠ → 93/94 = **99%**.
+Zero 🔵 entries remain — every row is either ✅ (wired + populated when
+data arrives) or 🚫 (Run/Stop systemd-bridge intentionally out of scope).
 
 ---
 
@@ -321,14 +319,15 @@ all 6 wrong-shape gaps were pure adapter mistakes.
 
 ## Remaining gaps (sorted by priority)
 
-### Residual 🔵 (2 items, future-work)
-1. **Калібрація · Exit · Розподіл виходів** + **Take Profit / Stop Loss / Trailing / Time analysis** — both depend on a server-side close-reason histogram. v2 closed positions all carry `close_reason` text but no `/api/exit_breakdown` endpoint groups & buckets them. Out of scope this pass; would need ~30 lines in rest_server.ts.
+### Residual 🔵 (0 items)
+None — every 🔵 row from the prior pass has been closed.
 
 ### Pass-through closed in this audit pass
 - Whale list extra columns (PnL/capital/markets/conviction/domain): closed via `/api/whales` enrichment — joins positions GROUP BY whale_address.
 - Whale drilldown sheet: closed via `/api/whales/:addr/profile` enrichment.
 - Calibrator history blocks (entry/exit changes): closed via new `/api/calibrator/history` endpoint reading `calibrator_recommendations` rows where appliedAt or rolledBackAt is set.
 - Calibrator Entry sub-tab (lift matrix / cf attribution / bayesian): wired correctly to `/api/calibrator/lift_matrix`, `/api/calibrator/attribution`, `/api/calibrator/beliefs`. Empty-state expected until calibrator emits its first applied recommendations.
+- Calibrator Exit sub-tab (close-reason histogram + tp/sl/trailing/time analysis): closed via new `/api/exit_breakdown` endpoint that GROUP-BYs positions on close_reason and buckets them.
 - Chain waterfall: closed via shim adapter that reshapes `/api/latency.stages[]` into v1's `{summary, stages_order, stage_meta}` envelope.
 - Reconciliation report: closed via new `/api/reconciliation` endpoint deriving phantom/drifted/ok from latest decisions per OPEN position.
 

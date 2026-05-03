@@ -1430,6 +1430,94 @@ async function handleCalibratorSnapshot(): Promise<unknown> {
   };
 }
 
+async function handleExitBreakdown(req: http.IncomingMessage): Promise<unknown> {
+  // Close-reason histogram for the Калібрація · Exit "Розподіл виходів"
+  // panel. v1 expects { breakdown: { tp_fok: {count, avg_pnl, win_rate}, …},
+  // analysis: { tp:{...}, sl:{...}, trailing:{...}, time:{...} } }.
+  // Bucket close_reason strings into the 4 v1 categories: tp = tp_*; sl =
+  // sl_*; trailing = trailing_* / trail_*; time = expiry / time_stop /
+  // game_ended / write_off / price_resolved.
+  const mode = modeFromQuery(req);
+  const db = getDb();
+  type Row = {
+    close_reason: string | null;
+    count: number;
+    avg_pnl: string;
+    wins: number;
+  };
+  const rows = (await db.execute(sql`
+    SELECT
+      close_reason,
+      count(*)::int                                                  AS count,
+      ROUND(AVG(COALESCE(realized_pnl_usd, 0))::numeric, 4)          AS avg_pnl,
+      count(*) FILTER (WHERE COALESCE(realized_pnl_usd, 0) > 0)::int AS wins
+    FROM positions
+    WHERE status = 'CLOSED'
+      ${mode == null ? sql`` : sql`AND mode = ${mode}`}
+    GROUP BY close_reason
+    ORDER BY count DESC
+  `)) as unknown as Row[];
+
+  const breakdown: Record<string, { count: number; avg_pnl: number; win_rate: number }> = {};
+  let total = 0;
+  for (const r of rows) {
+    const key = r.close_reason ?? "unknown";
+    const count = Number(r.count);
+    const avgPnl = Number(r.avg_pnl ?? 0);
+    const winRate = count > 0 ? Number(r.wins) / count : 0;
+    breakdown[key] = { count, avg_pnl: avgPnl, win_rate: winRate };
+    total += count;
+  }
+
+  const bucket = (k: string): "tp" | "sl" | "trailing" | "time" | "other" => {
+    if (k.startsWith("tp_") || k === "tp") return "tp";
+    if (k.startsWith("sl_") || k === "sl") return "sl";
+    if (k.startsWith("trail")) return "trailing";
+    if (
+      k === "expiry" ||
+      k === "time_stop" ||
+      k === "game_ended" ||
+      k === "write_off" ||
+      k === "price_resolved"
+    )
+      return "time";
+    return "other";
+  };
+  const analysis: Record<string, { count: number; avg_pnl: number; win_rate: number }> = {
+    tp: { count: 0, avg_pnl: 0, win_rate: 0 },
+    sl: { count: 0, avg_pnl: 0, win_rate: 0 },
+    trailing: { count: 0, avg_pnl: 0, win_rate: 0 },
+    time: { count: 0, avg_pnl: 0, win_rate: 0 },
+  };
+  type Acc = { count: number; sumPnl: number; wins: number };
+  const acc: Record<string, Acc> = {
+    tp: { count: 0, sumPnl: 0, wins: 0 },
+    sl: { count: 0, sumPnl: 0, wins: 0 },
+    trailing: { count: 0, sumPnl: 0, wins: 0 },
+    time: { count: 0, sumPnl: 0, wins: 0 },
+  };
+  for (const r of rows) {
+    const k = r.close_reason ?? "unknown";
+    const b = bucket(k);
+    if (b === "other") continue;
+    const slot = acc[b];
+    if (!slot) continue;
+    const count = Number(r.count);
+    slot.count += count;
+    slot.sumPnl += Number(r.avg_pnl ?? 0) * count;
+    slot.wins += Number(r.wins);
+  }
+  for (const b of ["tp", "sl", "trailing", "time"] as const) {
+    const a = acc[b] ?? { count: 0, sumPnl: 0, wins: 0 };
+    analysis[b] = {
+      count: a.count,
+      avg_pnl: a.count > 0 ? a.sumPnl / a.count : 0,
+      win_rate: a.count > 0 ? a.wins / a.count : 0,
+    };
+  }
+  return { mode: mode ?? "all", total, breakdown, analysis };
+}
+
 async function handleReconciliation(req: http.IncomingMessage): Promise<unknown> {
   // INV-D3 reconciliation report. Derive from latest decisions per OPEN
   // position (input_snapshot.position.onChainShares + reconciliationDriftPct).
@@ -2401,6 +2489,8 @@ export function createRestServer(): http.Server {
           return send(res, 200, await handleCalibratorHistory(req));
         if (req.url?.startsWith("/api/reconciliation"))
           return send(res, 200, await handleReconciliation(req));
+        if (req.url?.startsWith("/api/exit_breakdown"))
+          return send(res, 200, await handleExitBreakdown(req));
         if (req.url?.startsWith("/api/calibrator/attribution"))
           return send(res, 200, await handleCalibratorAttribution(req));
         if (req.url?.startsWith("/api/calibrator/beliefs"))
