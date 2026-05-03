@@ -1,6 +1,8 @@
+import process from "node:process";
 import { getBookTop } from "../api/book.js";
 import { type DataPosition, getPositions } from "../api/data.js";
 import { getMarketByTokenId } from "../api/gamma.js";
+import { getWsBook } from "../feed/market_book_ws.js";
 import { logger } from "../obs/logger.js";
 import type { MarketSnapshot } from "../types/market.js";
 
@@ -24,8 +26,14 @@ interface CacheEntry<T> {
   fetchedAt: number;
 }
 
-const BOOK_TTL_MS = 3_000;
+// Mark must stay sub-second for SL/TP/trail to fire on real moves. Default
+// 500ms = same as PositionMonitor tick — every other tick triggers a fresh
+// /book; the alternates re-use cache to keep REST volume bounded. Override
+// via SNAPSHOT_BOOK_TTL_MS for tuning. WS market book (when subscribed)
+// short-circuits this path entirely with sub-100ms freshness.
+const BOOK_TTL_MS = Number(process.env["SNAPSHOT_BOOK_TTL_MS"] ?? 500);
 const GAMMA_TTL_MS = 30_000; // gamma metadata changes rarely
+const WS_BOOK_MAX_AGE_MS = Number(process.env["WS_BOOK_MAX_AGE_MS"] ?? 5_000);
 
 const _bookCache = new Map<string, CacheEntry<Awaited<ReturnType<typeof getBookTop>>>>();
 const _gammaCache = new Map<
@@ -40,6 +48,33 @@ async function cachedBookTop(tokenId: string): Promise<Awaited<ReturnType<typeof
   const value = await getBookTop(tokenId);
   _bookCache.set(tokenId, { value, fetchedAt: now });
   return value;
+}
+
+interface WsBookView {
+  bid: number;
+  ask: number;
+  bidSize: number;
+  askSize: number;
+  timestampMs: number;
+  source: "ws_book";
+}
+
+/**
+ * Try the live WS market-channel book first; if absent or staler than
+ * WS_BOOK_MAX_AGE_MS, the caller falls back to REST. Lookup is sub-ms.
+ */
+function tryWsBook(tokenId: string): WsBookView | null {
+  const w = getWsBook(tokenId);
+  if (!w) return null;
+  if (Date.now() - w.ts > WS_BOOK_MAX_AGE_MS) return null;
+  return {
+    bid: w.bid,
+    ask: w.ask,
+    bidSize: w.bidSize,
+    askSize: w.askSize,
+    timestampMs: w.ts,
+    source: "ws_book",
+  };
 }
 
 async function cachedGamma(tokenId: string) {
@@ -69,7 +104,14 @@ export async function buildSnapshot(
   assetId: string,
   side: "YES" | "NO",
 ): Promise<MarketSnapshot> {
-  const [book, gamma] = await Promise.all([cachedBookTop(assetId), cachedGamma(assetId)]);
+  // Prefer fresh WS book; fall back to REST cached_book.
+  const wsTop = tryWsBook(assetId);
+  const [restBook, gamma] = await Promise.all([
+    wsTop ? Promise.resolve(null as null) : cachedBookTop(assetId),
+    cachedGamma(assetId),
+  ]);
+  const book = wsTop ?? restBook!;
+  const markSource: MarketSnapshot["markSource"] = wsTop ? "ws_book" : "rest_book";
 
   const expectedOutcomeValue = expectedOutcomeForSide(gamma.outcomePricesParsed, side);
   const mark = (book.bid + book.ask) / 2;
@@ -77,6 +119,11 @@ export async function buildSnapshot(
     gamma.umaResolutionStatus === "resolved"
       ? gamma.outcomePricesParsed.indexOf(Math.max(...gamma.outcomePricesParsed))
       : null;
+  const markTs = wsTop
+    ? wsTop.timestampMs
+    : restBook && restBook.timestampMs > 0
+      ? restBook.timestampMs
+      : Date.now();
 
   return {
     conditionId,
@@ -86,8 +133,8 @@ export async function buildSnapshot(
     bidSize: book.bidSize,
     askSize: book.askSize,
     mark,
-    markSource: "rest_book",
-    markTs: book.timestampMs > 0 ? book.timestampMs : Date.now(),
+    markSource,
+    markTs,
     tickSize: gamma.orderPriceMinTickSize,
     negRisk: gamma.negRisk,
     minOrderSize: gamma.orderMinSize,

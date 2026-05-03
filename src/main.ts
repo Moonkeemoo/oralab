@@ -8,6 +8,7 @@ import { backfillFillsFromActivity } from "./execute/fill_backfill.js";
 import { DbFillHandler } from "./execute/fill_handler.js";
 import { fillReconcilerFromEnv } from "./execute/fill_reconciler.js";
 import { PositionMonitor } from "./monitor/position_monitor.js";
+import { startMarketBookWs } from "./feed/market_book_ws.js";
 import { runStartupCrosscheck } from "./monitor/startup_crosscheck.js";
 import { bindService, logger } from "./obs/logger.js";
 import { shutdownTelemetry, startTelemetry } from "./obs/tracer.js";
@@ -45,6 +46,14 @@ async function main(): Promise<void> {
 
   const monitor = new PositionMonitor({ userId: SOLO_USER_ID });
   monitor.start();
+
+  // INV-D2 freshness path: subscribe to Polymarket market WS for live book
+  // updates. PositionMonitor calls registerAsset() per active position;
+  // buildSnapshot prefers the WS top over REST. Disable via MARKET_WS_DISABLED.
+  if ((process.env["MARKET_WS_DISABLED"] ?? "false").toLowerCase() !== "true") {
+    startMarketBookWs();
+    logger.info("MarketBookWs started — sub-100ms book mark for active assets");
+  }
 
   const dryFiller = new DryFillSimulator();
   dryFiller.start();

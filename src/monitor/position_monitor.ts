@@ -3,6 +3,7 @@ import { getDb } from "../db/client.js";
 import { positions, wallets } from "../db/schema.js";
 import { decideExit } from "../decide.js";
 import { executeExitIntent } from "../execute/executor.js";
+import { pruneAssets, registerAsset } from "../feed/market_book_ws.js";
 import { logger } from "../obs/logger.js";
 import { decideExitDurationMs, positionMonitorTickMs } from "../obs/metrics.js";
 import { withSpan } from "../obs/tracer.js";
@@ -96,7 +97,15 @@ export class PositionMonitor {
     const open = await db.query.positions.findMany({
       where: and(eq(positions.userId, userId), inArray(positions.status, [...ACTIVE_STATUSES])),
     });
-    if (open.length === 0) return;
+    if (open.length === 0) {
+      pruneAssets(new Set());
+      return;
+    }
+    // Subscribe market WS to every asset we're holding so buildSnapshot()
+    // hits a sub-100ms book on next tick. Idempotent: dups are no-ops.
+    const activeAssets = new Set(open.map((p) => p.assetId));
+    for (const a of activeAssets) registerAsset(a);
+    pruneAssets(activeAssets);
 
     const reconInput: PositionForRecon[] = open.map((p) => ({
       id: Number(p.id),
