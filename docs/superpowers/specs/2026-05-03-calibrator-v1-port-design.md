@@ -400,7 +400,59 @@ Realistic shippable: A in one chunk, B in second, C+D third, E split into 3 (ove
 
 ---
 
-## Open questions for Taras
-1. **Auto mode** in v1 — was it ever turned on, or always watch? (Default in v1 settings is `watch`.) Recommend v2 ships with `manual` default and adds `auto` only after F replay shows consistent recs.
-2. **WR_DROP rollback timeout 30s** — only triggers if there are enough trades within 30s to compute WR. In low-volume DRY this never fires. Should we extend to N trades instead of N seconds?
-3. **Per-sport calibration** — v1 has Sport sub-tab with KPI by sport. Is per-sport tuning ever used (e.g. relax SL only for NHL)? Or just analytics?
+## Decisions (locked 2026-05-03 by Taras)
+1. **Mode default = `watch`** — engine runs every cycle, computes lift matrix, emits recommendations, never auto-applies. Operator approves manually via `POST /api/calibrator/apply/:id`. `auto` mode wiring exists in code but ships disabled until Phase F replay consistency check passes.
+2. **Rollback verification — switch to N-trades, not seconds.** `SAFETY_VERIFY_TRADES_N = 5` default: after a recommendation auto-applies, observe the next 5 closed trades; if WR drops > `SAFETY_WR_DROP_ROLLBACK` (8pp) vs the prior 50-trade rolling baseline, automatically revert via `setRuntimeConfig` and emit `rollback` trace event. Time fallback `SAFETY_VERIFY_TIMEOUT_SEC = 7200` (2h) so a stalled signal stream eventually expires the watch.
+3. **Per-sport calibration is in scope** — not just analytics. Phase A schema and Phase B engine treat sport as a first-class dimension.
+
+## Per-sport calibration (decision #3 expanded)
+
+### Storage
+Per-filter params already use `jsonb`. Extend with optional `perSport` override map:
+```json
+{
+  "min": 0.05,
+  "perSport": {
+    "NHL": 0.03,
+    "MLB": 0.04,
+    "Esports": 0.10
+  }
+}
+```
+The base `min`/`thresholdProbe`/etc. is the fallback when current sport isn't in `perSport` or sport is null (non-sports markets, sport not yet classified).
+
+### Filter contract
+Each tunable filter's `evaluate(ctx, params)` receives `ctx.market.sport` (set by signal_router from gamma → sports_events). Filter helper:
+```ts
+function effectiveThreshold(params: Record<string, unknown>, sport: string | null, key: string): number {
+  const perSport = (params['perSport'] ?? {}) as Record<string, number>;
+  if (sport && sport in perSport) return Number(perSport[sport]);
+  return Number(params[key] ?? params['min'] ?? 0);
+}
+```
+Apply to `trust_gate`, `sm_score`, `conviction_gate`, `market_volume`, `remaining_edge`, `slippage_cap`, `entry_cooldown`, `exit_reentry_cooldown`, `intraday_binary` (the 9 entry levers that benefit from sport tuning). Hard-safety filters (price_too_high, post_resolution, etc.) stay sport-agnostic.
+
+### Calibrator engine extension (Phase B)
+`compute_entry_lift` and `compute_exit_lift` produce TWO classes of recommendations:
+- **Global lever** — current behavior, recs against `params.min`. Only emitted when sport-stratified data is sparse (any sport with `data_points < CAL_MIN_TRADES_PER_SPORT`).
+- **Per-sport lever** — same lever, but `key = f"{config_key}@{sport}"`. Lift computed using only that sport's closed trades + its rejected counterfactuals. Emitted when sport has ≥ `CAL_MIN_TRADES_PER_SPORT` (default 15) closed trades in window. Recommendation writes into `params.perSport[sport]` instead of `params.min`.
+
+Top-N ranking blends global + per-sport recs by score; UI groups them with a "🏷️ Per-sport" badge. Operator can apply each independently.
+
+### Settings additions
+```
+CAL_MIN_TRADES_PER_SPORT = 15      # minimum closed trades in sport before per-sport recs emit
+PER_SPORT_ENABLED        = true    # global toggle to disable the entire per-sport path
+SPORT_OVERRIDE_MAX_DELTA = 0.5     # cap |perSport[sport] - base| / base, prevent runaway per-sport divergence
+```
+
+### Phase A schema additions
+Schema above already covers `positions.league` + `positions.sport`. Plus index for sport-stratified rejects:
+```sql
+ALTER TABLE signals ADD COLUMN sport varchar(32);  -- mirrored at evaluation time
+CREATE INDEX idx_signals_sport_processed ON signals(sport, processed_at DESC) WHERE NOT accepted;
+```
+Counterfactual table gets `sport` too so `cf_attribution` can group per (filter, sport).
+
+### Verification (Phase F)
+Replay test: feed 7-day v1 trade log into v2 engine; confirm v2 emits the same per-sport recs that v1 would have (or close cousins, given v1 doesn't actually emit per-sport — this is a v2 enhancement).
