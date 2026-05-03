@@ -91,6 +91,11 @@ async function fillExitingSells(): Promise<void> {
       sellPrice: orders.price,
       sellSize: orders.size,
       sellClientId: orders.clientOrderId,
+      // Need entry side to compute realized PnL on close. Fill price was
+      // recorded on the position row at BUY time.
+      entryPrice: positions.fillPrice,
+      entryShares: positions.shares,
+      entryCostUsd: positions.entryCostUsd,
     })
     .from(positions)
     .innerJoin(orders, and(eq(orders.positionId, positions.id), eq(orders.side, "SELL")))
@@ -125,17 +130,29 @@ async function fillExitingSells(): Promise<void> {
     } catch {
       // already filled
     }
+    // Realized PnL = (sell - entry) * shares filled. Use the SELL order's
+    // size as filled-shares (in DRY assume full fill for the dispatched
+    // intent). Falls back to position.shares when the order wasn't sized.
+    const filledShares = Number(c.sellSize) || Number(c.entryShares ?? 0);
+    const exitUsd = filledShares * Number(c.sellPrice);
+    const entryCostUsd = Number(c.entryCostUsd ?? 0) ||
+      filledShares * Number(c.entryPrice ?? 0);
+    const realizedPnlUsd = exitUsd - entryCostUsd;
     await db
       .update(positions)
       .set({
         status: "CLOSED",
         closeReason: "dry_simulated_sell_fill",
         closeTxHash: txHash,
+        realizedPnlUsd,
         lastStateChangeTs: Date.now(),
         updatedAt: new Date(),
       })
       .where(eq(positions.id, c.posId));
-    logger.info({ posId, simulated: true }, "DRY fill: EXITING → CLOSED");
+    logger.info(
+      { posId, simulated: true, realizedPnlUsd, entryCostUsd, exitUsd },
+      "DRY fill: EXITING → CLOSED",
+    );
   }
 }
 

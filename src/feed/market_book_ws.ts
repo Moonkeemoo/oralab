@@ -315,7 +315,7 @@ function handleFrame(data: Buffer): void {
       continue;
     }
     evRecord["asset_id"] = assetId;
-    const et = ev.event_type;
+    const et = (ev as { event_type?: string }).event_type;
     if (et === "book" || (!et && "bids" in ev)) {
       if (applyBookSnapshot(ev as RawBookEvent)) {
         liveData = true;
@@ -331,14 +331,13 @@ function handleFrame(data: Buffer): void {
         bumpDrop("price_change_invalid");
       }
     } else if (et === "best_bid_ask") {
-      if (applyBestBidAsk(ev as RawBestBidAskEvent)) {
+      if (applyBestBidAsk(ev as unknown as RawBestBidAskEvent)) {
         liveData = true;
         _evCounts.price_change += 1;
       } else {
         bumpDrop("best_bid_ask_invalid");
       }
     } else if (et === "last_trade_price" || et === "new_market") {
-      // Informational only; don't count as drop noise.
       _evCounts.other += 1;
     } else if (et === "tick_size_change") {
       applyTickSize(ev as RawTickSizeEvent);
