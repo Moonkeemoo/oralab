@@ -1051,15 +1051,44 @@
     },
 
     // /logs — last N calibrator_trace events (closest analog v2 has)
-    '/api/polymarket/logs': async () => {
-      const v2 = await safeGet('/api/calibrator/trace?limit=200');
+    // v1 frontend reads: ts, level, event, trade_id, market, plus arbitrary fields
+    // shown as detail. Map calibrator_trace eventType → event, hoist payload keys.
+    '/api/polymarket/logs': async ({ query }) => {
+      const qm = new URLSearchParams((query || '').replace(/^\?/, ''));
+      const limit = parseInt(qm.get('limit') || '200', 10);
+      const lvlFilter = (qm.get('level') || '').toLowerCase();
+      const srcFilter = (qm.get('source') || '').toLowerCase();
+      const search = (qm.get('search') || '').toLowerCase();
+      const v2 = await safeGet('/api/calibrator/trace?limit=' + limit);
       const rows = v2 && Array.isArray(v2.rows) ? v2.rows : [];
-      return rows.map((e) => ({
-        ts: e.ts,
-        level: 'info',
-        source: 'calibrator',
-        msg: `${e.eventType}: ${JSON.stringify(e.payload || {}).slice(0, 200)}`,
-      }));
+      const out = rows.map((e) => {
+        const p = e.payload || {};
+        const evType = e.eventType || '';
+        const inferLvl = /error|fail/i.test(evType) ? 'ERROR'
+                       : /warn/i.test(evType) ? 'WARNING'
+                       : /debug/i.test(evType) ? 'DEBUG' : 'INFO';
+        const tsIso = e.ts ? new Date(e.ts).toISOString() : '';
+        return Object.assign({}, p, {
+          ts: tsIso,
+          level: inferLvl,
+          source: 'calibrator',
+          event: evType,
+          trade_id: p.trade_id || p.tradeId || null,
+          market: p.market || p.marketTitle || null,
+          cycle_id: e.cycleId,
+          payload: p,
+        });
+      });
+      const filtered = out.filter((r) => {
+        if (lvlFilter && r.level.toLowerCase() !== lvlFilter) return false;
+        if (srcFilter && r.source !== srcFilter) return false;
+        if (search) {
+          const blob = (JSON.stringify(r.payload || {}) + ' ' + (r.event || '')).toLowerCase();
+          if (blob.indexOf(search) < 0) return false;
+        }
+        return true;
+      });
+      return filtered;
     },
 
     // /chain/stats — pipeline latency from signal_timings (closest analog)
