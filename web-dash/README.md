@@ -49,3 +49,16 @@ either a v2 endpoint gets added or the value is intentionally retired.
 
 The current shim covers the full v1 endpoint surface — see `ENDPOINT_MAP` in
 `v2-shim.js` for the canonical mapped/unwired list with rationales.
+
+### Coverage snapshot (2026-05-03)
+
+```
+v1 distinct endpoints discovered : 84
+  string-mapped (1:1 v2 path)    : 16
+  adapter-mapped (shape rewrite) : 12
+  pattern-routed (positions/:id) :  3   (positions exit, calibration apply/rollback)
+  UNWIRED (no v2 backend yet)    : 55
+```
+
+All 21 v2 GET endpoints referenced by the shim verified `200 OK` against the
+live API server (`curl -H 'X-Dev-Bypass: secretdev' …`).
