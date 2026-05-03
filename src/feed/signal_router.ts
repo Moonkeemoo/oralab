@@ -4,8 +4,9 @@ import { and, eq, inArray } from "drizzle-orm";
 import { getBookTop } from "../api/book.js";
 import type { DataActivity } from "../api/data.js";
 import { type GammaMarket, getMarketByTokenId } from "../api/gamma.js";
+import { classifySport } from "../calibrator/sport_taxonomy.js";
 import { getDb } from "../db/client.js";
-import { orders, positions, signals, strategies } from "../db/schema.js";
+import { orders, positions, signals, sportsEvents, strategies } from "../db/schema.js";
 import { canAffordEntry } from "../execute/budget.js";
 import { placeBuy } from "../execute/order_manager.js";
 import { recordOrder } from "../execute/order_recorder.js";
@@ -82,10 +83,44 @@ function isUniqueConstraintError(err: unknown, constraintName?: string): boolean
   return visit(err);
 }
 
+/**
+ * Tiny TTL cache for gameId → league lookups against sports_events. The same
+ * gameId is hit by every market on a game (winner/spread/totals/...), so the
+ * 60s window prevents per-market round-trips while still picking up corrections
+ * when a sports_events row gets backfilled mid-day.
+ */
+const LEAGUE_CACHE_TTL_MS = 60_000;
+const LEAGUE_CACHE = new Map<string, { league: string | null; ts: number }>();
+
+export async function deriveLeagueFromGameId(gameId: string): Promise<string | null> {
+  const cached = LEAGUE_CACHE.get(gameId);
+  const now = Date.now();
+  if (cached && now - cached.ts < LEAGUE_CACHE_TTL_MS) return cached.league;
+  try {
+    const db = getDb();
+    const row = await db.query.sportsEvents.findFirst({
+      where: eq(sportsEvents.gameId, gameId),
+      columns: { league: true },
+    });
+    const league = row?.league ?? null;
+    LEAGUE_CACHE.set(gameId, { league, ts: now });
+    // bound cache to last 500 gameIds — simple FIFO trim
+    if (LEAGUE_CACHE.size > 500) {
+      const firstKey = LEAGUE_CACHE.keys().next().value;
+      if (firstKey !== undefined) LEAGUE_CACHE.delete(firstKey);
+    }
+    return league;
+  } catch (err) {
+    logger.debug({ err, gameId }, "deriveLeagueFromGameId failed — best effort");
+    return null;
+  }
+}
+
 async function persistSignal(
   signal: Signal,
   accepted: boolean,
   rejectReason: string | null,
+  sport: string | null,
 ): Promise<number> {
   const db = getDb();
   try {
@@ -103,6 +138,7 @@ async function persistSignal(
         payload: signal.payload,
         accepted,
         rejectReason,
+        sport,
         receivedTs: signal.receivedTs,
         processedAt: new Date(),
       })
@@ -141,6 +177,10 @@ interface RouteOutcome {
   rejectReason: string | null;
   positionId?: number | undefined;
   clobOrderId?: string | undefined;
+  /** Canonical sport (NHL/MLB/Esports/...) inferred from gamma → sports_events.
+   *  Null when not a classified sports market. Mirrored to signals.sport for
+   *  per-sport rejection analytics. */
+  sport?: string | null | undefined;
 }
 
 /**
@@ -208,7 +248,7 @@ export async function routeWhaleBuy(whaleAddress: string, activity: DataActivity
       entryMutexWaitMs.record(performance.now() - enqueuedAt);
       return routeInner(signal, cfg, match.strategyId);
     });
-    await persistSignal(signal, outcome.accepted, outcome.rejectReason);
+    await persistSignal(signal, outcome.accepted, outcome.rejectReason, outcome.sport ?? null);
     entryRouteOutcome.add(1, {
       outcome: outcome.accepted ? "accepted" : (outcome.rejectReason ?? "unknown"),
     });
@@ -244,6 +284,14 @@ async function routeInner(
     return { accepted: false, rejectReason: "market_not_accepting_orders" };
   }
 
+  // Sport classification (Phase A calibrator foundation): derive league from
+  // gamma.gameId → sports_events.league, then bucket via LEAGUE_TO_SPORT.
+  // Both league + sport flow into positions on INSERT and into signals at
+  // persistSignal so per-sport analytics + counterfactual aggregation work
+  // across both accepted and rejected paths.
+  const league = market.gameId ? await deriveLeagueFromGameId(market.gameId) : null;
+  const sport = classifySport(league);
+
   // Pre-check unique constraint uq_positions_open_per_asset — if we already
   // have an active position on this asset (from another whale signal that
   // raced ahead), bail cheaply instead of catching the duplicate-key DB
@@ -258,7 +306,7 @@ async function routeInner(
     columns: { id: true },
   });
   if (existingActive) {
-    return { accepted: false, rejectReason: "already_open_for_asset" };
+    return { accepted: false, rejectReason: "already_open_for_asset", sport };
   }
 
   const strategy = new WhaleFollowStrategy({
@@ -289,7 +337,7 @@ async function routeInner(
     strategy.evaluate(signal, marketMeta),
   );
   if (decision.kind !== "enter") {
-    return { accepted: false, rejectReason: decision.reason };
+    return { accepted: false, rejectReason: decision.reason, sport };
   }
 
   const balance = (await canAffordEntry(cfg.userId, strategyId, decision.sizeUsdHint)).budget
@@ -300,7 +348,7 @@ async function routeInner(
       { sizeShares, minOrderSize: market.orderMinSize },
       "computed size below market minimum",
     );
-    return { accepted: false, rejectReason: "below_min_size" };
+    return { accepted: false, rejectReason: "below_min_size", sport };
   }
 
   // Use real /book ask + slippage. INV-D1: never trust whale's stale price for
@@ -310,7 +358,7 @@ async function routeInner(
   );
   const priceCeiling = liveAsk ?? decision.priceCap;
   if (priceCeiling > 0.99) {
-    return { accepted: false, rejectReason: "ask_at_ceiling" };
+    return { accepted: false, rejectReason: "ask_at_ceiling", sport };
   }
   const usdAmount = sizeShares * priceCeiling;
 
@@ -352,7 +400,7 @@ async function routeInner(
       { errorCode: buy.errorCode, status: buy.status },
       "placeBuy rejected — no position created",
     );
-    return { accepted: false, rejectReason: buy.errorCode ?? "placebuy_failed" };
+    return { accepted: false, rejectReason: buy.errorCode ?? "placebuy_failed", sport };
   }
 
   // SUCCESS path. Record ACTUAL filled shares from CLOB response (handles
@@ -368,7 +416,7 @@ async function routeInner(
       { clobOrderId: buy.clobOrderId },
       "placeBuy success=true but takingAmount=0 in LIVE — declining to INSERT",
     );
-    return { accepted: false, rejectReason: "live_zero_fill" };
+    return { accepted: false, rejectReason: "live_zero_fill", sport };
   }
   const status: "OPEN" | "PENDING" = buy.dry ? "PENDING" : "OPEN";
 
@@ -396,6 +444,8 @@ async function routeInner(
           entryCostUsd: filledShares * priceCeiling,
           trailArmed: false,
           sweepCount: 0,
+          league,
+          sport,
         })
         .returning({ id: positions.id }),
     );
@@ -410,7 +460,7 @@ async function routeInner(
         { asset: signal.assetId },
         "INSERT lost race against another active position for this asset — soft reject",
       );
-      return { accepted: false, rejectReason: "already_open_for_asset" };
+      return { accepted: false, rejectReason: "already_open_for_asset", sport };
     }
     throw err;
   }
@@ -457,5 +507,6 @@ async function routeInner(
     rejectReason: null,
     positionId,
     clobOrderId: buy.clobOrderId,
+    sport,
   };
 }
