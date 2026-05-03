@@ -227,14 +227,119 @@
     },
     // /calibration/apply/:id pattern is handled by patternRouter() below
 
+    // ── WIRED — adapters mapping v1 shapes to v2 backend ─────────────────
+
+    // /profiles — top-N whale profiles (v1: array of {wallet, trust, classification, ...})
+    '/api/polymarket/profiles': async () => {
+      const v2 = await safeGet('/api/whales?limit=200');
+      const items = v2 && Array.isArray(v2.items) ? v2.items : [];
+      return items.map((w) => ({
+        wallet: w.address,
+        trust: Math.round((w.trustScore || 0) * 100),
+        classification: w.classification || 'NOISE',
+        win_rate: w.winRate || 0,
+        total_trades: 0,           // v2 doesn't aggregate yet; safe default
+        confidence: w.confidence || 0,
+        sm_score: w.smScore || 0,
+        tracked: w.tracked,
+      }));
+    },
+
+    // /budget — current budget + allocated/free + history (v1 expects history array)
+    '/api/polymarket/budget': async () => {
+      const bal = await safeGet('/api/balance');
+      return {
+        budget: bal?.totalBudgetUsd ?? 0,
+        allocated: bal?.allocatedUsd ?? 0,
+        free: bal?.freeUsd ?? 0,
+        mode: bal?.mode ?? 'DRY',
+        history: [],               // v2 doesn't track yet; safe empty
+      };
+    },
+
+    // /exposure — sum of OPEN entry_cost as both $ and % of budget
+    '/api/polymarket/exposure': async () => {
+      const [positionsRes, balanceRes] = await Promise.allSettled([
+        v2Get('/api/positions'),
+        v2Get('/api/balance'),
+      ]);
+      const positionsList = positionsRes.status === 'fulfilled' && Array.isArray(positionsRes.value)
+        ? positionsRes.value
+        : [];
+      const balance = balanceRes.status === 'fulfilled' ? balanceRes.value : null;
+      const total = positionsList.reduce((s, p) => s + (p.entryCostUsd || 0), 0);
+      const budget = (balance && balance.totalBudgetUsd) || 1;
+      return {
+        total_usd: total,
+        budget_usd: budget,
+        pct: total / budget,
+        open_count: positionsList.length,
+        positions: positionsList.map((p) => ({
+          id: p.id,
+          asset: p.assetId,
+          cost: p.entryCostUsd,
+          pnl_usd: p.currentPnlUsd,
+          pnl_pct: p.currentPnlPct,
+        })),
+      };
+    },
+
+    // /intents — exit intent log (derive from positions.lastIntentAction)
+    '/api/polymarket/intents': async () => {
+      const positionsList = await safeGet('/api/positions');
+      if (!Array.isArray(positionsList)) return [];
+      return positionsList
+        .filter((p) => p.lastIntentAction)
+        .map((p) => ({
+          position_id: p.id,
+          intent: p.lastIntentAction,
+          reason: p.lastIntentReason,
+          ts: Date.now() - (p.markAgeMs || 0),
+        }));
+    },
+
+    // /leaderboard — top whales by win_rate
+    '/api/polymarket/leaderboard': async () => {
+      const v2 = await safeGet('/api/whales?limit=50&trackedOnly=true');
+      const items = v2 && Array.isArray(v2.items) ? v2.items : [];
+      return items
+        .filter((w) => (w.winRate || 0) > 0)
+        .sort((a, b) => (b.winRate || 0) - (a.winRate || 0))
+        .slice(0, 20)
+        .map((w, i) => ({
+          rank: i + 1,
+          wallet: w.address,
+          win_rate: w.winRate,
+          classification: w.classification,
+          tracked: w.tracked,
+        }));
+    },
+
+    // /logs — last N calibrator_trace events (closest analog v2 has)
+    '/api/polymarket/logs': async () => {
+      const v2 = await safeGet('/api/calibrator/trace?limit=200');
+      const rows = v2 && Array.isArray(v2.rows) ? v2.rows : [];
+      return rows.map((e) => ({
+        ts: e.ts,
+        level: 'info',
+        source: 'calibrator',
+        msg: `${e.eventType}: ${JSON.stringify(e.payload || {}).slice(0, 200)}`,
+      }));
+    },
+
+    // /chain/stats — pipeline latency from signal_timings (closest analog)
+    '/api/polymarket/chain/stats': async () => {
+      const v2 = await safeGet('/api/latency');
+      return {
+        stages: (v2 && v2.stages) || [],
+        bottleneck: (v2 && v2.bottleneck) || null,
+        window_hours: (v2 && v2.windowHours) || 24,
+      };
+    },
+
     // ── UNWIRED — v1 features without v2 backend support yet ──────────────
-    '/api/polymarket/profiles':                       null,   // bulk whale profile dump → use per-whale /api/whales/:addr/profile
-    '/api/polymarket/leaderboard':                    null,   // whale leaderboard view
-    '/api/polymarket/intents':                        null,   // pre-trade intents queue
     '/api/polymarket/intents/stats':                  null,
-    '/api/polymarket/budget':                         null,   // budget guardrails view
     '/api/polymarket/budget/reset':                   null,
-    '/api/polymarket/exposure':                       null,   // sector exposure tracker
     '/api/polymarket/exposure/reset':                 null,
     '/api/polymarket/conviction_stats':               null,   // whale conviction histogram
     '/api/polymarket/diagnostic/groups':              null,   // diagnostic groupings
@@ -242,7 +347,6 @@
     '/api/polymarket/lifecycle/events':               null,
     '/api/polymarket/live-marks':                     null,   // mark refresh dashboard
     '/api/polymarket/poke-mark':                      null,   // manual mark refresh
-    '/api/polymarket/logs':                           null,   // log tail (v2 logs go to stdout/OTEL)
     '/api/polymarket/logs/clear':                     null,
     '/api/polymarket/trade-decisions':                null,   // explainable trade-decision log
     '/api/polymarket/trade-decisions/clear':          null,
@@ -250,8 +354,7 @@
     '/api/polymarket/decision-log/clear':             null,
     '/api/polymarket/rejects/recent':                 null,   // covered partly by tab/filters adapter (recent_rejections=[])
     '/api/polymarket/reconciliation':                 null,   // ghost / phantom reconciliation report
-    '/api/polymarket/chain/stats':                    null,   // RPC + WS health card
-    '/api/polymarket/stream':                         null,   // SSE event stream (best-effort gracefully off)
+    '/api/polymarket/stream':                         null,   // SSE — also stubbed at EventSource layer below
     '/api/polymarket/filters/config':                 null,   // saved-presets store
     '/api/polymarket/filters/recent_rejections':      null,
     '/api/polymarket/filters/convergence_stats':      null,
@@ -405,6 +508,34 @@
   } else {
     ensureBanner();
     refreshBanner();
+  }
+
+  // ── EventSource shim for /api/polymarket/stream ────────────────────────
+  // EventSource bypasses our window.fetch interceptor and goes direct to
+  // the network with no auth header → 401 → repeated reconnect spam.
+  // v2 has no SSE endpoint yet; stub a no-op EventSource so app.js falls
+  // back to its polling path silently.
+  if (typeof window.EventSource === 'function') {
+    const OrigEventSource = window.EventSource;
+    function ShimEventSource(url, opts) {
+      if (typeof url === 'string' && url.startsWith('/api/polymarket/stream')) {
+        console.info('[v2-shim] SSE stream not supported, polling fallback:', url);
+        return {
+          readyState: 2,
+          url, withCredentials: false,
+          addEventListener: function () {},
+          removeEventListener: function () {},
+          close: function () {},
+          dispatchEvent: function () { return true; },
+          onopen: null, onmessage: null, onerror: null,
+        };
+      }
+      return new OrigEventSource(url, opts);
+    }
+    ShimEventSource.CONNECTING = 0;
+    ShimEventSource.OPEN = 1;
+    ShimEventSource.CLOSED = 2;
+    window.EventSource = ShimEventSource;
   }
 
   console.info('[v2-shim] active — intercepting /api/polymarket/* → v2 REST');
