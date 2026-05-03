@@ -228,8 +228,54 @@
       };
     },
 
-    // /kpi — pass through (v2 already returns a flat KPI object)
-    '/api/polymarket/kpi': '/api/kpi',
+    // /kpi — adapt v2 fields → v1 desktop dash field names.
+    // v1 portfolio.js reads: total_checked, total_accepted, total_rejected,
+    //   conv_entered, conv_blocked, conv_signals, signals_per_hour,
+    //   avg_latency_ms, latency_bottleneck, profit_factor, gross_win,
+    //   gross_loss, max_drawdown, avg_duration_s, open_count, closed_count.
+    '/api/polymarket/kpi': async () => {
+      const [k, latency] = await Promise.allSettled([
+        v2Get('/api/kpi'),
+        v2Get('/api/latency'),
+      ]);
+      const kVal = k.status === 'fulfilled' ? k.value : null;
+      const lat  = latency.status === 'fulfilled' ? latency.value : null;
+      if (!kVal) return {};
+      // Compute avg latency across stages (mean of avgMs)
+      let avgLat = 0, latBottleneck = '';
+      if (lat && Array.isArray(lat.stages) && lat.stages.length > 0) {
+        const sum = lat.stages.reduce((s, st) => s + (st.avgMs || 0), 0);
+        avgLat = sum / lat.stages.length;
+        latBottleneck = lat.bottleneck || '';
+      }
+      return {
+        // pass-through v2 native fields (caller may use either shape)
+        ...kVal,
+        // v1 KPI shape projection
+        total_checked: kVal.signalsTotal,
+        total_accepted: kVal.signalsAccepted,
+        total_rejected: kVal.signalsRejected,
+        conv_entered: 0,
+        conv_blocked: 0,
+        conv_signals: 0,
+        signals_per_hour: kVal.signalsPerHour,
+        avg_latency_ms: avgLat,
+        latency_bottleneck: latBottleneck,
+        profit_factor: kVal.profitFactor,
+        gross_win: kVal.grossWinUsd,
+        gross_loss: kVal.grossLossUsd,
+        max_drawdown: kVal.drawdownUsd,
+        avg_duration_s: kVal.avgDurationSec,
+        open_count: kVal.openPositionCount,
+        closed_count: kVal.closedCount,
+        // also expose hyphenated/snake versions some legacy code paths use
+        pass_rate: kVal.passRatePct,
+        win_rate: kVal.winRatePct,
+        net_pnl: kVal.netPnlUsd,
+        cf_net_usd: kVal.cfNetUsd,
+        rejection_top: kVal.topRejection,
+      };
+    },
 
     // /positions — array; map v2 fields → v1 shape for the table.
     '/api/polymarket/positions': async () => {
@@ -258,48 +304,112 @@
       };
     },
 
-    // /state — v1 consolidated read; reassemble from 4 v2 calls
+    // /state — v1 consolidated read; reassemble from v2 calls.
+    // Returns full portfolio (pnl/totals/bots/chart) + positions + history + settings.
     '/api/polymarket/state': async () => {
-      const [positions, history, settings, kpi] = await Promise.allSettled([
-        v2Get('/api/positions'),
-        v2Get('/api/history'),
-        v2Get('/api/exit_config'),
-        v2Get('/api/kpi'),
-      ]);
-      const portfolio = await safeBuildPortfolio(kpi.value);
-      const positionsList = positions.status === 'fulfilled' ? positions.value : [];
-      const historyVal = history.status === 'fulfilled' ? history.value : { trades: [] };
-      const histTrades = (historyVal && Array.isArray(historyVal.trades)) ? historyVal.trades : [];
-      return {
-        portfolio,
-        positions: Array.isArray(positionsList) ? positionsList.map(mapPosition) : [],
-        history: { trades: histTrades.map(mapTrade) },
-        settings: settings.status === 'fulfilled' ? settings.value : {},
-      };
-    },
-
-    // /portfolio — v1 expects {totals:{in_positions}, bots:[…]} for renderPortfolio.
-    '/api/polymarket/portfolio': async () => {
-      const [bal, kpi, status, positionsRes] = await Promise.allSettled([
+      const [bal, kpi, status, positionsRes, historyRes, pnlRes, settings] = await Promise.allSettled([
         v2Get('/api/balance'),
         v2Get('/api/kpi'),
         v2Get('/api/status'),
         v2Get('/api/positions'),
+        v2Get('/api/history'),
+        v2Get('/api/pnl'),
+        v2Get('/api/exit_config'),
+      ]);
+      const balance = bal.status === 'fulfilled' ? bal.value : null;
+      const kpiVal  = kpi.status === 'fulfilled' ? kpi.value : null;
+      const stat    = status.status === 'fulfilled' ? status.value : null;
+      const pos     = positionsRes.status === 'fulfilled' && Array.isArray(positionsRes.value) ? positionsRes.value : [];
+      const histRaw = historyRes.status === 'fulfilled' ? historyRes.value : { trades: [] };
+      const pnlVal  = pnlRes.status === 'fulfilled' ? pnlRes.value : null;
+      const histTrades = (histRaw && Array.isArray(histRaw.trades)) ? histRaw.trades : [];
+      const histAgg = (histRaw && histRaw.aggregates) || {};
+      const inPositions = pos.reduce((s, p) => s + (p.entryCostUsd || 0), 0);
+      const totalBudget = balance ? balance.totalBudgetUsd : 0;
+      const built = await safeBuildPortfolio(kpiVal);
+      const mappedTrades = histTrades.map(mapTrade);
+      const wins = mappedTrades.filter(t => t.pnl > 0).length;
+      const total = mappedTrades.length;
+      return {
+        portfolio: Object.assign({}, built, {
+          totals: {
+            in_positions: inPositions,
+            balance: totalBudget,
+            available: balance ? balance.freeUsd : 0,
+            allocated: balance ? balance.allocatedUsd : 0,
+          },
+          bots: hardcodedBots(stat),
+          mode: stat ? (stat.mode || 'DRY') : 'DRY',
+          active_positions: stat ? (stat.activePositions || 0) : 0,
+          budget: totalBudget,
+          available: balance ? balance.freeUsd : 0,
+          pnl: {
+            '1d':  pnlVal ? (pnlVal.today || 0) : 0,
+            '1w':  pnlVal ? (pnlVal.week || 0) : 0,
+            'all': pnlVal ? (pnlVal.all || 0) : (kpiVal ? (kpiVal.netPnlUsd || 0) : 0),
+            today: pnlVal ? pnlVal.today : 0,
+            week:  pnlVal ? pnlVal.week : 0,
+          },
+          chart: pnlVal && Array.isArray(pnlVal.timeseries)
+            ? pnlVal.timeseries.map(p => ({ ts: p.ts, value: p.cumulativeUsd }))
+            : [],
+        }),
+        positions: pos.map(mapPosition),
+        history: {
+          trades: mappedTrades,
+          summary: {
+            total,
+            win_rate: total ? Math.round((wins / total) * 100) : 0,
+            net_pnl: histAgg.netPnlUsd != null ? histAgg.netPnlUsd : mappedTrades.reduce((s, t) => s + (t.pnl || 0), 0),
+            wins,
+            losses: total - wins,
+          },
+        },
+        settings: settings.status === 'fulfilled' ? settings.value : {},
+      };
+    },
+
+    // /portfolio — v1 expects {totals:{in_positions, balance}, bots:[…], pnl:{1d,1w,all}, …}.
+    '/api/polymarket/portfolio': async () => {
+      const [bal, kpi, status, positionsRes, pnlRes] = await Promise.allSettled([
+        v2Get('/api/balance'),
+        v2Get('/api/kpi'),
+        v2Get('/api/status'),
+        v2Get('/api/positions'),
+        v2Get('/api/pnl'),
       ]);
       const balance = bal.status === 'fulfilled' ? bal.value : null;
       const kpiVal  = kpi.status === 'fulfilled' ? kpi.value : null;
       const stat    = status.status === 'fulfilled' ? status.value : null;
       const pos     = positionsRes.status === 'fulfilled' ? positionsRes.value : [];
+      const pnlVal  = pnlRes.status === 'fulfilled' ? pnlRes.value : null;
       const inPositions = (Array.isArray(pos) ? pos : [])
         .reduce((s, p) => s + (p.entryCostUsd || 0), 0);
+      const totalBudget = balance ? balance.totalBudgetUsd : 0;
       const built = await safeBuildPortfolio(kpiVal);
       return Object.assign({}, built, {
-        totals: { in_positions: inPositions },
+        totals: {
+          in_positions: inPositions,
+          balance: totalBudget,
+          available: balance ? balance.freeUsd : 0,
+          allocated: balance ? balance.allocatedUsd : 0,
+        },
         bots: hardcodedBots(stat),
         mode: stat ? (stat.mode || 'DRY') : 'DRY',
         active_positions: stat ? (stat.activePositions || 0) : 0,
-        budget: balance ? balance.totalBudgetUsd : 0,
+        budget: totalBudget,
         available: balance ? balance.freeUsd : 0,
+        pnl: {
+          '1d':  pnlVal ? (pnlVal.today || 0) : 0,
+          '1w':  pnlVal ? (pnlVal.week || 0) : 0,
+          'all': pnlVal ? (pnlVal.all || 0) : (kpiVal ? (kpiVal.netPnlUsd || 0) : 0),
+          today: pnlVal ? pnlVal.today : 0,
+          week:  pnlVal ? pnlVal.week : 0,
+        },
+        pnl_total: pnlVal ? pnlVal.netPnlUsd : (kpiVal ? kpiVal.netPnlUsd : 0),
+        chart: pnlVal && Array.isArray(pnlVal.timeseries)
+          ? pnlVal.timeseries.map(p => ({ ts: p.ts, value: p.cumulativeUsd }))
+          : [],
       });
     },
 
