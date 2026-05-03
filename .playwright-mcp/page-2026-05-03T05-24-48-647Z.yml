@@ -1,0 +1,409 @@
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - button "🇺🇦" [ref=e4] [cursor=pointer]
+    - generic [ref=e5]:
+      - generic [ref=e6]: OraLab
+      - generic [ref=e7]: Ora et Labora
+  - generic [ref=e8]:
+    - generic [ref=e9]:
+      - generic [ref=e10]: MODE
+      - generic [ref=e11]:
+        - button "DRY" [ref=e12] [cursor=pointer]: DRY
+        - button "LIVE" [ref=e14] [cursor=pointer]: LIVE
+      - generic [ref=e16]:
+        - generic [ref=e17]: Оновлено 08:24
+        - 'generic "Warnings: heartbeat_dead:main_loop" [ref=e243]':
+          - generic [ref=e245]: Бот офлайн · 12s ago
+    - generic [ref=e18]:
+      - generic [ref=e19]: BOTS
+      - generic [ref=e20]:
+        - generic [ref=e3283]:
+          - generic [ref=e3285]: Calibrator
+          - generic [ref=e3286]: —
+          - generic [ref=e3287]:
+            - button "▶" [ref=e3288] [cursor=pointer]
+            - button "⏹" [disabled] [ref=e3289]
+            - button "↻" [ref=e3290] [cursor=pointer]
+        - generic [ref=e3291]:
+          - generic [ref=e3293]: RTDS Feed
+          - generic [ref=e3294]: —
+          - generic [ref=e3295]:
+            - button "▶" [ref=e3296] [cursor=pointer]
+            - button "⏹" [disabled] [ref=e3297]
+            - button "↻" [ref=e3298] [cursor=pointer]
+        - generic [ref=e3299]:
+          - generic [ref=e3301]: Trader
+          - generic [ref=e3302]: —
+          - generic [ref=e3303]:
+            - button "▶" [ref=e3304] [cursor=pointer]
+            - button "⏹" [disabled] [ref=e3305]
+            - button "↻" [ref=e3306] [cursor=pointer]
+        - generic [ref=e3307]:
+          - generic [ref=e3309]: WS Feed
+          - generic [ref=e3310]: "16346"
+          - generic [ref=e3311]:
+            - button "▶" [disabled] [ref=e3312]
+            - button "⏹" [ref=e3313] [cursor=pointer]
+            - button "↻" [ref=e3314] [cursor=pointer]
+      - generic [ref=e53]:
+        - button "▶ All" [ref=e54] [cursor=pointer]
+        - button "⏹ All" [ref=e55] [cursor=pointer]
+    - generic [ref=e56]:
+      - generic [ref=e57]: HEALTH
+      - generic [ref=e59]: DEGRADED
+      - generic [ref=e61]:
+        - generic [ref=e64]: 0s ago
+        - generic [ref=e67]: 0s ago
+        - generic [ref=e70]: stopped
+        - generic [ref=e73]: 17h ago
+        - generic [ref=e76]: HTTP · 1s ago
+        - generic [ref=e78]: 83921 events · 525 whales
+    - generic [ref=e79]:
+      - generic [ref=e80]: MONITOR
+      - 'generic "P0 alerts in last 5 min: • R1_trader_pid trader — trader PID 51936 not alive (pid file present, process gone) • R3_main_loop_cycle main_loop — main_loop heartbeat stale (836184 s > 60 s) • R3_main_loop_cycle main_loop — main_loop heartbeat stale (836229 s > 60 s)" [ref=e2462] [cursor=pointer]':
+        - generic [ref=e83]: WD 🔴 4
+      - generic [ref=e84]: + майбутні перевірки
+    - generic [ref=e85]:
+      - generic [ref=e86]: CONTROL
+      - generic [ref=e87]:
+        - button "🔄 Оновити" [ref=e88] [cursor=pointer]
+        - button "♻️ Перезапуск" [ref=e89] [cursor=pointer]
+        - button "KILL" [ref=e90] [cursor=pointer]
+        - button "❌ Скидання" [ref=e92] [cursor=pointer]
+  - generic [ref=e279]:
+    - generic [ref=e280]: ⚠️
+    - generic [ref=e281]: "УВАГА: один або кілька ботів не відповідають"
+    - generic [ref=e282]: trader (dead, 836288s) · monitor (dead, 836288s)
+  - generic [ref=e93]:
+    - generic [ref=e94]:
+      - generic [ref=e95]:
+        - text: Balance
+        - button "↑ Поповнити" [ref=e96] [cursor=pointer]
+      - generic [ref=e97]: $108.52 of $111.21
+      - generic [ref=e98]:
+        - generic [ref=e99]: Позиції $2.99
+        - generic [ref=e101]: Вільно $99.50
+    - generic [ref=e104]:
+      - generic [ref=e105]: Profit & Loss
+      - generic [ref=e106]: +$2.59
+      - generic [ref=e107]:
+        - generic [ref=e108] [cursor=pointer]:
+          - generic [ref=e109]: Today
+          - generic [ref=e110]: "-$4.06"
+        - generic [ref=e111] [cursor=pointer]:
+          - generic [ref=e112]: Week
+          - generic [ref=e113]: +$2.59
+        - generic [ref=e114] [cursor=pointer]:
+          - generic [ref=e115]: All
+          - generic [ref=e116]: +$2.59
+    - generic [ref=e118]:
+      - generic [ref=e119]:
+        - generic [ref=e122]: Вхід
+        - generic [ref=e123]:
+          - generic [ref=e124]:
+            - generic [ref=e125]: Pass Rate
+            - generic [ref=e126]: 0.1%
+            - generic [ref=e284]: 2 pipe + 0 conv / 1466
+          - generic [ref=e127]:
+            - generic [ref=e128]: Топ відхилення
+            - generic [ref=e129]: —
+          - generic [ref=e130]:
+            - generic [ref=e131]: Signals/hr
+            - generic [ref=e132]: "61"
+            - generic [ref=e285]: ~1466/day
+          - generic [ref=e133]:
+            - generic [ref=e134]: CF чистий
+            - generic [ref=e135]: +$0.00
+            - generic [ref=e286]: $0.00 saved
+      - generic [ref=e136]:
+        - generic [ref=e139]: Вихід
+        - generic [ref=e140]:
+          - generic [ref=e141]:
+            - generic [ref=e142]: TP спрацьованість
+            - generic [ref=e143]: 25.4%
+            - generic [ref=e287]: target ≥35%
+          - generic [ref=e144]:
+            - generic [ref=e145]: SL частота
+            - generic [ref=e146]: 22.3%
+            - generic [ref=e288]: target <30%
+          - generic [ref=e147]:
+            - generic [ref=e148]: Ефективність виходу
+            - generic [ref=e149]: 165.3%
+            - generic [ref=e289]: realized/peak
+          - generic [ref=e150]:
+            - generic [ref=e151]: Втрачено
+            - generic [ref=e152]: "-65.3%"
+            - generic [ref=e290]: unrealized upside
+      - generic [ref=e153]:
+        - generic [ref=e156]: Результат
+        - generic [ref=e157]:
+          - generic [ref=e158]:
+            - generic [ref=e159]: Win Rate
+            - generic [ref=e160]: 55%
+            - generic [ref=e161]: 16W 13L
+          - generic [ref=e162]:
+            - generic [ref=e163]: Profit Factor
+            - generic [ref=e164]: "1.17"
+            - generic [ref=e291]: $10.98W / $9.42L
+          - generic [ref=e165]:
+            - generic [ref=e166]: Avg PnL/Trade
+            - generic [ref=e167]: +$0.36
+            - generic [ref=e168]: 29 closed trades
+          - generic [ref=e169]:
+            - generic [ref=e170]: Max Drawdown
+            - generic [ref=e171]: "-$4.11"
+            - generic [ref=e292]: peak→trough
+      - generic [ref=e172]:
+        - generic [ref=e175]: Технічні
+        - generic [ref=e176]:
+          - generic [ref=e177]:
+            - generic [ref=e178]: Avg Latency
+            - generic [ref=e179]: 3.5s
+            - generic [ref=e293]: Очікування циклу
+          - generic [ref=e180]:
+            - generic [ref=e181]: Avg Duration
+            - generic [ref=e182]: 1.7h
+            - generic [ref=e294]: 29 closed · 2 open
+          - generic [ref=e183]:
+            - generic [ref=e184]: Exposure
+            - generic [ref=e185]: 3%
+            - generic [ref=e186]: $2.99 / $111.51
+          - generic [ref=e187]:
+            - generic [ref=e188]: Відкриті позиції
+            - generic [ref=e189]: "1"
+            - generic [ref=e190]: position
+  - generic [ref=e191]:
+    - button "Трейди 30" [ref=e192] [cursor=pointer]:
+      - generic [ref=e193]: Трейди
+      - generic [ref=e194]: "30"
+    - button "Налаштування" [ref=e195] [cursor=pointer]
+    - button "🐋 Whales 1504" [ref=e295] [cursor=pointer]:
+      - generic [ref=e197]: 🐋 Whales
+      - generic [ref=e198]: "1504"
+    - button "⚙️ Калібрація" [ref=e199] [cursor=pointer]
+    - button "⚡ Chain" [ref=e200] [cursor=pointer]
+    - button "📋 Логи" [ref=e201] [cursor=pointer]
+    - generic [ref=e202]: Оновлено 08:24
+  - generic [ref=e1616]:
+    - generic [ref=e1617]:
+      - generic [ref=e1618]: WATCH
+      - generic [ref=e1619]:
+        - generic [ref=e1620]: "Цикл:"
+        - strong [ref=e1621]: 8 хв тому · наст. ~10:13
+      - generic [ref=e1622]:
+        - generic [ref=e1623]: "Точок даних:"
+        - strong [ref=e1624]: "29"
+      - generic [ref=e1625]:
+        - generic [ref=e1626]: "Історія:"
+        - strong [ref=e1627]: "20"
+      - generic [ref=e1628]:
+        - button "manual" [ref=e1629] [cursor=pointer]
+        - button "watch" [ref=e1630] [cursor=pointer]
+        - button "auto" [ref=e1631] [cursor=pointer]
+      - button "Запустити" [ref=e1632] [cursor=pointer]
+    - generic [ref=e1633]:
+      - button "Огляд" [ref=e1634] [cursor=pointer]:
+        - generic [ref=e1635]: Огляд
+      - button "Entry" [ref=e1636] [cursor=pointer]
+      - button "Exit" [ref=e1637] [cursor=pointer]
+      - button "Whales" [ref=e1638] [cursor=pointer]
+      - button "Спорт" [ref=e1639] [cursor=pointer]
+      - button "Лог" [ref=e1640] [cursor=pointer]
+      - button "Налаштування" [active] [ref=e1641] [cursor=pointer]
+    - generic [ref=e3317]:
+      - generic [ref=e3320]:
+        - generic [ref=e3321]: Multi-KPI ObjectiveНОВЕ
+        - generic [ref=e3322]:
+          - generic [ref=e3323]:
+            - generic [ref=e3324]:
+              - generic [ref=e3325]: MIN_LIFT_THRESHOLD — поріг застосування рекомендації
+              - generic [ref=e3326]: MIN_LIFT_THRESHOLD
+            - generic [ref=e3327]:
+              - spinbutton [ref=e3328]: "0.08"
+              - generic [ref=e3329]: "(за замовчуванням: 0.08)"
+          - generic [ref=e3330]:
+            - generic [ref=e3331]:
+              - generic [ref=e3332]: Importance · Win Rate
+              - generic [ref=e3333]: IMPORTANCE_WIN_RATE
+            - generic [ref=e3334]:
+              - spinbutton [ref=e3335]: "3"
+              - generic [ref=e3336]: "(за замовчуванням: 3)"
+          - generic [ref=e3337]:
+            - generic [ref=e3338]:
+              - generic [ref=e3339]: Importance · Profit Factor
+              - generic [ref=e3340]: IMPORTANCE_PROFIT_FACTOR
+            - generic [ref=e3341]:
+              - spinbutton [ref=e3342]: "3"
+              - generic [ref=e3343]: "(за замовчуванням: 3)"
+          - generic [ref=e3344]:
+            - generic [ref=e3345]:
+              - generic [ref=e3346]: Importance · avg_pnl
+              - generic [ref=e3347]: IMPORTANCE_AVG_PNL
+            - generic [ref=e3348]:
+              - spinbutton [ref=e3349]: "2"
+              - generic [ref=e3350]: "(за замовчуванням: 2)"
+          - generic [ref=e3351]:
+            - generic [ref=e3352]:
+              - generic [ref=e3353]: Importance · pass_rate
+              - generic [ref=e3354]: IMPORTANCE_PASS_RATE
+            - generic [ref=e3355]:
+              - spinbutton [ref=e3356]: "1"
+              - generic [ref=e3357]: "(за замовчуванням: 1)"
+          - generic [ref=e3358]:
+            - generic [ref=e3359]:
+              - generic [ref=e3360]: Importance · sl_rate
+              - generic [ref=e3361]: IMPORTANCE_SL_RATE
+            - generic [ref=e3362]:
+              - spinbutton [ref=e3363]: "2"
+              - generic [ref=e3364]: "(за замовчуванням: 2)"
+          - generic [ref=e3365]:
+            - generic [ref=e3366]:
+              - generic [ref=e3367]: Importance · tp_hit_rate
+              - generic [ref=e3368]: IMPORTANCE_TP_HIT_RATE
+            - generic [ref=e3369]:
+              - spinbutton [ref=e3370]: "1.5"
+              - generic [ref=e3371]: "(за замовчуванням: 1.5)"
+          - generic [ref=e3372]:
+            - generic [ref=e3373]:
+              - generic [ref=e3374]: Importance · exit_efficiency
+              - generic [ref=e3375]: IMPORTANCE_EXIT_EFFICIENCY
+            - generic [ref=e3376]:
+              - spinbutton [ref=e3377]: "1"
+              - generic [ref=e3378]: "(за замовчуванням: 1)"
+          - generic [ref=e3379]:
+            - generic [ref=e3380]:
+              - generic [ref=e3381]: Importance · left_on_table
+              - generic [ref=e3382]: IMPORTANCE_LEFT_ON_TABLE
+            - generic [ref=e3383]:
+              - spinbutton [ref=e3384]: "1"
+              - generic [ref=e3385]: "(за замовчуванням: 1)"
+      - generic [ref=e3388]:
+        - generic [ref=e3389]: Counterfactual Tracking
+        - generic [ref=e3390]:
+          - generic [ref=e3391]:
+            - generic [ref=e3392]:
+              - generic [ref=e3393]: Вікно відстеження
+              - generic [ref=e3394]: CF_TRACKING_WINDOW
+            - generic [ref=e3395]:
+              - spinbutton [ref=e3396]: "6"
+              - generic [ref=e3397]: год
+              - generic [ref=e3398]: "(за замовчуванням: 6 год)"
+          - generic [ref=e3399]:
+            - generic [ref=e3400]:
+              - generic [ref=e3401]: Інтервал перевірки
+              - generic [ref=e3402]: CF_CHECK_INTERVAL
+            - generic [ref=e3403]:
+              - spinbutton [ref=e3404]: "5"
+              - generic [ref=e3405]: хв
+              - generic [ref=e3406]: "(за замовчуванням: 5 хв)"
+          - generic [ref=e3407]:
+            - generic [ref=e3408]:
+              - generic [ref=e3409]: Зберігати через рестарт
+              - generic [ref=e3410]: CF_PERSIST
+            - generic [ref=e3411]:
+              - checkbox [checked] [ref=e3413] [cursor=pointer]
+              - generic [ref=e3414]: "(за замовчуванням: true)"
+          - generic [ref=e3415]:
+            - generic [ref=e3416]:
+              - generic [ref=e3417]: Макс. очікуючих
+              - generic [ref=e3418]: CF_MAX_PENDING
+            - generic [ref=e3419]:
+              - spinbutton [ref=e3420]: "1000"
+              - generic [ref=e3421]: "(за замовчуванням: 1000)"
+      - generic [ref=e3424]:
+        - generic [ref=e3425]: Calibrator Engine
+        - generic [ref=e3426]:
+          - generic [ref=e3427]:
+            - generic [ref=e3428]:
+              - generic [ref=e3429]: Інтервал запуску
+              - generic [ref=e3430]: CAL_RUN_INTERVAL
+            - generic [ref=e3431]:
+              - spinbutton [ref=e3432]: "30"
+              - generic [ref=e3433]: хв
+              - generic [ref=e3434]: "(за замовчуванням: 30 хв)"
+          - generic [ref=e3435]:
+            - generic [ref=e3436]:
+              - generic [ref=e3437]: Мін. трейдів для аналізу
+              - generic [ref=e3438]: CAL_MIN_TRADES
+            - generic [ref=e3439]:
+              - spinbutton [ref=e3440]: "20"
+              - generic [ref=e3441]: "(за замовчуванням: 20)"
+          - generic [ref=e3442]:
+            - generic [ref=e3443]:
+              - generic [ref=e3444]: Макс. крок зміни
+              - generic [ref=e3445]: CAL_MAX_STEP
+            - generic [ref=e3446]:
+              - spinbutton [ref=e3447]: "15.0"
+              - generic [ref=e3448]: "%"
+              - generic [ref=e3449]: "(за замовчуванням: 15.0 %)"
+          - generic [ref=e3450]:
+            - generic [ref=e3451]:
+              - generic [ref=e3452]: Макс. рекомендацій
+              - generic [ref=e3453]: CAL_MAX_RECS
+            - generic [ref=e3454]:
+              - spinbutton [ref=e3455]: "3"
+              - generic [ref=e3456]: "(за замовчуванням: 3)"
+      - generic [ref=e3459]:
+        - generic [ref=e3460]: Time Decay
+        - generic [ref=e3461]:
+          - generic [ref=e3462]:
+            - generic [ref=e3463]:
+              - generic [ref=e3464]: Період напіврозпаду
+              - generic [ref=e3465]: DECAY_HALF_LIFE
+            - generic [ref=e3466]:
+              - spinbutton [ref=e3467]: "7.0"
+              - generic [ref=e3468]: дн
+              - generic [ref=e3469]: "(за замовчуванням: 7.0 дн)"
+          - generic [ref=e3470]:
+            - generic [ref=e3471]:
+              - generic [ref=e3472]: Мін. вага
+              - generic [ref=e3473]: DECAY_MIN_WEIGHT
+            - generic [ref=e3474]:
+              - spinbutton [ref=e3475]: "0.05"
+              - generic [ref=e3476]: "(за замовчуванням: 0.05)"
+      - generic [ref=e3479]:
+        - generic [ref=e3480]: Bayesian Confidence
+        - generic [ref=e3481]:
+          - generic [ref=e3482]:
+            - generic [ref=e3483]:
+              - generic [ref=e3484]: Поріг стабільності
+              - generic [ref=e3485]: BAYES_STABLE_THRESHOLD
+            - generic [ref=e3486]:
+              - spinbutton [ref=e3487]: "0.7"
+              - generic [ref=e3488]: "(за замовчуванням: 0.7)"
+          - generic [ref=e3489]:
+            - generic [ref=e3490]:
+              - generic [ref=e3491]: Поріг невизначеності
+              - generic [ref=e3492]: BAYES_UNCERTAIN_THRESHOLD
+            - generic [ref=e3493]:
+              - spinbutton [ref=e3494]: "0.5"
+              - generic [ref=e3495]: "(за замовчуванням: 0.5)"
+          - generic [ref=e3496]:
+            - generic [ref=e3497]:
+              - generic [ref=e3498]: Мін. впевненість для auto
+              - generic [ref=e3499]: BAYES_AUTO_MIN_CONF
+            - generic [ref=e3500]:
+              - spinbutton [ref=e3501]: "0.7"
+              - generic [ref=e3502]: "(за замовчуванням: 0.7)"
+      - generic [ref=e3505]:
+        - generic [ref=e3506]: Safety Guardrails
+        - generic [ref=e3507]:
+          - generic [ref=e3508]:
+            - generic [ref=e3509]:
+              - generic [ref=e3510]: WR падіння для rollback
+              - generic [ref=e3511]: SAFETY_WR_DROP_ROLLBACK
+            - generic [ref=e3512]:
+              - spinbutton [ref=e3513]: "8"
+              - generic [ref=e3514]: pp
+              - generic [ref=e3515]: "(за замовчуванням: 8 pp)"
+          - generic [ref=e3516]:
+            - generic [ref=e3517]:
+              - generic [ref=e3518]: Таймаут верифікації
+              - generic [ref=e3519]: SAFETY_VERIFY_TIMEOUT
+            - generic [ref=e3520]:
+              - spinbutton [ref=e3521]: "30"
+              - generic [ref=e3522]: с
+              - generic [ref=e3523]: "(за замовчуванням: 30 с)"
+      - generic [ref=e3524]:
+        - button "Скинути до початкових" [ref=e3525] [cursor=pointer]
+        - button "Зберегти налаштування" [ref=e3526] [cursor=pointer]

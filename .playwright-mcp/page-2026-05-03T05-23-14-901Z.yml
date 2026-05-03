@@ -1,0 +1,233 @@
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - button "🇺🇦" [ref=e4] [cursor=pointer]
+    - generic [ref=e5]:
+      - generic [ref=e6]: OraLab
+      - generic [ref=e7]: Ora et Labora
+  - generic [ref=e8]:
+    - generic [ref=e9]:
+      - generic [ref=e10]: MODE
+      - generic [ref=e11]:
+        - button "DRY" [ref=e12] [cursor=pointer]: DRY
+        - button "LIVE" [ref=e14] [cursor=pointer]: LIVE
+      - generic [ref=e16]:
+        - generic [ref=e17]: Оновлено 08:23
+        - 'generic "Warnings: heartbeat_dead:main_loop" [ref=e243]':
+          - generic [ref=e245]: Бот офлайн · 24s ago
+    - generic [ref=e18]:
+      - generic [ref=e19]: BOTS
+      - generic [ref=e20]:
+        - generic [ref=e1994]:
+          - generic [ref=e1996]: Calibrator
+          - generic [ref=e1997]: —
+          - generic [ref=e1998]:
+            - button "▶" [ref=e1999] [cursor=pointer]
+            - button "⏹" [disabled] [ref=e2000]
+            - button "↻" [ref=e2001] [cursor=pointer]
+        - generic [ref=e2002]:
+          - generic [ref=e2004]: RTDS Feed
+          - generic [ref=e2005]: —
+          - generic [ref=e2006]:
+            - button "▶" [ref=e2007] [cursor=pointer]
+            - button "⏹" [disabled] [ref=e2008]
+            - button "↻" [ref=e2009] [cursor=pointer]
+        - generic [ref=e2010]:
+          - generic [ref=e2012]: Trader
+          - generic [ref=e2013]: —
+          - generic [ref=e2014]:
+            - button "▶" [ref=e2015] [cursor=pointer]
+            - button "⏹" [disabled] [ref=e2016]
+            - button "↻" [ref=e2017] [cursor=pointer]
+        - generic [ref=e2018]:
+          - generic [ref=e2020]: WS Feed
+          - generic [ref=e2021]: "16346"
+          - generic [ref=e2022]:
+            - button "▶" [disabled] [ref=e2023]
+            - button "⏹" [ref=e2024] [cursor=pointer]
+            - button "↻" [ref=e2025] [cursor=pointer]
+      - generic [ref=e53]:
+        - button "▶ All" [ref=e54] [cursor=pointer]
+        - button "⏹ All" [ref=e55] [cursor=pointer]
+    - generic [ref=e56]:
+      - generic [ref=e57]: HEALTH
+      - generic [ref=e59]: DEGRADED
+      - generic [ref=e61]:
+        - generic [ref=e64]: 0s ago
+        - generic [ref=e67]: 0s ago
+        - generic [ref=e70]: stopped
+        - generic [ref=e73]: 17h ago
+        - generic [ref=e76]: HTTP · 1s ago
+        - generic [ref=e78]: 83921 events · 525 whales
+    - generic [ref=e79]:
+      - generic [ref=e80]: MONITOR
+      - 'generic "P0 alerts in last 5 min: • R1_trader_pid trader — trader PID 51936 not alive (pid file present, process gone) • R3_main_loop_cycle main_loop — main_loop heartbeat stale (836184 s > 60 s)" [ref=e1992] [cursor=pointer]':
+        - generic [ref=e83]: WD 🔴 3
+      - generic [ref=e84]: + майбутні перевірки
+    - generic [ref=e85]:
+      - generic [ref=e86]: CONTROL
+      - generic [ref=e87]:
+        - button "🔄 Оновити" [ref=e88] [cursor=pointer]
+        - button "♻️ Перезапуск" [ref=e89] [cursor=pointer]
+        - button "KILL" [ref=e90] [cursor=pointer]
+        - button "❌ Скидання" [ref=e92] [cursor=pointer]
+  - generic [ref=e279]:
+    - generic [ref=e280]: ⚠️
+    - generic [ref=e281]: "УВАГА: один або кілька ботів не відповідають"
+    - generic [ref=e282]: trader (dead, 836188s) · monitor (dead, 836188s)
+  - generic [ref=e93]:
+    - generic [ref=e94]:
+      - generic [ref=e95]:
+        - text: Balance
+        - button "↑ Поповнити" [ref=e96] [cursor=pointer]
+      - generic [ref=e97]: $108.52 of $111.21
+      - generic [ref=e98]:
+        - generic [ref=e99]: Позиції $2.99
+        - generic [ref=e101]: Вільно $99.50
+    - generic [ref=e104]:
+      - generic [ref=e105]: Profit & Loss
+      - generic [ref=e106]: +$2.59
+      - generic [ref=e107]:
+        - generic [ref=e108] [cursor=pointer]:
+          - generic [ref=e109]: Today
+          - generic [ref=e110]: "-$4.06"
+        - generic [ref=e111] [cursor=pointer]:
+          - generic [ref=e112]: Week
+          - generic [ref=e113]: +$2.59
+        - generic [ref=e114] [cursor=pointer]:
+          - generic [ref=e115]: All
+          - generic [ref=e116]: +$2.59
+    - generic [ref=e118]:
+      - generic [ref=e119]:
+        - generic [ref=e122]: Вхід
+        - generic [ref=e123]:
+          - generic [ref=e124]:
+            - generic [ref=e125]: Pass Rate
+            - generic [ref=e126]: 0.1%
+            - generic [ref=e284]: 2 pipe + 0 conv / 1466
+          - generic [ref=e127]:
+            - generic [ref=e128]: Топ відхилення
+            - generic [ref=e129]: —
+          - generic [ref=e130]:
+            - generic [ref=e131]: Signals/hr
+            - generic [ref=e132]: "61"
+            - generic [ref=e285]: ~1466/day
+          - generic [ref=e133]:
+            - generic [ref=e134]: CF чистий
+            - generic [ref=e135]: +$0.00
+            - generic [ref=e286]: $0.00 saved
+      - generic [ref=e136]:
+        - generic [ref=e139]: Вихід
+        - generic [ref=e140]:
+          - generic [ref=e141]:
+            - generic [ref=e142]: TP спрацьованість
+            - generic [ref=e143]: 25.4%
+            - generic [ref=e287]: target ≥35%
+          - generic [ref=e144]:
+            - generic [ref=e145]: SL частота
+            - generic [ref=e146]: 22.3%
+            - generic [ref=e288]: target <30%
+          - generic [ref=e147]:
+            - generic [ref=e148]: Ефективність виходу
+            - generic [ref=e149]: 165.3%
+            - generic [ref=e289]: realized/peak
+          - generic [ref=e150]:
+            - generic [ref=e151]: Втрачено
+            - generic [ref=e152]: "-65.3%"
+            - generic [ref=e290]: unrealized upside
+      - generic [ref=e153]:
+        - generic [ref=e156]: Результат
+        - generic [ref=e157]:
+          - generic [ref=e158]:
+            - generic [ref=e159]: Win Rate
+            - generic [ref=e160]: 55%
+            - generic [ref=e161]: 16W 13L
+          - generic [ref=e162]:
+            - generic [ref=e163]: Profit Factor
+            - generic [ref=e164]: "1.17"
+            - generic [ref=e291]: $10.98W / $9.42L
+          - generic [ref=e165]:
+            - generic [ref=e166]: Avg PnL/Trade
+            - generic [ref=e167]: +$0.36
+            - generic [ref=e168]: 29 closed trades
+          - generic [ref=e169]:
+            - generic [ref=e170]: Max Drawdown
+            - generic [ref=e171]: "-$4.11"
+            - generic [ref=e292]: peak→trough
+      - generic [ref=e172]:
+        - generic [ref=e175]: Технічні
+        - generic [ref=e176]:
+          - generic [ref=e177]:
+            - generic [ref=e178]: Avg Latency
+            - generic [ref=e179]: 3.5s
+            - generic [ref=e293]: Очікування циклу
+          - generic [ref=e180]:
+            - generic [ref=e181]: Avg Duration
+            - generic [ref=e182]: 1.7h
+            - generic [ref=e294]: 29 closed · 2 open
+          - generic [ref=e183]:
+            - generic [ref=e184]: Exposure
+            - generic [ref=e185]: 3%
+            - generic [ref=e186]: $2.99 / $111.51
+          - generic [ref=e187]:
+            - generic [ref=e188]: Відкриті позиції
+            - generic [ref=e189]: "1"
+            - generic [ref=e190]: position
+  - generic [ref=e191]:
+    - button "Трейди 30" [ref=e192] [cursor=pointer]:
+      - generic [ref=e193]: Трейди
+      - generic [ref=e194]: "30"
+    - button "Налаштування" [ref=e195] [cursor=pointer]
+    - button "🐋 Whales 1504" [ref=e295] [cursor=pointer]:
+      - generic [ref=e197]: 🐋 Whales
+      - generic [ref=e198]: "1504"
+    - button "⚙️ Калібрація" [ref=e199] [cursor=pointer]
+    - button "⚡ Chain" [ref=e200] [cursor=pointer]
+    - button "📋 Логи" [ref=e201] [cursor=pointer]
+    - generic [ref=e202]: Оновлено 08:23
+  - generic [ref=e1616]:
+    - generic [ref=e1617]:
+      - generic [ref=e1618]: WATCH
+      - generic [ref=e1619]:
+        - generic [ref=e1620]: "Цикл:"
+        - strong [ref=e1621]: 8 хв тому · наст. ~10:13
+      - generic [ref=e1622]:
+        - generic [ref=e1623]: "Точок даних:"
+        - strong [ref=e1624]: "29"
+      - generic [ref=e1625]:
+        - generic [ref=e1626]: "Історія:"
+        - strong [ref=e1627]: "20"
+      - generic [ref=e1628]:
+        - button "manual" [ref=e1629] [cursor=pointer]
+        - button "watch" [ref=e1630] [cursor=pointer]
+        - button "auto" [ref=e1631] [cursor=pointer]
+      - button "Запустити" [ref=e1632] [cursor=pointer]
+    - generic [ref=e1633]:
+      - button "Огляд" [ref=e1634] [cursor=pointer]:
+        - generic [ref=e1635]: Огляд
+      - button "Entry" [active] [ref=e1636] [cursor=pointer]
+      - button "Exit" [ref=e1637] [cursor=pointer]
+      - button "Whales" [ref=e1638] [cursor=pointer]
+      - button "Спорт" [ref=e1639] [cursor=pointer]
+      - button "Лог" [ref=e1640] [cursor=pointer]
+      - button "Налаштування" [ref=e1641] [cursor=pointer]
+    - generic [ref=e2028]:
+      - generic [ref=e2029]:
+        - generic [ref=e2030]: НОВЕ
+        - generic [ref=e2031]:
+          - generic [ref=e2033]: Lift matrix по entry-леверах
+          - generic [ref=e2034]: multi-KPI
+        - generic [ref=e2035]: Поки немає пропозицій із балом ≥ 0.08. Матриця заповниться, коли з закритих трейдів набереться достатньо даних для оцінки ефекту зміни. Перевір пізніше або знизь поріг MIN_LIFT_THRESHOLD у Settings.
+        - generic [ref=e2036]: "Кожен рядок — ідея зрушити поріг якогось фільтра. Колонки Δ показують, як змінилися б KPI, якби зміну прийняли (плюс — на краще; для sl_rate менше означає краще). Score — загальний бал корисності: якщо ≥ MIN_LIFT_THRESHOLD, зміна потрапляє до рекомендацій зверху і застосовується. Нижчі бали лежать у запасі, доки не набереться більше даних або KPI не почне сильніше тиснути. Зелений рядок = бал вище порогу."
+      - generic [ref=e2037]:
+        - generic [ref=e2038]:
+          - generic [ref=e2040]: $ Вартість фільтрів
+          - generic [ref=e2041]: "0"
+        - generic [ref=e2042]: "Counterfactual аналіз: скільки грошей зберіг/втратив кожен фільтр. Saved — відхилений сигнал пішов у мінус (правильне рішення). Lost — відхилений сигнал пішов у плюс (пропущений прибуток)."
+        - generic [ref=e2043]: Ще немає відхилених сигналів для аналізу. Дані з’являться після перших reject-ів у pipeline.
+      - generic [ref=e2044]:
+        - generic [ref=e2045]:
+          - generic [ref=e2047]: Байєсівська впевненість
+          - generic [ref=e2048]: "0"
+        - generic [ref=e2049]: Впевненість системи в оцінці кожного фільтра. Зростає з кількістю даних. Фільтри ≥70% (стабільний) — готові для автоматичних рекомендацій.
+        - generic [ref=e2050]: Bayesian модель ще не отримала даних. Дані з’являться після запуску калібратора з достатньою кількістю трейдів.
+      - generic [ref=e2051]: "Оновлено: 08:23:12"

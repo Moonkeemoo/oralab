@@ -663,18 +663,63 @@ async function handleFilterRegistry(): Promise<unknown> {
   return { count: FILTER_REGISTRY.length, filters: FILTER_REGISTRY };
 }
 
-async function handleWhalesList(): Promise<unknown> {
+async function handleWhalesList(req: http.IncomingMessage): Promise<unknown> {
+  const url = new URL(req.url ?? "/", "http://x");
+  const limit = Math.min(2000, Math.max(1, Number(url.searchParams.get("limit") ?? 1500)));
+  const offset = Math.max(0, Number(url.searchParams.get("offset") ?? 0));
+  const filter = (url.searchParams.get("classification") ?? "").toUpperCase();
+  const trackedOnly = url.searchParams.get("trackedOnly") === "true";
   const db = getDb();
+  // Counts: total + by classification — drives the "all 1505 / INFORMED 9" pills
+  const totalsRows = (await db.execute(sql`
+    SELECT
+      count(*)                                              AS total,
+      count(*) FILTER (WHERE tracked)                       AS tracked,
+      count(*) FILTER (WHERE classification='INFORMED')     AS informed,
+      count(*) FILTER (WHERE classification='SHARP')        AS sharp,
+      count(*) FILTER (WHERE classification='SNIPER')       AS sniper,
+      count(*) FILTER (WHERE classification='FOLLOWER')     AS follower,
+      count(*) FILTER (WHERE classification='COPYCAT')      AS copycat,
+      count(*) FILTER (WHERE classification='NOISE')        AS noise,
+      count(*) FILTER (WHERE classification='MARKET_MAKER') AS market_maker
+    FROM whales
+  `)) as unknown as Array<Record<string, string>>;
+  const t = totalsRows[0] ?? {};
+  const num = (k: string): number => Number(t[k] ?? 0);
+
+  const where = [];
+  if (trackedOnly) where.push(eq(whales.tracked, true));
+  if (filter && /^[A-Z_]{3,16}$/.test(filter)) where.push(eq(whales.classification, filter));
   const rows = await db.query.whales.findMany({
-    orderBy: (cols, { desc }) => [desc(cols.tracked), desc(cols.confidence)],
-    limit: 200,
+    where: where.length > 0 ? and(...where) : undefined,
+    orderBy: (cols, { desc: d }) => [d(cols.tracked), d(cols.confidence)],
+    limit,
+    offset,
   });
-  return rows.map((w) => ({
-    address: w.address,
-    classification: w.classification,
-    confidence: Number(w.confidence ?? 0),
-    tracked: w.tracked,
-  }));
+
+  return {
+    total: num("total"),
+    counts: {
+      tracked: num("tracked"),
+      INFORMED: num("informed"),
+      SHARP: num("sharp"),
+      SNIPER: num("sniper"),
+      FOLLOWER: num("follower"),
+      COPYCAT: num("copycat"),
+      NOISE: num("noise"),
+      MARKET_MAKER: num("market_maker"),
+    },
+    page: { limit, offset, returned: rows.length },
+    items: rows.map((w) => ({
+      address: w.address,
+      classification: w.classification,
+      confidence: Number(w.confidence ?? 0),
+      smScore: Number(w.smScore ?? 0),
+      trustScore: Number(w.trustScore ?? 0),
+      winRate: Number(w.winRate ?? 0),
+      tracked: w.tracked,
+    })),
+  };
 }
 
 async function handleConnections(): Promise<unknown> {
@@ -1106,6 +1151,8 @@ async function handleCalibratorRecommendations(): Promise<unknown> {
       confidence: r.confidence,
       sampleSize: r.sampleSize,
       reason: r.reason,
+      liftMatrix: r.liftMatrix ?? null,
+      aims: r.aims ?? null,
     })),
   };
 }
@@ -1486,7 +1533,7 @@ export function createRestServer(): http.Server {
           const result = await handleWhaleProfile(whaleProfileMatch[1]);
           return send(res, (result as { error?: unknown }).error ? 404 : 200, result);
         }
-        if (req.url === "/api/whales") return send(res, 200, await handleWhalesList());
+        if (req.url?.startsWith("/api/whales") && !req.url.includes("/profile") && !req.url.includes("/track")) return send(res, 200, await handleWhalesList(req));
         if (req.url === "/api/connections") return send(res, 200, await handleConnections());
         if (req.url === "/api/perf") return send(res, 200, await handlePerf());
         if (req.url?.startsWith("/api/audit")) return send(res, 200, await handleAudit(req));

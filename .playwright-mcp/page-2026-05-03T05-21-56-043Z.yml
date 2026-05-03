@@ -1,0 +1,204 @@
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - button "🇺🇦" [ref=e4] [cursor=pointer]
+    - generic [ref=e5]:
+      - generic [ref=e6]: OraLab
+      - generic [ref=e7]: Ora et Labora
+  - generic [ref=e8]:
+    - generic [ref=e9]:
+      - generic [ref=e10]: MODE
+      - generic [ref=e11]:
+        - button "DRY" [ref=e12] [cursor=pointer]: DRY
+        - button "LIVE" [ref=e14] [cursor=pointer]: LIVE
+      - generic [ref=e17]: Оновлено 08:21
+    - generic [ref=e18]:
+      - generic [ref=e19]: BOTS
+      - generic [ref=e20]:
+        - generic [ref=e21]:
+          - generic [ref=e23]: Calibrator
+          - generic [ref=e24]: —
+          - generic [ref=e25]:
+            - button "▶" [ref=e26] [cursor=pointer]
+            - button "⏹" [disabled] [ref=e27]
+            - button "↻" [ref=e28] [cursor=pointer]
+        - generic [ref=e29]:
+          - generic [ref=e31]: RTDS Feed
+          - generic [ref=e32]: —
+          - generic [ref=e33]:
+            - button "▶" [ref=e34] [cursor=pointer]
+            - button "⏹" [disabled] [ref=e35]
+            - button "↻" [ref=e36] [cursor=pointer]
+        - generic [ref=e37]:
+          - generic [ref=e39]: Trader
+          - generic [ref=e40]: —
+          - generic [ref=e41]:
+            - button "▶" [ref=e42] [cursor=pointer]
+            - button "⏹" [disabled] [ref=e43]
+            - button "↻" [ref=e44] [cursor=pointer]
+        - generic [ref=e45]:
+          - generic [ref=e47]: WS Feed
+          - generic [ref=e48]: "16346"
+          - generic [ref=e49]:
+            - button "▶" [disabled] [ref=e50]
+            - button "⏹" [ref=e51] [cursor=pointer]
+            - button "↻" [ref=e52] [cursor=pointer]
+      - generic [ref=e53]:
+        - button "▶ All" [ref=e54] [cursor=pointer]
+        - button "⏹ All" [ref=e55] [cursor=pointer]
+    - generic [ref=e56]:
+      - generic [ref=e57]: HEALTH
+      - generic [ref=e59]: DEGRADED
+      - generic [ref=e61]:
+        - generic [ref=e64]: WS —
+        - generic [ref=e67]: Prices —
+        - generic [ref=e70]: Trader —
+        - generic [ref=e73]: Decisions —
+        - generic [ref=e76]: Chain —
+        - generic [ref=e78]: —
+    - generic [ref=e79]:
+      - generic [ref=e80]: MONITOR
+      - generic "Watchdog daemon is not running. Click to start." [ref=e81] [cursor=pointer]:
+        - generic [ref=e83]: WD ✕
+      - generic [ref=e84]: + майбутні перевірки
+    - generic [ref=e85]:
+      - generic [ref=e86]: CONTROL
+      - generic [ref=e87]:
+        - button "🔄 Оновити" [ref=e88] [cursor=pointer]
+        - button "♻️ Перезапуск" [ref=e89] [cursor=pointer]
+        - button "KILL" [ref=e90] [cursor=pointer]
+        - button "❌ Скидання" [ref=e92] [cursor=pointer]
+  - generic [ref=e93]:
+    - generic [ref=e94]:
+      - generic [ref=e95]:
+        - text: Balance
+        - button "↑ Поповнити" [ref=e96] [cursor=pointer]
+      - generic [ref=e97]: —
+      - generic [ref=e98]:
+        - generic [ref=e99]: Позиції —
+        - generic [ref=e101]: Вільно —
+    - generic [ref=e104]:
+      - generic [ref=e105]: Profit & Loss
+      - generic [ref=e106]: +$2.59
+      - generic [ref=e107]:
+        - generic [ref=e108] [cursor=pointer]:
+          - generic [ref=e109]: Today
+          - generic [ref=e110]: "-$4.06"
+        - generic [ref=e111] [cursor=pointer]:
+          - generic [ref=e112]: Week
+          - generic [ref=e113]: +$2.59
+        - generic [ref=e114] [cursor=pointer]:
+          - generic [ref=e115]: All
+          - generic [ref=e116]: +$2.59
+    - generic [ref=e118]:
+      - generic [ref=e119]:
+        - generic [ref=e122]: Вхід
+        - generic [ref=e123]:
+          - generic [ref=e124]:
+            - generic [ref=e125]: Pass Rate
+            - generic [ref=e126]: —
+          - generic [ref=e127]:
+            - generic [ref=e128]: Топ відхилення
+            - generic [ref=e129]: —
+          - generic [ref=e130]:
+            - generic [ref=e131]: Signals/hr
+            - generic [ref=e132]: —
+          - generic [ref=e133]:
+            - generic [ref=e134]: CF чистий
+            - generic [ref=e135]: —
+      - generic [ref=e136]:
+        - generic [ref=e139]: Вихід
+        - generic [ref=e140]:
+          - generic [ref=e141]:
+            - generic [ref=e142]: TP спрацьованість
+            - generic [ref=e143]: —
+          - generic [ref=e144]:
+            - generic [ref=e145]: SL частота
+            - generic [ref=e146]: —
+          - generic [ref=e147]:
+            - generic [ref=e148]: Ефективність виходу
+            - generic [ref=e149]: —
+          - generic [ref=e150]:
+            - generic [ref=e151]: Втрачено
+            - generic [ref=e152]: —
+      - generic [ref=e153]:
+        - generic [ref=e156]: Результат
+        - generic [ref=e157]:
+          - generic [ref=e158]:
+            - generic [ref=e159]: Win Rate
+            - generic [ref=e160]: 55%
+            - generic [ref=e161]: 16W 13L
+          - generic [ref=e162]:
+            - generic [ref=e163]: Profit Factor
+            - generic [ref=e164]: —
+          - generic [ref=e165]:
+            - generic [ref=e166]: Avg PnL/Trade
+            - generic [ref=e167]: +$0.36
+            - generic [ref=e168]: 29 closed trades
+          - generic [ref=e169]:
+            - generic [ref=e170]: Max Drawdown
+            - generic [ref=e171]: —
+      - generic [ref=e172]:
+        - generic [ref=e175]: Технічні
+        - generic [ref=e176]:
+          - generic [ref=e177]:
+            - generic [ref=e178]: Avg Latency
+            - generic [ref=e179]: —
+          - generic [ref=e180]:
+            - generic [ref=e181]: Avg Duration
+            - generic [ref=e182]: —
+          - generic [ref=e183]:
+            - generic [ref=e184]: Exposure
+            - generic [ref=e185]: 3%
+            - generic [ref=e186]: $2.99 / $111.51
+          - generic [ref=e187]:
+            - generic [ref=e188]: Відкриті позиції
+            - generic [ref=e189]: "1"
+            - generic [ref=e190]: position
+  - generic [ref=e191]:
+    - button "Трейди 30" [ref=e192] [cursor=pointer]:
+      - generic [ref=e193]: Трейди
+      - generic [ref=e194]: "30"
+    - button "Налаштування" [ref=e195] [cursor=pointer]
+    - button "🐋 Whales 0" [ref=e196] [cursor=pointer]:
+      - generic [ref=e197]: 🐋 Whales
+      - generic [ref=e198]: "0"
+    - button "⚙️ Калібрація" [ref=e199] [cursor=pointer]
+    - button "⚡ Chain" [ref=e200] [cursor=pointer]
+    - button "📋 Логи" [ref=e201] [cursor=pointer]
+    - generic [ref=e202]: Оновлено 08:21
+  - generic [ref=e203]:
+    - generic [ref=e204]:
+      - generic [ref=e205]:
+        - generic [ref=e206]: P&L
+        - generic [ref=e207]: —
+      - generic [ref=e209]:
+        - generic [ref=e210]: Win Rate
+        - generic [ref=e211]: —
+      - generic [ref=e213]:
+        - generic [ref=e214]: Середня трив.
+        - generic [ref=e215]: —
+      - generic [ref=e217]:
+        - generic [ref=e218]: Wins
+        - generic [ref=e219]: —
+      - generic [ref=e221]:
+        - generic [ref=e222]: Losses
+        - generic [ref=e223]: —
+      - generic [ref=e225]:
+        - generic [ref=e226]: Open
+        - generic [ref=e227]: —
+      - generic "Медіанна свіжість марків (час з останнього оновлення від сервера)" [ref=e229]:
+        - generic [ref=e230]: Свіжість марків
+        - generic [ref=e231]: —
+    - generic [ref=e233]:
+      - button "Всі" [ref=e234] [cursor=pointer]
+      - button "Won" [ref=e235] [cursor=pointer]
+      - button "Lost" [ref=e236] [cursor=pointer]
+      - button "Open" [ref=e237] [cursor=pointer]
+      - button "LIVE" [ref=e238] [cursor=pointer]
+      - button "DRY" [ref=e239] [cursor=pointer]
+      - textbox "trade_id, market..." [ref=e240]
+      - button "📋 Copy All JSON" [ref=e241] [cursor=pointer]
+    - generic [ref=e242]:
+      - table:
+        - rowgroup
+        - rowgroup

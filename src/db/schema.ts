@@ -540,6 +540,13 @@ export const calibratorRecommendations = pgTable(
     confidence: varchar("confidence", { length: 16 }).notNull(), // stable | exploring | low_data
     sampleSize: integer("sample_size").notNull(),
     reason: text("reason").notNull(),
+    // Multi-KPI lift (v1 audit, multi_kpi.py port). Map of KPI name → Δ in
+    // native units (e.g. {avgPnl: 0.12, winRate: 0.03, slRate: -0.01}).
+    // `aims` is the top-2 KPIs whose move drives this rec; `liftMatrix` is
+    // the full per-KPI breakdown the UI surfaces inline. Both null on
+    // pre-multi-KPI rows to keep the migration backward-compatible.
+    liftMatrix: jsonb("lift_matrix"),
+    aims: jsonb("aims"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
