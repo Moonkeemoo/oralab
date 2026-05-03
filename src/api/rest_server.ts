@@ -4,7 +4,7 @@ import http from "node:http";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
-import { and, desc, eq, gte, inArray } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import { getDb } from "../db/client.js";
 import {
   decisions,
@@ -146,19 +146,74 @@ async function handlePositions(): Promise<unknown> {
     orderBy: desc(positions.id),
     limit: 50,
   });
-  return rows.map((p) => ({
-    id: p.id,
-    status: p.status,
-    conditionId: p.conditionId,
-    assetId: p.assetId,
-    side: p.side,
-    shares: Number(p.shares ?? 0),
-    fillPrice: Number(p.fillPrice ?? 0),
-    peakPrice: Number(p.peakPrice ?? 0),
-    sweepCount: p.sweepCount,
-    fillTs: Number(p.fillTs ?? 0),
-    entryCostUsd: Number(p.entryCostUsd ?? 0),
-  }));
+  if (rows.length === 0) return [];
+
+  // Live mark + bid + ask + intent come from the most recent decision per
+  // position (PositionMonitor writes at 2 Hz). Source-of-truth for the UI
+  // "current price" + "live PnL" without re-fetching the order book.
+  const ids = rows.map((p) => Number(p.id));
+  type LiveRow = {
+    position_id: number;
+    mark: string | null;
+    bid: string | null;
+    ask: string | null;
+    mark_source: string | null;
+    mark_ts: string | null;
+    intent_action: string | null;
+    intent_reason: string | null;
+  };
+  // postgres-js returns array directly. Use IN(...) with comma list to
+  // sidestep ANY($1) array-binding quirks across postgres-js versions.
+  const idList = sql.raw(ids.join(","));
+  const latest = (await db.execute(sql`
+    SELECT DISTINCT ON (position_id)
+      position_id,
+      input_snapshot->>'mark'        AS mark,
+      input_snapshot->>'bid'         AS bid,
+      input_snapshot->>'ask'         AS ask,
+      input_snapshot->>'markSource'  AS mark_source,
+      input_snapshot->>'markTs'      AS mark_ts,
+      output_intent->>'action'       AS intent_action,
+      output_intent->>'reason'       AS intent_reason
+    FROM decisions
+    WHERE position_id IN (${idList})
+    ORDER BY position_id, ts DESC
+  `)) as unknown as LiveRow[];
+  const liveByPos = new Map<number, LiveRow>();
+  for (const row of latest) liveByPos.set(Number(row.position_id), row);
+
+  return rows.map((p) => {
+    const fillPrice = Number(p.fillPrice ?? 0);
+    const shares = Number(p.shares ?? 0);
+    const live = liveByPos.get(Number(p.id));
+    const mark = live?.mark != null ? Number(live.mark) : null;
+    const pnlUsd = mark != null && fillPrice > 0 ? (mark - fillPrice) * shares : null;
+    const pnlPct = mark != null && fillPrice > 0 ? (mark - fillPrice) / fillPrice : null;
+    return {
+      id: p.id,
+      status: p.status,
+      conditionId: p.conditionId,
+      assetId: p.assetId,
+      side: p.side,
+      shares,
+      fillPrice,
+      peakPrice: Number(p.peakPrice ?? 0),
+      sweepCount: p.sweepCount,
+      fillTs: Number(p.fillTs ?? 0),
+      entryCostUsd: Number(p.entryCostUsd ?? 0),
+      // Live (from latest decide_exit snapshot)
+      currentPrice: mark,
+      currentBid: live?.bid != null ? Number(live.bid) : null,
+      currentAsk: live?.ask != null ? Number(live.ask) : null,
+      markSource: live?.mark_source ?? null,
+      markAgeMs:
+        live?.mark_ts != null ? Math.max(0, Date.now() - Number(live.mark_ts)) : null,
+      currentPnlUsd: pnlUsd,
+      currentPnlPct: pnlPct,
+      lastIntentAction: live?.intent_action ?? null,
+      lastIntentReason: live?.intent_reason ?? null,
+    };
+  });
 }
 
 async function handlePnl(req: http.IncomingMessage): Promise<unknown> {
